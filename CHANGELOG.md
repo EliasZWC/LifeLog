@@ -3,6 +3,48 @@
 本项目的所有重要变更都会记录在此文件中。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)，Git 标签格式为 `vX.Y.Z`。
 
+## [v0.0.17] - 2026-09-21
+
+### 变更
+
+- **全项目更名 LifeLog → Livolog**（LifeLog 重名太多）。涉及：
+  - 应用显示名、网页标题、i18n 的 `app.name`；
+  - **包名** `com.eliaszwc.lifelog` → `com.eliaszwc.livolog`（源码目录、`namespace`、`applicationId`）；
+  - **仓库名** `EliasZWC/LifeLog` → `EliasZWC/Livolog`（应用内更新的 API 地址同步改）；
+  - 存储目录 `Documents/LifeLog/` → `Documents/Livolog/`；
+  - 网页里的全局名（`LivologUI` / `LivologStore` / `LivologNative` / `LivologShell` …）、
+    `localStorage` 键前缀、偏好文件名、主题名（`Theme.Livolog`）、CI 产物名。
+
+  > ⚠️ 因为包名变了，系统会当成另一个应用：**需要先卸载旧的 LifeLog 再装 Livolog**，
+  > 否则桌面会同时出现两个图标。
+
+- **内置更纱等宽黑体**（Sarasa Mono SC）作为界面字体：
+  完整字体每个字重 24 MB，这里只保留「拉丁 + 常用标点 + 全角 + GB2312 全集 + 网页实际用到的字符」，
+  转 WOFF2 后 Regular / SemiBold 各约 1.5 MB（`assets/www/fonts/livolog-mono-*.woff2`），
+  APK 从 2.8 MB 涨到约 6 MB。界面上用到 400/500/600/700 四档字重，
+  两个文件各吃两档（400–500 / 600–700），映射保持确定。
+  没打进包里的生僻字自动回退到系统字体，不会出现方块。
+  授权 SIL OFL 1.1，授权文件一并放在 `assets/www/fonts/`。
+
+- **图标四周留出边距**：圆环外径从 66 收到 **56**（视口 108）。
+  原因：自适应图标「圆形遮罩」的可见直径就是 66，原尺寸正好贴着遮罩边界。
+  做法是把定稿整体等比缩小（$s = 28/33 \approx 0.8485$），比例一点没改，
+  现在到 66dp 安全圆还有约 4.6 的余量、到 72dp 圆形遮罩约有 7.6。
+
+### 迁移（旧版本数据不会丢）
+
+包名、偏好文件名、`localStorage` 键前缀、存储目录同时变了，所以三处各做了一次性迁移：
+
+| 旧 | 新 | 迁移方式 |
+| --- | --- | --- |
+| `SharedPreferences("lifelog")` | `SharedPreferences("livolog")` | `MainActivity.migrateLegacyPrefs()`，启动时把旧文件里的键值整体拷过来（主题、自选存储文件夹、更新状态） |
+| `localStorage['lifelog.*']` | `localStorage['livolog.*']` | `index.html` 顶部最早执行的那段脚本里搬（在套用主题之前），旧键保留不删 |
+| `Documents/LifeLog/` | `Documents/Livolog/` | `CsvStore.migrateFromLegacyDir()`：新目录读不到、旧目录有时，把内容写进新目录再返回 |
+
+### 修复
+
+- 设置页「导出数据」在浏览器预览时下载的文件名改为 `livolog.csv`（原 `lifelog.csv`）。
+
 ## [v0.0.16] - 2026-09-21
 
 ### 变更

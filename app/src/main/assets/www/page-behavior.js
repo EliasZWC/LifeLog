@@ -1,5 +1,5 @@
 /**
- * LifeLog - 行为页。
+ * Livolog - 行为页。
  * 列表展示已建立的行为，右下角悬浮按钮打开表单弹窗新增。
  */
 (function (global) {
@@ -14,7 +14,7 @@
     var confirmBtn = null;
 
     function t(key) {
-        return global.LifeLogI18n ? global.LifeLogI18n.t(key) : key;
+        return global.LivologI18n ? global.LivologI18n.t(key) : key;
     }
 
     function init() {
@@ -25,13 +25,13 @@
         cancelBtn = document.getElementById('behavior-cancel');
         confirmBtn = document.getElementById('behavior-confirm');
 
-        iconPicker = global.LifeLogUI.createIconPicker(
+        iconPicker = global.LivologUI.createIconPicker(
             document.getElementById('behavior-icon-picker')
         );
 
         fab.addEventListener('click', openForm);
         cancelBtn.addEventListener('click', function () {
-            global.LifeLogUI.closeSheet();
+            global.LivologUI.closeSheet();
         });
         confirmBtn.addEventListener('click', submit);
         nameInput.addEventListener('input', validate);
@@ -41,9 +41,9 @@
             }
         });
 
-        global.LifeLogStore.onChange(render);
-        if (global.LifeLogI18n) {
-            global.LifeLogI18n.onChange(render);
+        global.LivologStore.onChange(render);
+        if (global.LivologI18n) {
+            global.LivologI18n.onChange(render);
         }
         render();
     }
@@ -54,15 +54,15 @@
     function openForm() {
         editingId = null;
         nameInput.value = '';
-        iconPicker.select(global.LifeLogIcons.names()[0]);
+        iconPicker.select(global.LivologIcons.names()[0]);
         applyTitle();
         validate();
-        global.LifeLogUI.openSheet(sheet);
+        global.LivologUI.openSheet(sheet);
     }
 
     /** 详情页选「重命名」时调这里，预填现有名称与图标 */
     function openEdit(id) {
-        var behavior = global.LifeLogStore.getBehavior(id);
+        var behavior = global.LivologStore.getBehavior(id);
         if (!behavior) {
             return;
         }
@@ -72,7 +72,7 @@
         iconPicker.select(behavior.icon);
         applyTitle();
         validate();
-        global.LifeLogUI.openSheet(sheet);
+        global.LivologUI.openSheet(sheet);
     }
 
     function applyTitle() {
@@ -97,18 +97,18 @@
         }
 
         if (editingId) {
-            global.LifeLogStore.updateBehavior(editingId, nameInput.value, iconPicker.getSelected());
-            global.LifeLogBehaviorDetail.refresh();
+            global.LivologStore.updateBehavior(editingId, nameInput.value, iconPicker.getSelected());
+            global.LivologBehaviorDetail.refresh();
         } else {
-            global.LifeLogStore.addBehavior(nameInput.value, iconPicker.getSelected());
+            global.LivologStore.addBehavior(nameInput.value, iconPicker.getSelected());
         }
 
-        global.LifeLogUI.closeSheet();
+        global.LivologUI.closeSheet();
     }
 
     /** 表示「点进去还有内容」的右对齐箭头 */
     function chevron() {
-        var span = global.LifeLogUI.el('span', 'card-chevron');
+        var span = global.LivologUI.el('span', 'card-chevron');
         span.setAttribute('aria-hidden', 'true');
         span.innerHTML = '<svg viewBox="0 0 24 24" focusable="false">' +
             '<path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>';
@@ -120,30 +120,30 @@
             return;
         }
 
-        var behaviors = global.LifeLogStore.getBehaviors();
+        var behaviors = global.LivologStore.getBehaviors();
         listEl.innerHTML = '';
 
         if (!behaviors.length) {
-            listEl.appendChild(global.LifeLogUI.emptyState(t('behavior.empty')));
+            listEl.appendChild(global.LivologUI.emptyState(t('behavior.empty')));
             return;
         }
 
         behaviors.forEach(function (behavior) {
-            var card = global.LifeLogUI.el('li', 'card');
+            var card = global.LivologUI.el('li', 'card');
             card.dataset.id = behavior.id;
-            card.appendChild(global.LifeLogUI.icon(behavior.icon, 'card-icon'));
-            card.appendChild(global.LifeLogUI.el('span', 'card-title', behavior.name));
+            card.appendChild(global.LivologUI.icon(behavior.icon, 'card-icon'));
+            card.appendChild(global.LivologUI.el('span', 'card-title', behavior.name));
             card.appendChild(chevron());
 
             card.addEventListener('click', function () {
-                global.LifeLogBehaviorDetail.open(behavior.id);
+                global.LivologBehaviorDetail.open(behavior.id);
             });
 
             listEl.appendChild(card);
         });
     }
 
-    global.LifeLogBehaviorPage = {
+    global.LivologBehaviorPage = {
         init: init,
         render: render,
         openEdit: openEdit

@@ -40,7 +40,7 @@ jobs:
       - name: 读取版本号
         run: |
           VERSION_NAME=$(grep -oP 'val appVersionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
-          echo "LifeLog versionName = $VERSION_NAME"
+          echo "Livolog versionName = $VERSION_NAME"
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
 
       - name: 构建 Debug APK
@@ -50,12 +50,12 @@ jobs:
         run: |
           mkdir -p dist
           cp app/build/outputs/apk/debug/app-debug.apk \
-             "dist/LifeLog-v${VERSION_NAME}-debug.apk"
+             "dist/Livolog-v${VERSION_NAME}-debug.apk"
 
       - name: 上传产物
         uses: actions/upload-artifact@v7
         with:
-          name: lifelog-debug-apk
+          name: livolog-debug-apk
           path: dist/*.apk
           if-no-files-found: error
           retention-days: 14

@@ -1,5 +1,5 @@
 /**
- * LifeLog - 跟踪数据层。
+ * Livolog - 跟踪数据层。
  *
  * 跟踪与「行为 / 时间记录」是两套互相独立的数据：
  *   Metric       = { id, name, icon }
@@ -11,8 +11,8 @@
 (function (global) {
     'use strict';
 
-    var METRIC_KEY = 'lifelog.metrics';
-    var RECORD_KEY = 'lifelog.metricRecords';
+    var METRIC_KEY = 'livolog.metrics';
+    var RECORD_KEY = 'livolog.metricRecords';
     var HEADER = ['id', 'metric', 'time', 'value'];
 
     var listeners = [];
@@ -52,13 +52,13 @@
         });
     }
 
-    /** 镜像到 LifeLog 目录下的 metrics.csv；没有原生桥时（浏览器预览）自动跳过 */
+    /** 镜像到 Livolog 目录下的 metrics.csv；没有原生桥时（浏览器预览）自动跳过 */
     function persistCsv() {
-        if (!global.LifeLogNative || typeof global.LifeLogNative.saveMetricsCsv !== 'function') {
+        if (!global.LivologNative || typeof global.LivologNative.saveMetricsCsv !== 'function') {
             return;
         }
         try {
-            global.LifeLogNative.saveMetricsCsv(exportCsv());
+            global.LivologNative.saveMetricsCsv(exportCsv());
         } catch (e) {
             /* 忽略 */
         }
@@ -88,7 +88,7 @@
         var metric = {
             id: newId(),
             name: String(name || '').trim(),
-            icon: icon || global.LifeLogIcons.fallback
+            icon: icon || global.LivologIcons.fallback
         };
         var list = getMetrics();
         list.push(metric);
@@ -213,10 +213,10 @@
             return a.time - b.time;
         }).forEach(function (record) {
             lines.push([
-                global.LifeLogCsv.escapeField(record.id),
-                global.LifeLogCsv.escapeField(namesById[record.metricId] || ''),
-                global.LifeLogCsv.escapeField(global.LifeLogCsv.formatTimestamp(record.time)),
-                global.LifeLogCsv.escapeField(record.value)
+                global.LivologCsv.escapeField(record.id),
+                global.LivologCsv.escapeField(namesById[record.metricId] || ''),
+                global.LivologCsv.escapeField(global.LivologCsv.formatTimestamp(record.time)),
+                global.LivologCsv.escapeField(record.value)
             ].join(','));
         });
 
@@ -250,7 +250,7 @@
             return false;
         }
 
-        var rows = global.LifeLogCsv.parseRows(csv).filter(function (row) {
+        var rows = global.LivologCsv.parseRows(csv).filter(function (row) {
             return row.some(function (cell) {
                 return String(cell).trim() !== '';
             });
@@ -288,14 +288,14 @@
         var records = [];
         body.forEach(function (row) {
             var name = String(row[at.metric] || '').trim();
-            var time = global.LifeLogCsv.parseTimestamp(row[at.time]);
+            var time = global.LivologCsv.parseTimestamp(row[at.time]);
             var value = normalizeValue(row[at.value]);
             if (!name || time === null || value === null) {
                 return;
             }
 
             if (!byName[name]) {
-                var created = { id: newId(), name: name, icon: global.LifeLogIcons.fallback };
+                var created = { id: newId(), name: name, icon: global.LivologIcons.fallback };
                 metrics.push(created);
                 byName[name] = created;
             }
@@ -317,7 +317,7 @@
         return true;
     }
 
-    global.LifeLogMetrics = {
+    global.LivologMetrics = {
         getMetrics: getMetrics,
         getMetric: getMetric,
         addMetric: addMetric,

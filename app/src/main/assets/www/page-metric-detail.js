@@ -1,5 +1,5 @@
 /**
- * LifeLog - 跟踪详情页。
+ * Livolog - 跟踪详情页。
  *
  * 与行为详情页同构：全屏覆盖层 + 标题栏（返回 / 跟踪项名称 / 菜单）+ 视图栏（记录 / 统计）。
  *
@@ -46,7 +46,7 @@
     var editingRecordId = null;
 
     function t(key) {
-        return global.LifeLogI18n ? global.LifeLogI18n.t(key) : key;
+        return global.LivologI18n ? global.LivologI18n.t(key) : key;
     }
 
     function init() {
@@ -80,7 +80,7 @@
         });
 
         document.getElementById('metric-delete-cancel').addEventListener('click', function () {
-            global.LifeLogUI.closeSheet();
+            global.LivologUI.closeSheet();
         });
         deleteInput.addEventListener('input', validateDelete);
         deleteInput.addEventListener('keydown', function (event) {
@@ -92,7 +92,7 @@
 
         document.getElementById('metric-record-cancel').addEventListener('click', function () {
             editingRecordId = null;
-            global.LifeLogUI.closeSheet();
+            global.LivologUI.closeSheet();
         });
         recordConfirm.addEventListener('click', submitRecord);
         recordValue.addEventListener('input', validateRecord);
@@ -102,9 +102,9 @@
             }
         });
 
-        global.LifeLogMetrics.onChange(refresh);
-        if (global.LifeLogI18n) {
-            global.LifeLogI18n.onChange(function () {
+        global.LivologMetrics.onChange(refresh);
+        if (global.LivologI18n) {
+            global.LivologI18n.onChange(function () {
                 if (isOpen) {
                     recordTitle.textContent = t(
                         editingRecordId ? 'metric.record.editTitle' : 'metric.record.title'
@@ -125,7 +125,7 @@
     // --- 打开 / 关闭 --------------------------------------------------------
 
     function open(id) {
-        var metric = global.LifeLogMetrics.getMetric(id);
+        var metric = global.LivologMetrics.getMetric(id);
         if (!metric || isOpen) {
             return;
         }
@@ -142,7 +142,7 @@
             root.classList.add('is-open');
         });
 
-        global.history.pushState({ lifelogMetric: id }, '');
+        global.history.pushState({ livologMetric: id }, '');
     }
 
     function close(options) {
@@ -153,7 +153,7 @@
         isOpen = false;
         currentId = null;
 
-        global.LifeLogUI.closeSheet();
+        global.LivologUI.closeSheet();
         root.classList.remove('is-open');
         recordFab.hidden = true;
 
@@ -175,7 +175,7 @@
             return;
         }
 
-        var metric = global.LifeLogMetrics.getMetric(currentId);
+        var metric = global.LivologMetrics.getMetric(currentId);
         if (!metric) {
             // 被重命名成别的 id 或已删除
             close();
@@ -206,7 +206,7 @@
 
         currentView = button.dataset.view;
         refresh();
-        global.LifeLogUI.animateEnter(listEl, currentView === 'stats' ? 1 : -1);
+        global.LivologUI.animateEnter(listEl, currentView === 'stats' ? 1 : -1);
     }
 
     function renderList(metric) {
@@ -217,23 +217,23 @@
             return;
         }
 
-        var records = global.LifeLogMetrics.getRecords(metric.id);
+        var records = global.LivologMetrics.getRecords(metric.id);
         if (!records.length) {
-            listEl.appendChild(global.LifeLogUI.emptyState(t('metric.detail.empty')));
+            listEl.appendChild(global.LivologUI.emptyState(t('metric.detail.empty')));
             return;
         }
 
         records.forEach(function (record) {
-            var card = global.LifeLogUI.el('li', 'card');
-            card.appendChild(global.LifeLogUI.icon(metric.icon, 'card-icon'));
-            card.appendChild(global.LifeLogUI.el('span', 'card-title', formatValue(record.value)));
+            var card = global.LivologUI.el('li', 'card');
+            card.appendChild(global.LivologUI.icon(metric.icon, 'card-icon'));
+            card.appendChild(global.LivologUI.el('span', 'card-title', formatValue(record.value)));
 
-            var time = global.LifeLogUI.el('span', 'card-time');
-            time.appendChild(global.LifeLogUI.el(
-                'span', 'card-time-date', global.LifeLogDateTime.formatDate(record.time)
+            var time = global.LivologUI.el('span', 'card-time');
+            time.appendChild(global.LivologUI.el(
+                'span', 'card-time-date', global.LivologDateTime.formatDate(record.time)
             ));
-            time.appendChild(global.LifeLogUI.el(
-                'span', 'card-time-clock', global.LifeLogDateTime.formatClock(record.time)
+            time.appendChild(global.LivologUI.el(
+                'span', 'card-time-clock', global.LivologDateTime.formatClock(record.time)
             ));
             card.appendChild(time);
 
@@ -262,10 +262,10 @@
 
     /** 统计区间的默认值：最近 30 天，但不早于第一条记录 */
     function defaultRange(records) {
-        var bounds = global.LifeLogChart.rangeOf(records.map(function (record) {
+        var bounds = global.LivologChart.rangeOf(records.map(function (record) {
             return record.time;
         }));
-        var today = global.LifeLogDateTime.startOfDay(Date.now());
+        var today = global.LivologDateTime.startOfDay(Date.now());
         var end = Math.max(bounds.end, today);
         var earliest = Math.min(bounds.start, end);
         return { start: Math.max(earliest, end - 29 * DAY_MS), end: end };
@@ -284,9 +284,9 @@
     }
 
     function renderStats(metric) {
-        var all = global.LifeLogMetrics.getRecords(metric.id);
+        var all = global.LivologMetrics.getRecords(metric.id);
         if (!all.length) {
-            listEl.appendChild(global.LifeLogUI.emptyState(t('metric.detail.statsEmpty')));
+            listEl.appendChild(global.LivologUI.emptyState(t('metric.detail.statsEmpty')));
             return;
         }
 
@@ -296,7 +296,7 @@
 
         var range = stats.range;
         var records = all.filter(function (record) {
-            var day = global.LifeLogDateTime.startOfDay(record.time);
+            var day = global.LivologDateTime.startOfDay(record.time);
             return day >= range.start && day <= range.end;
         });
 
@@ -319,11 +319,11 @@
             if (record.value < min) min = record.value;
         });
 
-        var points = global.LifeLogChart.bucketByDay(times, values, range);
+        var points = global.LivologChart.bucketByDay(times, values, range);
 
-        var wrap = global.LifeLogUI.el('li', 'stats');
+        var wrap = global.LivologUI.el('li', 'stats');
 
-        var toolbar = global.LifeLogStats.build({
+        var toolbar = global.LivologStats.build({
             getChartType: function () {
                 return stats.chartType;
             },
@@ -341,16 +341,16 @@
         });
         wrap.appendChild(toolbar.root);
 
-        var chartBlock = global.LifeLogUI.el('div', 'stats-chart');
-        chartBlock.appendChild(global.LifeLogUI.el(
+        var chartBlock = global.LivologUI.el('div', 'stats-chart');
+        chartBlock.appendChild(global.LivologUI.el(
             'span', 'stats-chart-title', t('metric.detail.chartDaily')
         ));
-        chartBlock.appendChild(global.LifeLogChart.build(points, { type: stats.chartType }));
+        chartBlock.appendChild(global.LivologChart.build(points, { type: stats.chartType }));
         wrap.appendChild(chartBlock);
 
         var latest = ordered.length ? ordered[ordered.length - 1].value : null;
 
-        var list = global.LifeLogUI.el('dl', 'stats-list');
+        var list = global.LivologUI.el('dl', 'stats-list');
         [
             [t('metric.detail.count'), String(ordered.length)],
             [t('metric.detail.latest'), latest === null ? '—' : formatValue(latest)],
@@ -361,8 +361,8 @@
             [t('metric.detail.max'), ordered.length ? formatValue(max) : '—'],
             [t('metric.detail.min'), ordered.length ? formatValue(min) : '—']
         ].forEach(function (row) {
-            list.appendChild(global.LifeLogUI.el('dt', 'stats-key', row[0]));
-            list.appendChild(global.LifeLogUI.el('dd', 'stats-value', row[1]));
+            list.appendChild(global.LivologUI.el('dt', 'stats-key', row[0]));
+            list.appendChild(global.LivologUI.el('dd', 'stats-value', row[1]));
         });
         wrap.appendChild(list);
 
@@ -383,7 +383,7 @@
         var at = editingRecordId ? record.time : Date.now();
 
         recordFields.innerHTML = '';
-        group = global.LifeLogDateTime.buildGroup(null, at, validateRecord);
+        group = global.LivologDateTime.buildGroup(null, at, validateRecord);
         recordFields.appendChild(group.root);
 
         recordValue.value = editingRecordId ? formatValue(record.value) : '';
@@ -392,7 +392,7 @@
         );
 
         validateRecord();
-        global.LifeLogUI.openSheet(recordSheet);
+        global.LivologUI.openSheet(recordSheet);
     }
 
     function readRecordValue() {
@@ -405,8 +405,8 @@
     }
 
     function validateRecord() {
-        var time = group ? global.LifeLogDateTime.toTimestamp(
-            global.LifeLogDateTime.readGroup(group)
+        var time = group ? global.LivologDateTime.toTimestamp(
+            global.LivologDateTime.readGroup(group)
         ) : null;
         var value = readRecordValue();
 
@@ -431,28 +431,28 @@
         }
 
         if (editingRecordId) {
-            global.LifeLogMetrics.updateRecord(
+            global.LivologMetrics.updateRecord(
                 editingRecordId, currentId, result.time, result.value
             );
         } else {
-            global.LifeLogMetrics.addRecord(currentId, result.time, result.value);
+            global.LivologMetrics.addRecord(currentId, result.time, result.value);
         }
 
         editingRecordId = null;
-        global.LifeLogUI.closeSheet();
+        global.LivologUI.closeSheet();
     }
 
     // --- 菜单 ---------------------------------------------------------------
 
     function openActions() {
         menuBtn.setAttribute('aria-expanded', 'true');
-        global.LifeLogUI.openMenu(menuBtn, [
+        global.LivologUI.openMenu(menuBtn, [
             { value: 'rename', label: t('behavior.menu.rename') },
             { value: 'delete', label: t('behavior.menu.delete') }
         ], function (value) {
             menuBtn.setAttribute('aria-expanded', 'false');
             if (value === 'rename') {
-                global.LifeLogMetricPage.openEdit(currentId);
+                global.LivologMetricPage.openEdit(currentId);
             } else {
                 openDeleteSheet();
             }
@@ -462,7 +462,7 @@
     // --- 删除（输入名称确认） -----------------------------------------------
 
     function openDeleteSheet() {
-        var metric = global.LifeLogMetrics.getMetric(currentId);
+        var metric = global.LivologMetrics.getMetric(currentId);
         if (!metric) {
             return;
         }
@@ -470,28 +470,28 @@
         deleteTip.textContent = t('metric.delete.tip').replace('{name}', metric.name);
         deleteInput.value = '';
         validateDelete();
-        global.LifeLogUI.openSheet(deleteSheet);
+        global.LivologUI.openSheet(deleteSheet);
     }
 
     function validateDelete() {
-        var metric = global.LifeLogMetrics.getMetric(currentId);
+        var metric = global.LivologMetrics.getMetric(currentId);
         deleteConfirm.disabled = !metric || deleteInput.value.trim() !== metric.name;
     }
 
     function confirmDelete() {
-        var metric = global.LifeLogMetrics.getMetric(currentId);
+        var metric = global.LivologMetrics.getMetric(currentId);
         if (!metric || deleteInput.value.trim() !== metric.name) {
             return;
         }
 
-        global.LifeLogUI.closeSheet();
+        global.LivologUI.closeSheet();
         // 连带删掉该跟踪项名下的全部记录
-        global.LifeLogMetrics.removeMetrics([metric.id]);
-        global.LifeLogUI.toast(t('toast.deleted'));
+        global.LivologMetrics.removeMetrics([metric.id]);
+        global.LivologUI.toast(t('toast.deleted'));
         close();
     }
 
-    global.LifeLogMetricDetail = {
+    global.LivologMetricDetail = {
         init: init,
         open: open,
         close: close,

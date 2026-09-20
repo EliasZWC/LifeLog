@@ -12,9 +12,25 @@
 
     <!-- 在解析样式前先套用已保存的主题，避免首屏闪一下系统主题 -->
     <script>
+        // v0.0.17：应用从 LifeLog 改名成 Livolog，localStorage 的键前缀也跟着换。
+        // 这里先把旧键整体搬过来（只搬一次，旧键留着不删，回退旧版还能接着用）。
+        (function () {
+            var SUFFIXES = ['theme', 'locale', 'activeTab', 'timeView',
+                'behaviors', 'records', 'metrics', 'metricRecords'];
+            for (var i = 0; i < SUFFIXES.length; i++) {
+                try {
+                    var key = 'livolog.' + SUFFIXES[i];
+                    var legacy = localStorage.getItem('lifelog.' + SUFFIXES[i]);
+                    if (legacy !== null && localStorage.getItem(key) === null) {
+                        localStorage.setItem(key, legacy);
+                    }
+                } catch (e) { /* 忽略 */ }
+            }
+        })();
+
         (function () {
             try {
-                var mode = localStorage.getItem('lifelog.theme');
+                var mode = localStorage.getItem('livolog.theme');
                 if (mode === 'light' || mode === 'dark') {
                     document.documentElement.setAttribute('data-theme', mode);
                 }

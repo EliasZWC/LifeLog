@@ -1,4 +1,4 @@
-package com.eliaszwc.lifelog
+package com.eliaszwc.livolog
 
 import android.app.Activity
 import android.content.Context
@@ -27,10 +27,10 @@ import java.net.URL
  */
 object Updater {
 
-    private const val TAG = "LifeLog"
+    private const val TAG = "Livolog"
     private const val LATEST_RELEASE_URL =
-        "https://api.github.com/repos/EliasZWC/LifeLog/releases/latest"
-    private const val USER_AGENT = "LifeLog-Android"
+        "https://api.github.com/repos/EliasZWC/Livolog/releases/latest"
+    private const val USER_AGENT = "Livolog-Android"
     private const val APK_DIR = "update"
 
     /** 解析出来的一个可用版本 */
@@ -198,7 +198,7 @@ object Updater {
         val dir = File(root, safeFileName(release.version))
         dir.mkdirs()
 
-        val target = File(dir, "lifelog.apk")
+        val target = File(dir, "livolog.apk")
 
         val connection = (URL(release.assetUrl).openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000

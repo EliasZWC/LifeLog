@@ -1,5 +1,5 @@
 /**
- * LifeLog - 日期选择（只要年月日）。
+ * Livolog - 日期选择（只要年月日）。
  *
  * 复用底部 sheet：一组分段输入 + 取消 / 确定。统计视图的起止日期用它。
  */
@@ -16,7 +16,7 @@
     var onPick = null;
 
     function t(key) {
-        return global.LifeLogI18n ? global.LifeLogI18n.t(key) : key;
+        return global.LivologI18n ? global.LivologI18n.t(key) : key;
     }
 
     function init() {
@@ -32,7 +32,7 @@
 
         document.getElementById('date-cancel').addEventListener('click', function () {
             onPick = null;
-            global.LifeLogUI.closeSheet();
+            global.LivologUI.closeSheet();
         });
         confirmBtn.addEventListener('click', submit);
     }
@@ -49,7 +49,7 @@
         titleEl.textContent = config.title || '';
 
         fieldsEl.innerHTML = '';
-        group = global.LifeLogDateTime.buildDateGroup(
+        group = global.LivologDateTime.buildDateGroup(
             null,
             config.value || Date.now(),
             validate
@@ -57,12 +57,12 @@
         fieldsEl.appendChild(group.root);
 
         validate();
-        global.LifeLogUI.openSheet(sheet);
+        global.LivologUI.openSheet(sheet);
     }
 
     function readValue() {
         return group
-            ? global.LifeLogDateTime.toDateTimestamp(global.LifeLogDateTime.readGroup(group))
+            ? global.LivologDateTime.toDateTimestamp(global.LivologDateTime.readGroup(group))
             : null;
     }
 
@@ -83,13 +83,13 @@
         var callback = onPick;
         onPick = null;
 
-        global.LifeLogUI.closeSheet();
+        global.LivologUI.closeSheet();
         if (callback) {
             callback(value);
         }
     }
 
-    global.LifeLogDatePicker = {
+    global.LivologDatePicker = {
         init: init,
         open: open
     };

@@ -1,8 +1,8 @@
 /**
- * LifeLog - 设置页。
+ * Livolog - 设置页。
  *
  * 按分区列出设置项（通用 / 数据管理 / 关于）：
- * - 每项都是统一的「左名称 / 右当前值」行，点整行才弹出选项（LifeLogUI.createRowPicker）
+ * - 每项都是统一的「左名称 / 右当前值」行，点整行才弹出选项（LivologUI.createRowPicker）
  * - 导入 CSV 用一个隐藏的 <input type="file">，原生 WebChromeClient 会接管选文件
  */
 (function (global) {
@@ -22,10 +22,10 @@
                 ];
             },
             getValue: function () {
-                return global.LifeLogI18n.getLocale();
+                return global.LivologI18n.getLocale();
             },
             setValue: function (value) {
-                global.LifeLogI18n.setLocale(value);
+                global.LivologI18n.setLocale(value);
             }
         },
         theme: {
@@ -39,10 +39,10 @@
                 ];
             },
             getValue: function () {
-                return global.LifeLogTheme.getMode();
+                return global.LivologTheme.getMode();
             },
             setValue: function (value) {
-                global.LifeLogTheme.setMode(value);
+                global.LivologTheme.setMode(value);
             }
         }
     };
@@ -50,7 +50,7 @@
     var rowPickers = {};
 
     function t(key) {
-        return global.LifeLogI18n ? global.LifeLogI18n.t(key) : key;
+        return global.LivologI18n ? global.LivologI18n.t(key) : key;
     }
 
     function init() {
@@ -62,7 +62,7 @@
                 return;
             }
 
-            rowPickers[name] = global.LifeLogUI.createRowPicker(mount, valueEl, {
+            rowPickers[name] = global.LivologUI.createRowPicker(mount, valueEl, {
                 getOptions: handler.getOptions,
                 getValue: handler.getValue,
                 onChange: function (value) {
@@ -74,13 +74,13 @@
         });
 
         // 被其它入口改动时保持控件同步
-        global.LifeLogTheme.onChange(refresh);
-        if (global.LifeLogI18n) {
-            global.LifeLogI18n.onChange(function () {
+        global.LivologTheme.onChange(refresh);
+        if (global.LivologI18n) {
+            global.LivologI18n.onChange(function () {
                 refresh();
                 refreshStoragePath();
-                if (global.LifeLogShell && global.LifeLogShell.refreshUpdate) {
-                    global.LifeLogShell.refreshUpdate();
+                if (global.LivologShell && global.LivologShell.refreshUpdate) {
+                    global.LivologShell.refreshUpdate();
                 }
             });
         }
@@ -103,12 +103,12 @@
         if (storageRow) {
             // 点一下换文件夹；长按恢复默认（自定义位置时才有意义）
             storageRow.addEventListener('click', function () {
-                if (global.LifeLogUI.justLongPressed()) {
+                if (global.LivologUI.justLongPressed()) {
                     return;
                 }
                 pickStorageFolder();
             });
-            global.LifeLogUI.attachLongPress(storageRow, function () {
+            global.LivologUI.attachLongPress(storageRow, function () {
                 resetStorageFolder();
             });
         }
@@ -133,35 +133,35 @@
     function openMail(address) {
         var url = 'mailto:' + address;
 
-        if (global.LifeLogNative && typeof global.LifeLogNative.openExternal === 'function') {
-            global.LifeLogNative.openExternal(url);
+        if (global.LivologNative && typeof global.LivologNative.openExternal === 'function') {
+            global.LivologNative.openExternal(url);
             return;
         }
         global.location.href = url;
     }
 
     function pickStorageFolder() {
-        if (!global.LifeLogNative || typeof global.LifeLogNative.pickStorageFolder !== 'function') {
-            global.LifeLogUI.toast(t('setting.storage.unavailable'));
+        if (!global.LivologNative || typeof global.LivologNative.pickStorageFolder !== 'function') {
+            global.LivologUI.toast(t('setting.storage.unavailable'));
             return;
         }
-        global.LifeLogNative.pickStorageFolder();
+        global.LivologNative.pickStorageFolder();
     }
 
     function resetStorageFolder() {
-        if (!global.LifeLogNative || typeof global.LifeLogNative.resetStorageFolder !== 'function') {
+        if (!global.LivologNative || typeof global.LivologNative.resetStorageFolder !== 'function') {
             return;
         }
-        global.LifeLogNative.resetStorageFolder();
-        global.LifeLogUI.toast(t('setting.storage.reset'));
+        global.LivologNative.resetStorageFolder();
+        global.LivologUI.toast(t('setting.storage.reset'));
     }
 
     /** 导出全部数据：交给原生弹系统「另存为」，浏览器预览时退回下载文件 */
     function handleExport() {
-        var csv = global.LifeLogStore.exportCsv();
+        var csv = global.LivologStore.exportCsv();
 
-        if (global.LifeLogNative && typeof global.LifeLogNative.exportRecordsCsv === 'function') {
-            global.LifeLogNative.exportRecordsCsv(csv);
+        if (global.LivologNative && typeof global.LivologNative.exportRecordsCsv === 'function') {
+            global.LivologNative.exportRecordsCsv(csv);
             return;
         }
 
@@ -170,13 +170,13 @@
             var url = global.URL.createObjectURL(blob);
             var link = document.createElement('a');
             link.href = url;
-            link.download = 'lifelog.csv';
+            link.download = 'livolog.csv';
             link.click();
             global.setTimeout(function () {
                 global.URL.revokeObjectURL(url);
             }, 0);
         } catch (e) {
-            global.LifeLogUI.toast(t('toast.exportFailed').replace('{reason}', 'unsupported'));
+            global.LivologUI.toast(t('toast.exportFailed').replace('{reason}', 'unsupported'));
         }
     }
 
@@ -191,21 +191,21 @@
 
         var reader = new FileReader();
         reader.onload = function () {
-            var result = global.LifeLogStore.importCsvText(String(reader.result || ''));
+            var result = global.LivologStore.importCsvText(String(reader.result || ''));
             if (!result.ok) {
-                global.LifeLogUI.toast(
+                global.LivologUI.toast(
                     t('toast.importFailed').replace('{reason}', result.error || '')
                 );
                 return;
             }
             if (!result.count) {
-                global.LifeLogUI.toast(t('toast.importEmpty'));
+                global.LivologUI.toast(t('toast.importEmpty'));
                 return;
             }
-            global.LifeLogUI.toast(t('toast.imported').replace('{n}', String(result.count)));
+            global.LivologUI.toast(t('toast.imported').replace('{n}', String(result.count)));
         };
         reader.onerror = function () {
-            global.LifeLogUI.toast(t('toast.importFailed').replace('{reason}', 'read'));
+            global.LivologUI.toast(t('toast.importFailed').replace('{reason}', 'read'));
         };
         reader.readAsText(file);
     }
@@ -216,13 +216,13 @@
         });
     }
 
-    /** 版本号由原生壳通过 LifeLogShell.setVersion 推过来，保证与 build.gradle.kts 单一来源 */
+    /** 版本号由原生壳通过 LivologShell.setVersion 推过来，保证与 build.gradle.kts 单一来源 */
     function refreshVersion() {
         var node = document.getElementById('setting-version');
         if (!node) {
             return;
         }
-        var version = global.LifeLogShell ? global.LifeLogShell.getVersion() : null;
+        var version = global.LivologShell ? global.LivologShell.getVersion() : null;
         // 只显示版本名，形如 0.0.6
         node.textContent = version ? version.name : '—';
     }
@@ -233,13 +233,13 @@
         if (!node) {
             return;
         }
-        var path = global.LifeLogShell ? global.LifeLogShell.getStoragePath() : '';
+        var path = global.LivologShell ? global.LivologShell.getStoragePath() : '';
         node.textContent = path || t('setting.import.empty');
         // 路径过长时值会被省略号截断，用 title 保留完整信息
         node.title = path || '';
     }
 
-    global.LifeLogSettingPage = {
+    global.LivologSettingPage = {
         init: init,
         refreshVersion: refreshVersion,
         refreshStoragePath: refreshStoragePath

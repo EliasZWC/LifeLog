@@ -1,4 +1,4 @@
-// LifeLog - 顶层构建脚本
+// Livolog - 顶层构建脚本
 // 只声明插件版本，实际应用在 :app 模块中。
 plugins {
     id("com.android.application") version "8.7.3" apply false

@@ -1,5 +1,5 @@
 /**
- * LifeLog - 行为图标库。
+ * Livolog - 行为图标库。
  *
  * 全部取自谷歌官方 Material Icons（material-design-icons 仓库 materialicons/24px 版本），
  * 只保留 path 数据并去掉透明背景层，方便用 CSS 的 fill: currentColor 着色。
@@ -65,7 +65,7 @@
     var FALLBACK = 'star';
     var NAMES = Object.keys(ICONS);
 
-    global.LifeLogIcons = {
+    global.LivologIcons = {
         /** 取图标的 <path> 内容，未知名回退到通用图标 */
         get: function (name) {
             return ICONS[name] || ICONS[FALLBACK];

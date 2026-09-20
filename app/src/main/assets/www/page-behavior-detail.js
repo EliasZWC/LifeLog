@@ -1,5 +1,5 @@
 /**
- * LifeLog - 行为详情页。
+ * Livolog - 行为详情页。
  *
  * 全屏覆盖在 app 之上，自带标题栏（返回 / 行为名称 / 菜单）与视图栏（记录 / 统计）。
  * 打开时往 history 里 push 一条记录，这样系统返回键、手势返回都能直接回来。
@@ -33,7 +33,7 @@
     var stats = { chartType: 'bar', range: null };
 
     function t(key) {
-        return global.LifeLogI18n ? global.LifeLogI18n.t(key) : key;
+        return global.LivologI18n ? global.LivologI18n.t(key) : key;
     }
 
     function init() {
@@ -56,7 +56,7 @@
         viewNav.addEventListener('click', onViewNavClick);
 
         document.getElementById('delete-cancel').addEventListener('click', function () {
-            global.LifeLogUI.closeSheet();
+            global.LivologUI.closeSheet();
         });
         deleteInput.addEventListener('input', validateDelete);
         deleteInput.addEventListener('keydown', function (event) {
@@ -66,9 +66,9 @@
         });
         deleteConfirm.addEventListener('click', confirmDelete);
 
-        global.LifeLogStore.onChange(refresh);
-        if (global.LifeLogI18n) {
-            global.LifeLogI18n.onChange(refresh);
+        global.LivologStore.onChange(refresh);
+        if (global.LivologI18n) {
+            global.LivologI18n.onChange(refresh);
         }
 
         // 系统返回键 / 手势返回会触发 popstate，等价于点左上角返回
@@ -82,7 +82,7 @@
     // --- 打开 / 关闭 --------------------------------------------------------
 
     function open(id) {
-        var behavior = global.LifeLogStore.getBehavior(id);
+        var behavior = global.LivologStore.getBehavior(id);
         if (!behavior || isOpen) {
             return;
         }
@@ -99,7 +99,7 @@
             root.classList.add('is-open');
         });
 
-        global.history.pushState({ lifelogBehavior: id }, '');
+        global.history.pushState({ livologBehavior: id }, '');
     }
 
     function close(options) {
@@ -110,7 +110,7 @@
         isOpen = false;
         currentId = null;
 
-        global.LifeLogUI.closeSheet();
+        global.LivologUI.closeSheet();
         root.classList.remove('is-open');
 
         global.setTimeout(function () {
@@ -131,7 +131,7 @@
             return;
         }
 
-        var behavior = global.LifeLogStore.getBehavior(currentId);
+        var behavior = global.LivologStore.getBehavior(currentId);
         if (!behavior) {
             // 行为被删掉了
             close();
@@ -161,7 +161,7 @@
 
         currentView = button.dataset.view;
         refresh();
-        global.LifeLogUI.animateEnter(listEl, currentView === 'stats' ? 1 : -1);
+        global.LivologUI.animateEnter(listEl, currentView === 'stats' ? 1 : -1);
     }
 
     function renderList(behavior) {
@@ -172,32 +172,32 @@
             return;
         }
 
-        var records = global.LifeLogStore.getRecords().filter(function (record) {
+        var records = global.LivologStore.getRecords().filter(function (record) {
             return record.behaviorId === behavior.id;
         });
 
         if (!records.length) {
-            listEl.appendChild(global.LifeLogUI.emptyState(t('behavior.detail.empty')));
+            listEl.appendChild(global.LivologUI.emptyState(t('behavior.detail.empty')));
             return;
         }
 
         records.forEach(function (record) {
-            var card = global.LifeLogUI.el('li', 'card');
-            card.appendChild(global.LifeLogUI.icon(behavior.icon, 'card-icon'));
-            card.appendChild(global.LifeLogUI.el('span', 'card-title', behavior.name));
+            var card = global.LivologUI.el('li', 'card');
+            card.appendChild(global.LivologUI.icon(behavior.icon, 'card-icon'));
+            card.appendChild(global.LivologUI.el('span', 'card-title', behavior.name));
 
-            var time = global.LifeLogUI.el('span', 'card-time');
-            time.appendChild(global.LifeLogUI.el(
-                'span', 'card-time-date', global.LifeLogTimePage.dateLine(record)
+            var time = global.LivologUI.el('span', 'card-time');
+            time.appendChild(global.LivologUI.el(
+                'span', 'card-time-date', global.LivologTimePage.dateLine(record)
             ));
-            time.appendChild(global.LifeLogUI.el(
-                'span', 'card-time-clock', global.LifeLogTimePage.clockLine(record)
+            time.appendChild(global.LivologUI.el(
+                'span', 'card-time-clock', global.LivologTimePage.clockLine(record)
             ));
             card.appendChild(time);
 
             // 与时间页一致：点卡片即可修改这条记录
             card.addEventListener('click', function () {
-                global.LifeLogTimePage.openForm(record);
+                global.LivologTimePage.openForm(record);
             });
 
             listEl.appendChild(card);
@@ -207,7 +207,7 @@
     // --- 统计视图 -----------------------------------------------------------
     //
     // 布局：选项栏（图类型 / 开始 / 结束）→ 图 → 统计信息文本。
-    // 图与「按天归集」都走 LifeLogChart（内联 SVG 手绘，横轴刻度永远是日）。
+    // 图与「按天归集」都走 LivologChart（内联 SVG 手绘，横轴刻度永远是日）。
     // 只有「时刻」记录的行为没有时长可言，此时退化为按天记次数。
 
     /** 时长格式化：不足 1 小时只显示分钟，正好整点不显示 0 分钟 */
@@ -227,10 +227,10 @@
 
     /** 统计区间的默认值：最近 30 天，但不早于第一条记录 */
     function defaultRange(records) {
-        var bounds = global.LifeLogChart.rangeOf(records.map(function (record) {
+        var bounds = global.LivologChart.rangeOf(records.map(function (record) {
             return record.start;
         }));
-        var today = global.LifeLogDateTime.startOfDay(Date.now());
+        var today = global.LivologDateTime.startOfDay(Date.now());
         var end = Math.max(bounds.end, today);
         var earliest = Math.min(bounds.start, end);
         return { start: Math.max(earliest, end - 29 * DAY_MS), end: end };
@@ -249,12 +249,12 @@
     }
 
     function renderStats(behavior) {
-        var all = global.LifeLogStore.getRecords().filter(function (record) {
+        var all = global.LivologStore.getRecords().filter(function (record) {
             return record.behaviorId === behavior.id;
         });
 
         if (!all.length) {
-            listEl.appendChild(global.LifeLogUI.emptyState(t('behavior.detail.statsEmpty')));
+            listEl.appendChild(global.LivologUI.emptyState(t('behavior.detail.statsEmpty')));
             return;
         }
 
@@ -264,7 +264,7 @@
 
         var range = stats.range;
         var records = all.filter(function (record) {
-            var day = global.LifeLogDateTime.startOfDay(record.start);
+            var day = global.LivologDateTime.startOfDay(record.start);
             return day >= range.start && day <= range.end;
         });
 
@@ -291,12 +291,12 @@
             }
         });
 
-        var points = global.LifeLogChart.bucketByDay(times, values, range);
+        var points = global.LivologChart.bucketByDay(times, values, range);
         var days = points.length;
 
-        var wrap = global.LifeLogUI.el('li', 'stats');
+        var wrap = global.LivologUI.el('li', 'stats');
 
-        var toolbar = global.LifeLogStats.build({
+        var toolbar = global.LivologStats.build({
             getChartType: function () {
                 return stats.chartType;
             },
@@ -314,16 +314,16 @@
         });
         wrap.appendChild(toolbar.root);
 
-        var chartBlock = global.LifeLogUI.el('div', 'stats-chart');
-        chartBlock.appendChild(global.LifeLogUI.el(
+        var chartBlock = global.LivologUI.el('div', 'stats-chart');
+        chartBlock.appendChild(global.LivologUI.el(
             'span',
             'stats-chart-title',
             t(useDuration ? 'behavior.detail.chartDuration' : 'behavior.detail.chartCount')
         ));
-        chartBlock.appendChild(global.LifeLogChart.build(points, { type: stats.chartType }));
+        chartBlock.appendChild(global.LivologChart.build(points, { type: stats.chartType }));
         wrap.appendChild(chartBlock);
 
-        var list = global.LifeLogUI.el('dl', 'stats-list');
+        var list = global.LivologUI.el('dl', 'stats-list');
         [
             [t('behavior.detail.total'), formatDuration(totalMs)],
             [t('behavior.detail.count'), String(records.length)],
@@ -333,8 +333,8 @@
             ],
             [t('behavior.detail.perDay'), formatDuration(days ? totalMs / days : 0)]
         ].forEach(function (row) {
-            list.appendChild(global.LifeLogUI.el('dt', 'stats-key', row[0]));
-            list.appendChild(global.LifeLogUI.el('dd', 'stats-value', row[1]));
+            list.appendChild(global.LivologUI.el('dt', 'stats-key', row[0]));
+            list.appendChild(global.LivologUI.el('dd', 'stats-value', row[1]));
         });
         wrap.appendChild(list);
 
@@ -345,13 +345,13 @@
 
     function openActions() {
         menuBtn.setAttribute('aria-expanded', 'true');
-        global.LifeLogUI.openMenu(menuBtn, [
+        global.LivologUI.openMenu(menuBtn, [
             { value: 'rename', label: t('behavior.menu.rename') },
             { value: 'delete', label: t('behavior.menu.delete') }
         ], function (value) {
             menuBtn.setAttribute('aria-expanded', 'false');
             if (value === 'rename') {
-                global.LifeLogBehaviorPage.openEdit(currentId);
+                global.LivologBehaviorPage.openEdit(currentId);
             } else {
                 openDeleteSheet();
             }
@@ -361,7 +361,7 @@
     // --- 删除（输入名称确认） -----------------------------------------------
 
     function openDeleteSheet() {
-        var behavior = global.LifeLogStore.getBehavior(currentId);
+        var behavior = global.LivologStore.getBehavior(currentId);
         if (!behavior) {
             return;
         }
@@ -369,29 +369,29 @@
         deleteTip.textContent = t('behavior.delete.tip').replace('{name}', behavior.name);
         deleteInput.value = '';
         validateDelete();
-        global.LifeLogUI.openSheet(deleteSheet);
+        global.LivologUI.openSheet(deleteSheet);
     }
 
     function validateDelete() {
-        var behavior = global.LifeLogStore.getBehavior(currentId);
+        var behavior = global.LivologStore.getBehavior(currentId);
         var typed = deleteInput.value.trim();
         deleteConfirm.disabled = !behavior || typed !== behavior.name;
     }
 
     function confirmDelete() {
-        var behavior = global.LifeLogStore.getBehavior(currentId);
+        var behavior = global.LivologStore.getBehavior(currentId);
         if (!behavior || deleteInput.value.trim() !== behavior.name) {
             return;
         }
 
-        global.LifeLogUI.closeSheet();
+        global.LivologUI.closeSheet();
         // 连带删掉该行为名下的全部时间记录
-        global.LifeLogStore.removeBehaviors([behavior.id]);
-        global.LifeLogUI.toast(t('toast.deleted'));
+        global.LivologStore.removeBehaviors([behavior.id]);
+        global.LivologUI.toast(t('toast.deleted'));
         close();
     }
 
-    global.LifeLogBehaviorDetail = {
+    global.LivologBehaviorDetail = {
         init: init,
         open: open,
         close: close,

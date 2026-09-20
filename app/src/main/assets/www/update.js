@@ -1,16 +1,16 @@
 /**
- * LifeLog - 应用内更新。
+ * Livolog - 应用内更新。
  *
  * 原生壳每次进入前台都会去 GitHub 查一次最新 Release，发现有新版就把版本号推过来，
  * 这里弹窗询问；用户确认后由原生下载 APK，进度再推回来；下载完成原生直接拉起系统安装器。
  *
- * 原生 → 网页（都挂在 LifeLogShell 上）：
+ * 原生 → 网页（都挂在 LivologShell 上）：
  *   onUpdateAvailable(version, current, size, stalled)  发现新版本
  *   onUpdateProgress(percent)                  下载进度 0~100
  *   onUpdateReady()                            下载完成，安装器已拉起
  *   onUpdateFailed(reason, downloaded)         失败；downloaded=true 表示包已下好，可直接重试安装
  *
- * 网页 → 原生（LifeLogNative）：
+ * 网页 → 原生（LivologNative）：
  *   downloadUpdate()   开始下载
  *   installUpdate()    重试安装已下好的包
  *   closeUpdate()      弹窗被关掉，原生可以重置「本次进入已检查过」的状态
@@ -37,7 +37,7 @@
     var info = null;
 
     function t(key) {
-        return global.LifeLogI18n ? global.LifeLogI18n.t(key) : key;
+        return global.LivologI18n ? global.LivologI18n.t(key) : key;
     }
 
     function init() {
@@ -87,7 +87,7 @@
         setState(STATE_AVAILABLE);
         renderText();
 
-        global.LifeLogUI.openSheet(sheet);
+        global.LivologUI.openSheet(sheet);
     }
 
     function onProgress(percent) {
@@ -104,8 +104,8 @@
         // 安装器已经起来，收起弹窗并给一句反馈
         downloaded = false;
         setState(STATE_AVAILABLE);
-        global.LifeLogUI.closeSheet();
-        global.LifeLogUI.toast(t('update.installing'));
+        global.LivologUI.closeSheet();
+        global.LivologUI.toast(t('update.installing'));
     }
 
     function onFailed(reason, isDownloaded) {
@@ -130,18 +130,18 @@
         }
 
         if (downloaded) {
-            if (global.LifeLogNative && typeof global.LifeLogNative.installUpdate === 'function') {
-                global.LifeLogNative.installUpdate();
+            if (global.LivologNative && typeof global.LivologNative.installUpdate === 'function') {
+                global.LivologNative.installUpdate();
             }
             return;
         }
 
-        if (!global.LifeLogNative || typeof global.LifeLogNative.downloadUpdate !== 'function') {
+        if (!global.LivologNative || typeof global.LivologNative.downloadUpdate !== 'function') {
             return;
         }
 
         setState(STATE_DOWNLOADING);
-        global.LifeLogNative.downloadUpdate();
+        global.LivologNative.downloadUpdate();
     }
 
     function dismiss() {
@@ -151,14 +151,14 @@
         }
 
         downloaded = false;
-        global.LifeLogUI.closeSheet();
+        global.LivologUI.closeSheet();
         notifyNativeClosed();
     }
 
     /** 告诉原生“弹窗没了”，它才能重置「本次进入已检查过」的状态 */
     function notifyNativeClosed() {
-        if (global.LifeLogNative && typeof global.LifeLogNative.closeUpdate === 'function') {
-            global.LifeLogNative.closeUpdate();
+        if (global.LivologNative && typeof global.LivologNative.closeUpdate === 'function') {
+            global.LivologNative.closeUpdate();
         }
     }
 
@@ -192,7 +192,7 @@
         }
     }
 
-    global.LifeLogUpdate = {
+    global.LivologUpdate = {
         init: init,
         onAvailable: onAvailable,
         onProgress: onProgress,

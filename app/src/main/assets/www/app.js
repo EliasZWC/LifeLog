@@ -1,11 +1,11 @@
 /**
- * LifeLog - 应用外壳逻辑
+ * Livolog - 应用外壳逻辑
  * 负责底部导航切换、顶部标题同步、页面进入动画，以及各模块的启动。
  */
 (function () {
     'use strict';
 
-    var STORAGE_KEY = 'lifelog.activeTab';
+    var STORAGE_KEY = 'livolog.activeTab';
     var DEFAULT_TAB = 'time';
     var TAB_ORDER = ['time', 'behavior', 'metric', 'setting'];
 
@@ -20,7 +20,7 @@
 
     function pageModule(name) {
         // 只有时间页还保留长按多选（行为页改为进详情页删除）
-        return name === 'time' ? window.LifeLogTimePage : null;
+        return name === 'time' ? window.LivologTimePage : null;
     }
 
     function selectTab(name, options) {
@@ -50,19 +50,19 @@
         });
 
         // 切页会退出多选，并把多选目标改成当前页的列表
-        if (window.LifeLogUI) {
+        if (window.LivologUI) {
             var module = pageModule(name);
-            window.LifeLogUI.bindSelection(module ? module.selection : null);
+            window.LivologUI.bindSelection(module ? module.selection : null);
         }
 
         if (titleEl) {
             // 标题文案复用导航词条，切语言时也能一起更新
             titleEl.setAttribute('data-i18n', 'nav.' + name);
-            titleEl.textContent = window.LifeLogI18n ? window.LifeLogI18n.t('nav.' + name) : name;
+            titleEl.textContent = window.LivologI18n ? window.LivologI18n.t('nav.' + name) : name;
         }
 
         if (changed && (!options || options.animate !== false)) {
-            window.LifeLogUI.animateEnter(pages[name], direction);
+            window.LivologUI.animateEnter(pages[name], direction);
         }
 
         currentTab = name;
@@ -80,38 +80,38 @@
         });
     });
 
-    if (window.LifeLogI18n) {
-        window.LifeLogI18n.init();
+    if (window.LivologI18n) {
+        window.LivologI18n.init();
     }
-    if (window.LifeLogTheme) {
-        window.LifeLogTheme.init();
+    if (window.LivologTheme) {
+        window.LivologTheme.init();
     }
-    if (window.LifeLogUI) {
-        window.LifeLogUI.init();
+    if (window.LivologUI) {
+        window.LivologUI.init();
     }
-    if (window.LifeLogBehaviorPage) {
-        window.LifeLogBehaviorPage.init();
+    if (window.LivologBehaviorPage) {
+        window.LivologBehaviorPage.init();
     }
-    if (window.LifeLogBehaviorDetail) {
-        window.LifeLogBehaviorDetail.init();
+    if (window.LivologBehaviorDetail) {
+        window.LivologBehaviorDetail.init();
     }
-    if (window.LifeLogTimePage) {
-        window.LifeLogTimePage.init();
+    if (window.LivologTimePage) {
+        window.LivologTimePage.init();
     }
-    if (window.LifeLogMetricPage) {
-        window.LifeLogMetricPage.init();
+    if (window.LivologMetricPage) {
+        window.LivologMetricPage.init();
     }
-    if (window.LifeLogMetricDetail) {
-        window.LifeLogMetricDetail.init();
+    if (window.LivologMetricDetail) {
+        window.LivologMetricDetail.init();
     }
-    if (window.LifeLogSettingPage) {
-        window.LifeLogSettingPage.init();
+    if (window.LivologSettingPage) {
+        window.LivologSettingPage.init();
     }
-    if (window.LifeLogDatePicker) {
-        window.LifeLogDatePicker.init();
+    if (window.LivologDatePicker) {
+        window.LivologDatePicker.init();
     }
-    if (window.LifeLogUpdate) {
-        window.LifeLogUpdate.init();
+    if (window.LivologUpdate) {
+        window.LivologUpdate.init();
     }
 
     var initial = DEFAULT_TAB;
@@ -129,7 +129,7 @@
     });
 
     // 暴露给后续功能扩展使用
-    window.LifeLog = {
+    window.Livolog = {
         selectTab: selectTab,
         TAB_ORDER: TAB_ORDER
     };

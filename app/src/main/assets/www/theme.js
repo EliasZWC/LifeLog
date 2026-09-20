@@ -1,17 +1,17 @@
 /**
- * LifeLog - 主题偏好。
+ * Livolog - 主题偏好。
  *
  * 三种模式：
  *   'light' / 'dark'  -> 在 <html> 上写 data-theme，覆盖系统配色
  *   'system'          -> 不写 data-theme，交给 CSS 的 prefers-color-scheme
  *
- * 生效后会通过 LifeLogNative.setThemeMode() 通知原生层，
+ * 生效后会通过 LivologNative.setThemeMode() 通知原生层，
  * 让状态栏图标颜色和窗口背景跟着一起变。
  */
 (function (global) {
     'use strict';
 
-    var STORAGE_KEY = 'lifelog.theme';
+    var STORAGE_KEY = 'livolog.theme';
     var MODES = ['light', 'dark', 'system'];
     var DEFAULT_MODE = 'system';
 
@@ -51,8 +51,8 @@
 
     function notifyNative() {
         try {
-            if (global.LifeLogNative && typeof global.LifeLogNative.setThemeMode === 'function') {
-                global.LifeLogNative.setThemeMode(mode);
+            if (global.LivologNative && typeof global.LivologNative.setThemeMode === 'function') {
+                global.LivologNative.setThemeMode(mode);
             }
         } catch (e) {
             /* 非 Android（例如浏览器预览）环境，忽略 */
@@ -113,7 +113,7 @@
         return mode;
     }
 
-    global.LifeLogTheme = {
+    global.LivologTheme = {
         MODES: MODES,
         DEFAULT_MODE: DEFAULT_MODE,
         init: init,

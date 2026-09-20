@@ -1,4 +1,4 @@
-package com.eliaszwc.lifelog
+package com.eliaszwc.livolog
 
 import android.content.ContentUris
 import android.content.ContentValues
@@ -14,7 +14,7 @@ import java.io.File
 /**
  * 时间记录的 CSV 落盘。
  *
- * - API 29+ 优先走 MediaStore，落在公共的 `Documents/LifeLog/` 下：不需要任何权限，
+ * - API 29+ 优先走 MediaStore，落在公共的 `Documents/Livolog/` 下：不需要任何权限，
  *   文件管理器里看得见。部分定制系统（如 OPPO）会限制 MediaStore.Files，
  *   失败则退回到应用专属外部目录，并把**实际路径**返回给网页显示。
  * - API < 29 直接写公共目录，需要 WRITE_EXTERNAL_STORAGE（manifest 里限了 maxSdkVersion=28）。
@@ -26,12 +26,14 @@ object CsvStore {
     /** 跟踪数据的数据库，与 records.csv 同目录 */
     const val FILE_METRICS = "metrics.csv"
 
-    private const val DIR_NAME = "LifeLog"
+    private const val DIR_NAME = "Livolog"
+    /** v0.0.16 及之前叫 LifeLog；新目录里读不到数据时从这里搬一次 */
+    private const val LEGACY_DIR_NAME = "LifeLog"
     /** 「导出数据」与文件夹里新建 CSV 都用它 */
     const val MIME = "text/csv"
 
     /** 用户在设置页自选的文件夹（SAF tree）；没选过就用默认位置 */
-    private const val PREFS_NAME = "lifelog"
+    private const val PREFS_NAME = "livolog"
     private const val KEY_TREE_URI = "csv_tree_uri"
 
     /** 写成功时返回实际文件路径 */
@@ -55,15 +57,35 @@ object CsvStore {
     /** 读不到就返回 null（首次运行时文件还不存在属于正常情况） */
     fun read(context: Context, fileName: String = FILE_RECORDS): String? = try {
         val tree = treeUri(context)
-        if (tree != null) {
+        val current = if (tree != null) {
             readFromTree(context, tree, fileName)
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             readViaMediaStore(context, fileName) ?: readViaFile(appFile(context, fileName))
         } else {
             readViaFile(publicFile(fileName))
         }
+        // 自选文件夹是用户自己定的位置，不做迁移；默认位置才去老目录里找
+        current ?: if (tree == null) migrateFromLegacyDir(context, fileName) else null
     } catch (_: Throwable) {
         null
+    }
+
+    /**
+     * v0.0.17：默认目录从 `Documents/LifeLog/` 改成 `Documents/Livolog/`。
+     * 新目录里还没数据、而老目录里有，就把它搬过来（搬不动也照样返回内容，不弄丢）。
+     */
+    private fun migrateFromLegacyDir(context: Context, fileName: String): String? {
+        val legacy = runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                readViaMediaStore(context, fileName, LEGACY_DIR_NAME)
+                    ?: readViaFile(appFile(context, fileName, LEGACY_DIR_NAME))
+            } else {
+                readViaFile(publicFile(fileName, LEGACY_DIR_NAME))
+            }
+        }.getOrNull() ?: return null
+
+        runCatching { write(context, legacy, fileName) }
+        return legacy
     }
 
     /** 给网页显示的落盘位置（优先报实际存在的那份；自选文件夹时报那个文件夹） */
@@ -88,12 +110,13 @@ object CsvStore {
     private fun collection(): Uri =
         MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
 
-    private fun relativePath(): String = "${Environment.DIRECTORY_DOCUMENTS}/$DIR_NAME"
+    private fun relativePath(dirName: String = DIR_NAME): String =
+        "${Environment.DIRECTORY_DOCUMENTS}/$dirName"
 
-    private fun findInMediaStore(context: Context, fileName: String): Uri? {
+    private fun findInMediaStore(context: Context, fileName: String, dirName: String = DIR_NAME): Uri? {
         val selection = "${MediaStore.MediaColumns.DISPLAY_NAME}=? AND " +
             "${MediaStore.MediaColumns.RELATIVE_PATH}=?"
-        val args = arrayOf(fileName, relativePath() + "/")
+        val args = arrayOf(fileName, relativePath(dirName) + "/")
 
         context.contentResolver.query(
             collection(),
@@ -139,8 +162,8 @@ object CsvStore {
         return "${relativePath()}/$fileName"
     }
 
-    private fun readViaMediaStore(context: Context, fileName: String): String? {
-        val uri = findInMediaStore(context, fileName) ?: return null
+    private fun readViaMediaStore(context: Context, fileName: String, dirName: String = DIR_NAME): String? {
+        val uri = findInMediaStore(context, fileName, dirName) ?: return null
         return context.contentResolver.openInputStream(uri)?.use {
             it.readBytes().toString(Charsets.UTF_8)
         }
@@ -148,8 +171,8 @@ object CsvStore {
 
     // --- 退路 ---------------------------------------------------------------
 
-    private fun appFile(context: Context, fileName: String): File =
-        File(context.getExternalFilesDir(null), "$DIR_NAME/$fileName")
+    private fun appFile(context: Context, fileName: String, dirName: String = DIR_NAME): File =
+        File(context.getExternalFilesDir(null), "$dirName/$fileName")
 
     private fun writeViaAppDir(context: Context, content: String, fileName: String): String {
         val file = appFile(context, fileName)
@@ -159,9 +182,9 @@ object CsvStore {
     }
 
     @Suppress("DEPRECATION")
-    private fun publicFile(fileName: String): File = File(
+    private fun publicFile(fileName: String, dirName: String = DIR_NAME): File = File(
         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
-        "$DIR_NAME/$fileName",
+        "$dirName/$fileName",
     )
 
     private fun writeViaPublicDir(content: String, fileName: String): String {
@@ -191,7 +214,7 @@ object CsvStore {
             .apply()
     }
 
-    /** 恢复默认位置（Documents/LifeLog） */
+    /** 恢复默认位置（Documents/Livolog） */
     fun clearTree(context: Context) {
         val current = treeUri(context)
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

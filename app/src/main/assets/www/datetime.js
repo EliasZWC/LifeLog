@@ -1,5 +1,5 @@
 /**
- * LifeLog - 日期时间的格式化与分段输入。
+ * Livolog - 日期时间的格式化与分段输入。
  *
  * 分段输入是 [YYYY]-[MM]-[DD]-[HH]:[mm] 五个固定宽度的小输入框：
  * 只收数字、填满自动跳下一位、在空位按退格回退。时间页与跟踪页共用同一套。
@@ -50,7 +50,7 @@
     }
 
     function segmentInput(digits, placeholder, name, inputs, onChange) {
-        var input = global.LifeLogUI.el('input', 'seg');
+        var input = global.LivologUI.el('input', 'seg');
         input.type = 'text';
         input.inputMode = 'numeric';
         input.autocomplete = 'off';
@@ -87,7 +87,7 @@
     }
 
     function appendSeparator(row, text) {
-        row.appendChild(global.LifeLogUI.el('span', 'datetime-sep', text));
+        row.appendChild(global.LivologUI.el('span', 'datetime-sep', text));
     }
 
     /**
@@ -98,14 +98,14 @@
      * @returns {{root: HTMLElement, inputs: object}}
      */
     function buildGroup(labelText, initial, onChange) {
-        var group = global.LifeLogUI.el('div', 'datetime-group');
+        var group = global.LivologUI.el('div', 'datetime-group');
         var inputs = {};
 
         if (labelText) {
-            group.appendChild(global.LifeLogUI.el('span', 'datetime-label', labelText));
+            group.appendChild(global.LivologUI.el('span', 'datetime-label', labelText));
         }
 
-        var row = global.LifeLogUI.el('div', 'datetime-row');
+        var row = global.LivologUI.el('div', 'datetime-row');
 
         row.appendChild(segmentInput(YEAR_DIGITS, 'YYYY', 'year', inputs, onChange));
         appendSeparator(row, '-');
@@ -178,14 +178,14 @@
      * @returns {{root: HTMLElement, inputs: object}}
      */
     function buildDateGroup(labelText, initial, onChange) {
-        var group = global.LifeLogUI.el('div', 'datetime-group');
+        var group = global.LivologUI.el('div', 'datetime-group');
         var inputs = {};
 
         if (labelText) {
-            group.appendChild(global.LifeLogUI.el('span', 'datetime-label', labelText));
+            group.appendChild(global.LivologUI.el('span', 'datetime-label', labelText));
         }
 
-        var row = global.LifeLogUI.el('div', 'datetime-row');
+        var row = global.LivologUI.el('div', 'datetime-row');
         row.appendChild(segmentInput(YEAR_DIGITS, 'YYYY', 'year', inputs, onChange));
         appendSeparator(row, '-');
         row.appendChild(segmentInput(CLOCK_DIGITS, 'MM', 'month', inputs, onChange));
@@ -222,7 +222,7 @@
         return startOfDay(new Date(year, month - 1, day, 0, 0, 0, 0).getTime());
     }
 
-    global.LifeLogDateTime = {
+    global.LivologDateTime = {
         YEAR_DIGITS: YEAR_DIGITS,
         CLOCK_DIGITS: CLOCK_DIGITS,
         pad: pad,

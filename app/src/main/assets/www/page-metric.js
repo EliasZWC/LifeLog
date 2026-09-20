@@ -1,5 +1,5 @@
 /**
- * LifeLog - 跟踪页。
+ * Livolog - 跟踪页。
  *
  * 跟踪项是「被跟踪的数据」（体重 / 腰围 / 每天喝水量 …），它**不是**时间记录：
  * 跟踪数据不会出现在时间页，也不参与行为统计。
@@ -21,7 +21,7 @@
     var editingId = null;
 
     function t(key) {
-        return global.LifeLogI18n ? global.LifeLogI18n.t(key) : key;
+        return global.LivologI18n ? global.LivologI18n.t(key) : key;
     }
 
     function init() {
@@ -33,7 +33,7 @@
         cancelBtn = document.getElementById('metric-cancel');
         confirmBtn = document.getElementById('metric-confirm');
 
-        iconPicker = global.LifeLogUI.createIconPicker(
+        iconPicker = global.LivologUI.createIconPicker(
             document.getElementById('metric-icon-picker')
         );
 
@@ -41,7 +41,7 @@
             openForm(null);
         });
         cancelBtn.addEventListener('click', function () {
-            global.LifeLogUI.closeSheet();
+            global.LivologUI.closeSheet();
         });
         confirmBtn.addEventListener('click', submit);
         nameInput.addEventListener('input', validate);
@@ -51,9 +51,9 @@
             }
         });
 
-        global.LifeLogMetrics.onChange(render);
-        if (global.LifeLogI18n) {
-            global.LifeLogI18n.onChange(function () {
+        global.LivologMetrics.onChange(render);
+        if (global.LivologI18n) {
+            global.LivologI18n.onChange(function () {
                 applyTitle();
                 render();
             });
@@ -63,17 +63,17 @@
 
     /** @param {string|null} id 传 id 就是重命名 */
     function openForm(id) {
-        var metric = id ? global.LifeLogMetrics.getMetric(id) : null;
+        var metric = id ? global.LivologMetrics.getMetric(id) : null;
         if (id && !metric) {
             return;
         }
 
         editingId = id || null;
         nameInput.value = metric ? metric.name : '';
-        iconPicker.select(metric ? metric.icon : global.LifeLogIcons.names()[0]);
+        iconPicker.select(metric ? metric.icon : global.LivologIcons.names()[0]);
         applyTitle();
         validate();
-        global.LifeLogUI.openSheet(sheet);
+        global.LivologUI.openSheet(sheet);
     }
 
     function applyTitle() {
@@ -94,18 +94,18 @@
         }
 
         if (editingId) {
-            global.LifeLogMetrics.updateMetric(editingId, nameInput.value, iconPicker.getSelected());
-            global.LifeLogMetricDetail.refresh();
+            global.LivologMetrics.updateMetric(editingId, nameInput.value, iconPicker.getSelected());
+            global.LivologMetricDetail.refresh();
         } else {
-            global.LifeLogMetrics.addMetric(nameInput.value, iconPicker.getSelected());
+            global.LivologMetrics.addMetric(nameInput.value, iconPicker.getSelected());
         }
 
-        global.LifeLogUI.closeSheet();
+        global.LivologUI.closeSheet();
     }
 
     /** 表示「点进去还有内容」的右对齐箭头 */
     function chevron() {
-        var span = global.LifeLogUI.el('span', 'card-chevron');
+        var span = global.LivologUI.el('span', 'card-chevron');
         span.setAttribute('aria-hidden', 'true');
         span.innerHTML = '<svg viewBox="0 0 24 24" focusable="false">' +
             '<path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>';
@@ -117,30 +117,30 @@
             return;
         }
 
-        var metrics = global.LifeLogMetrics.getMetrics();
+        var metrics = global.LivologMetrics.getMetrics();
         listEl.innerHTML = '';
 
         if (!metrics.length) {
-            listEl.appendChild(global.LifeLogUI.emptyState(t('metric.empty')));
+            listEl.appendChild(global.LivologUI.emptyState(t('metric.empty')));
             return;
         }
 
         metrics.forEach(function (metric) {
-            var card = global.LifeLogUI.el('li', 'card');
+            var card = global.LivologUI.el('li', 'card');
             card.dataset.id = metric.id;
-            card.appendChild(global.LifeLogUI.icon(metric.icon, 'card-icon'));
-            card.appendChild(global.LifeLogUI.el('span', 'card-title', metric.name));
+            card.appendChild(global.LivologUI.icon(metric.icon, 'card-icon'));
+            card.appendChild(global.LivologUI.el('span', 'card-title', metric.name));
             card.appendChild(chevron());
 
             card.addEventListener('click', function () {
-                global.LifeLogMetricDetail.open(metric.id);
+                global.LivologMetricDetail.open(metric.id);
             });
 
             listEl.appendChild(card);
         });
     }
 
-    global.LifeLogMetricPage = {
+    global.LivologMetricPage = {
         init: init,
         render: render,
         openEdit: function (id) {

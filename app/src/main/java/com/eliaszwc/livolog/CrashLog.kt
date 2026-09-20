@@ -1,4 +1,4 @@
-package com.eliaszwc.lifelog
+package com.eliaszwc.livolog
 
 import android.annotation.SuppressLint
 import android.content.Context

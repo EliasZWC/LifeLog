@@ -83,7 +83,7 @@ jobs:
       - name: 收集产物
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/release/app-release.apk "dist/LifeLog-v${VERSION_NAME}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "dist/Livolog-v${VERSION_NAME}.apk"
           ls -lh dist
 
       - name: 校验签名
@@ -96,9 +96,9 @@ jobs:
       - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          name: LifeLog v${{ env.VERSION_NAME }}
+          name: Livolog v${{ env.VERSION_NAME }}
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
           draft: false
           prerelease: false
-          files: dist/LifeLog-v${{ env.VERSION_NAME }}.apk
+          files: dist/Livolog-v${{ env.VERSION_NAME }}.apk

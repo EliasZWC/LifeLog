@@ -1,5 +1,5 @@
 /**
- * LifeLog - 数据层。
+ * Livolog - 数据层。
  *
  * 目前直接落在 localStorage；后续要换成原生 SQLite 的话，
  * 只要保持这里的方法签名不变，页面代码不用动。
@@ -11,8 +11,8 @@
 (function (global) {
     'use strict';
 
-    var BEHAVIOR_KEY = 'lifelog.behaviors';
-    var RECORD_KEY = 'lifelog.records';
+    var BEHAVIOR_KEY = 'livolog.behaviors';
+    var RECORD_KEY = 'livolog.records';
 
     var listeners = [];
 
@@ -42,16 +42,16 @@
     }
 
     /**
-     * 把全部时间记录镜像到手机 LifeLog 目录下的 records.csv —— 这个文件就是数据库。
+     * 把全部时间记录镜像到手机 Livolog 目录下的 records.csv —— 这个文件就是数据库。
      * 没有原生桥时（浏览器预览）自动跳过。
      */
     function persistCsv() {
-        if (!global.LifeLogNative || typeof global.LifeLogNative.saveRecordsCsv !== 'function') {
+        if (!global.LivologNative || typeof global.LivologNative.saveRecordsCsv !== 'function') {
             return;
         }
         try {
-            global.LifeLogNative.saveRecordsCsv(
-                global.LifeLogCsv.stringify(getRecords(), getBehaviors())
+            global.LivologNative.saveRecordsCsv(
+                global.LivologCsv.stringify(getRecords(), getBehaviors())
             );
         } catch (e) {
             /* 忽略 */
@@ -85,7 +85,7 @@
         var behavior = {
             id: newId(),
             name: String(name || '').trim(),
-            icon: icon || global.LifeLogIcons.fallback
+            icon: icon || global.LivologIcons.fallback
         };
         var list = getBehaviors();
         list.push(behavior);
@@ -211,11 +211,11 @@
 
     /** 当前数据的 CSV 文本（浏览器预览 / 调试用） */
     function exportCsv() {
-        return global.LifeLogCsv.stringify(getRecords(), getBehaviors());
+        return global.LivologCsv.stringify(getRecords(), getBehaviors());
     }
 
     function replaceFromCsv(text) {
-        var parsed = global.LifeLogCsv.parse(text);
+        var parsed = global.LivologCsv.parse(text);
         if (!parsed.ok) {
             return { ok: false, error: parsed.error };
         }
@@ -231,7 +231,7 @@
             // CSV 里出现但本地没有的行为，自动建一个（图标用通用占位）
             parsed.behaviorNames.forEach(function (name) {
                 if (!byName[name]) {
-                    var created = { id: newId(), name: name, icon: global.LifeLogIcons.fallback };
+                    var created = { id: newId(), name: name, icon: global.LivologIcons.fallback };
                     behaviors.push(created);
                     byName[name] = created;
                 }
@@ -261,7 +261,7 @@
         return { ok: true, count: parsed.records.length };
     }
 
-    global.LifeLogStore = {
+    global.LivologStore = {
         getBehaviors: getBehaviors,
         getBehavior: getBehavior,
         addBehavior: addBehavior,

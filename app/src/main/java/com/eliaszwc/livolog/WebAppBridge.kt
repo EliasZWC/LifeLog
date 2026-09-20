@@ -1,4 +1,4 @@
-package com.eliaszwc.lifelog
+package com.eliaszwc.livolog
 
 import android.webkit.JavascriptInterface
 
@@ -27,7 +27,7 @@ class WebAppBridge(
         onThemeMode(mode)
     }
 
-    /** 把全部时间记录的 CSV 内容落盘到 LifeLog 目录 */
+    /** 把全部时间记录的 CSV 内容落盘到 Livolog 目录 */
     @JavascriptInterface
     fun saveRecordsCsv(csv: String) {
         onSaveCsv(csv)
@@ -45,7 +45,7 @@ class WebAppBridge(
         onPickStorageFolder()
     }
 
-    /** 恢复默认位置（Documents/LifeLog） */
+    /** 恢复默认位置（Documents/Livolog） */
     @JavascriptInterface
     fun resetStorageFolder() {
         onResetStorageFolder()

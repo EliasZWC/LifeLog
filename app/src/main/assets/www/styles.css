@@ -1,8 +1,33 @@
 /* ==========================================================================
-   LifeLog - 基础样式
+   Livolog - 基础样式
    主题色：黑白，但使用不同质感的灰阶，避免纯黑 #000 / 纯白 #fff。
    白天主题以白为主，夜间主题以黑为主。
    ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   内置字体：更纱等宽黑体（Sarasa Mono SC）的子集版。
+   完整的 Regular / SemiBold 各 24 MB，这里只保留
+   「拉丁 + 常用标点 + 全角 + GB2312 全集 + 网页实际用到的字符」，转 WOFF2 后各 1.5 MB。
+   用户输入生僻字时浏览器会自动回退到下一个兜底字体，不会出现方块。
+   授权 SIL OFL 1.1（见 fonts/LICENSE-Sarasa-OFL.txt）；因为做了子集化，
+   按 OFL 的「修改版」处理，这里用自定族名，不冒用 Sarasa 的名号。
+   -------------------------------------------------------------------------- */
+@font-face {
+    font-family: "Livolog Mono";
+    src: url("fonts/livolog-mono-regular.woff2") format("woff2");
+    /* 界面里用到 400 / 500 / 600 / 700 四档；两个文件各自吃两档，映射保持确定 */
+    font-weight: 400 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Livolog Mono";
+    src: url("fonts/livolog-mono-semibold.woff2") format("woff2");
+    font-weight: 600 700;
+    font-style: normal;
+    font-display: swap;
+}
 
 /* 白天主题（默认）：页面背景比导航栏更深 */
 :root {
@@ -86,7 +111,7 @@ body {
     margin: 0;
     background: var(--bg);
     color: var(--on-surface);
-    font-family: Roboto, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    font-family: "Livolog Mono", Roboto, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
     font-size: 15px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;

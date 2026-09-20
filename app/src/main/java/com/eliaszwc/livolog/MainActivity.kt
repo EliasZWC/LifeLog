@@ -1,4 +1,4 @@
-package com.eliaszwc.lifelog
+package com.eliaszwc.livolog
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
@@ -36,7 +36,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
- * LifeLog 的网页套壳容器。
+ * Livolog 的网页套壳容器。
  *
  * 网页资源位于 `assets/www/`，通过 [WebViewAssetLoader] 以 https 源
  * `https://appassets.androidplatform.net/assets/www/` 提供，这样 localStorage
@@ -56,7 +56,7 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * 应用内主题设置：`light` / `dark` / `system`。
-     * 与网页端 localStorage 里的 `lifelog.theme` 保持同步，
+     * 与网页端 localStorage 里的 `livolog.theme` 保持同步，
      * 网页改设置时通过 [WebAppBridge.setThemeMode] 通知过来。
      */
     private var themeMode: String = THEME_SYSTEM
@@ -169,6 +169,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startApp(savedInstanceState: Bundle?) {
+        migrateLegacyPrefs()
         themeMode = readThemeMode()
 
         // 全屏内容；系统栏要让开多少交给网页自己决定（targetSdk 35 起系统强制 edge-to-edge）
@@ -335,7 +336,7 @@ class MainActivity : AppCompatActivity() {
         val keyboard = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
 
         evaluateInWeb(
-            "window.LifeLogShell && window.LifeLogShell.setInsets(" +
+            "window.LivologShell && window.LivologShell.setInsets(" +
                 "${toDp(bars.top)}, ${toDp(bars.right)}, ${toDp(bars.bottom)}, " +
                 "${toDp(bars.left)}, ${toDp(keyboard)});"
         )
@@ -351,10 +352,10 @@ class MainActivity : AppCompatActivity() {
 
         val name = info.versionName ?: return
         val code = PackageInfoCompat.getLongVersionCode(info)
-        evaluateInWeb("window.LifeLogShell && window.LifeLogShell.setVersion(\"$name\", $code);")
+        evaluateInWeb("window.LivologShell && window.LivologShell.setVersion(\"$name\", $code);")
     }
 
-    /** 把 LifeLog 目录里的 CSV 内容与路径推给网页（文件不存在时内容为空串） */
+    /** 把 Livolog 目录里的 CSV 内容与路径推给网页（文件不存在时内容为空串） */
     private fun pushCsvToWeb() {
         val context = applicationContext
         Thread {
@@ -368,11 +369,11 @@ class MainActivity : AppCompatActivity() {
 
             runOnUiThread {
                 evaluateInWeb(
-                    "window.LifeLogShell && window.LifeLogShell.onStorageReady(" +
+                    "window.LivologShell && window.LivologShell.onStorageReady(" +
                         "${JSONObject.quote(records ?: "")}, ${JSONObject.quote(path)});"
                 )
                 evaluateInWeb(
-                    "window.LifeLogShell && window.LifeLogShell.onMetricsReady(" +
+                    "window.LivologShell && window.LivologShell.onMetricsReady(" +
                         "${JSONObject.quote(metrics ?: "")});"
                 )
             }
@@ -395,7 +396,7 @@ class MainActivity : AppCompatActivity() {
             }
             runOnUiThread {
                 evaluateInWeb(
-                    "window.LifeLogShell && window.LifeLogShell.onCsvSaved(" +
+                    "window.LivologShell && window.LivologShell.onCsvSaved(" +
                         "$ok, ${JSONObject.quote(detail)});"
                 )
             }
@@ -418,7 +419,7 @@ class MainActivity : AppCompatActivity() {
             }
             runOnUiThread {
                 evaluateInWeb(
-                    "window.LifeLogShell && window.LifeLogShell.onMetricsSaved(" +
+                    "window.LivologShell && window.LivologShell.onMetricsSaved(" +
                         "$ok, ${JSONObject.quote(detail)});"
                 )
             }
@@ -444,7 +445,7 @@ class MainActivity : AppCompatActivity() {
         } catch (t: Throwable) {
             Log.w(TAG, "拉起文件夹选择器失败", t)
             evaluateInWeb(
-                "window.LifeLogShell && window.LifeLogShell.onStoragePathChanged(" +
+                "window.LivologShell && window.LivologShell.onStoragePathChanged(" +
                     "${JSONObject.quote(CsvStore.describe(this))});"
             )
         }
@@ -483,7 +484,7 @@ class MainActivity : AppCompatActivity() {
                 if (adoptedCsv == null) {
                     // 内容没变，只报新路径，不要拿空串去覆盖现有数据
                     evaluateInWeb(
-                        "window.LifeLogShell && window.LifeLogShell.onStoragePathChanged(" +
+                        "window.LivologShell && window.LivologShell.onStoragePathChanged(" +
                             "${JSONObject.quote(path)});"
                     )
                 } else {
@@ -493,7 +494,7 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
-    /** 恢复到默认的 Documents/LifeLog */
+    /** 恢复到默认的 Documents/Livolog */
     private fun resetStorageLocation() {
         val context = applicationContext
         val recordsCsv = latestRecordsCsv
@@ -513,7 +514,7 @@ class MainActivity : AppCompatActivity() {
             val finalPath = path
             runOnUiThread {
                 evaluateInWeb(
-                    "window.LifeLogShell && window.LifeLogShell.onStoragePathChanged(" +
+                    "window.LivologShell && window.LivologShell.onStoragePathChanged(" +
                         "${JSONObject.quote(finalPath)});"
                 )
             }
@@ -540,7 +541,7 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = CsvStore.MIME
-            putExtra(Intent.EXTRA_TITLE, "lifelog-$stamp.csv")
+            putExtra(Intent.EXTRA_TITLE, "livolog-$stamp.csv")
         }
 
         try {
@@ -576,7 +577,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun notifyExported(ok: Boolean, detail: String) {
         evaluateInWeb(
-            "window.LifeLogShell && window.LifeLogShell.onExported(" +
+            "window.LivologShell && window.LivologShell.onExported(" +
                 "$ok, ${JSONObject.quote(detail)});"
         )
     }
@@ -625,7 +626,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             evaluateInWeb(
-                "window.LifeLogShell && window.LifeLogShell.onUpdateAvailable(" +
+                "window.LivologShell && window.LivologShell.onUpdateAvailable(" +
                     "${JSONObject.quote(release.version)}, " +
                     "${JSONObject.quote(installedNow)}, " +
                     "${JSONObject.quote(Updater.formatSize(release.size))}, " +
@@ -645,7 +646,7 @@ class MainActivity : AppCompatActivity() {
             release,
             onProgress = { percent ->
                 evaluateInWeb(
-                    "window.LifeLogShell && window.LifeLogShell.onUpdateProgress($percent);"
+                    "window.LivologShell && window.LivologShell.onUpdateProgress($percent);"
                 )
             },
             onDone = { file, error ->
@@ -675,7 +676,7 @@ class MainActivity : AppCompatActivity() {
                     .putString(KEY_PENDING_UPDATE_FROM, Updater.installedVersionName(this))
                     .apply()
             }
-            evaluateInWeb("window.LifeLogShell && window.LifeLogShell.onUpdateReady();")
+            evaluateInWeb("window.LivologShell && window.LivologShell.onUpdateReady();")
         } else {
             notifyUpdateFailed(error, downloaded = true)
         }
@@ -683,7 +684,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun notifyUpdateFailed(reason: String, downloaded: Boolean) {
         evaluateInWeb(
-            "window.LifeLogShell && window.LifeLogShell.onUpdateFailed(" +
+            "window.LivologShell && window.LivologShell.onUpdateFailed(" +
                 "${JSONObject.quote(reason)}, $downloaded);"
         )
     }
@@ -704,6 +705,34 @@ class MainActivity : AppCompatActivity() {
             .getString(KEY_THEME_MODE, THEME_SYSTEM)
             ?.takeIf { it in THEME_MODES }
             ?: THEME_SYSTEM
+
+    /**
+     * v0.0.17：应用从 LifeLog 改名为 Livolog（包名也变了），
+     * 把旧包留下的偏好整体搬到新的 SharedPreferences 里，
+     * 免得主题、自选存储文件夹、更新状态这些设置白白重置。
+     * 只跑一次（成功后置 [KEY_MIGRATED]）。
+     */
+    private fun migrateLegacyPrefs() {
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_MIGRATED, false)) return
+
+        runCatching {
+            val legacy = getSharedPreferences(LEGACY_PREFS_NAME, MODE_PRIVATE)
+            val editor = prefs.edit()
+            for ((key, value) in legacy.all) {
+                if (key == KEY_MIGRATED) continue
+                when (value) {
+                    is String -> editor.putString(key, value)
+                    is Boolean -> editor.putBoolean(key, value)
+                    is Int -> editor.putInt(key, value)
+                    is Long -> editor.putLong(key, value)
+                    is Float -> editor.putFloat(key, value)
+                    is Set<*> -> editor.putStringSet(key, value.filterIsInstance<String>().toSet())
+                }
+            }
+            editor.putBoolean(KEY_MIGRATED, true).apply()
+        }
+    }
 
     private fun isDarkAppearance(): Boolean = when (themeMode) {
         THEME_LIGHT -> false
@@ -755,14 +784,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private companion object {
-        const val TAG = "LifeLog"
+        const val TAG = "Livolog"
 
         const val APP_ASSETS_HOST = "appassets.androidplatform.net"
         const val WEB_ENTRY_URL = "https://appassets.androidplatform.net/assets/www/index.html"
 
-        const val JS_BRIDGE_NAME = "LifeLogNative"
+        const val JS_BRIDGE_NAME = "LivologNative"
 
-        const val PREFS_NAME = "lifelog"
+        const val PREFS_NAME = "livolog"
+        /** v0.0.16 及之前用的偏好文件名，只用于一次性迁移 */
+        const val LEGACY_PREFS_NAME = "lifelog"
+        const val KEY_MIGRATED = "legacy_migrated"
         const val KEY_THEME_MODE = "theme_mode"
         /** 上次拉起安装器时装的是哪个版本、从哪个版本升 */
         const val KEY_PENDING_UPDATE = "pending_update_version"

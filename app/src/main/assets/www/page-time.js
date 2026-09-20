@@ -1,5 +1,5 @@
 /**
- * LifeLog - 时间页。
+ * Livolog - 时间页。
  *
  * 三个视图（全部 / 时段 / 时点）由顶部视图栏切换；
  * 右下角悬浮按钮打开表单弹窗新增记录，时间按 YYYY-MM-DD-HH:mm 分段填写。
@@ -9,7 +9,7 @@
 
     var VIEWS = ['all', 'year', 'month', 'week'];
     var DEFAULT_VIEW = 'all';
-    var VIEW_STORAGE_KEY = 'lifelog.timeView';
+    var VIEW_STORAGE_KEY = 'livolog.timeView';
     /** 视图 = 看最近多少天；all 表示不限制 */
     var VIEW_DAYS = { all: 0, year: 365, month: 30, week: 7 };
     /**
@@ -42,38 +42,38 @@
     var editingId = null;
 
     function t(key) {
-        return global.LifeLogI18n ? global.LifeLogI18n.t(key) : key;
+        return global.LivologI18n ? global.LivologI18n.t(key) : key;
     }
 
     // --- 时间格式化 ---------------------------------------------------------
-    // 与跟踪页共用 LifeLogDateTime（见 datetime.js），这里只保留
+    // 与跟踪页共用 LivologDateTime（见 datetime.js），这里只保留
     //「一条记录怎么显示成两行」的规则。
 
     /** 上排：只显示「开始」那天的日期。跨天的时段也不展开，数据本身不受影响。 */
     function dateLine(record) {
-        return global.LifeLogDateTime.formatDate(record.start);
+        return global.LivologDateTime.formatDate(record.start);
     }
 
     /** 下排：时分（时段显示起止） */
     function clockLine(record) {
         if (record.type !== 'period' || record.end === null) {
-            return global.LifeLogDateTime.formatClock(record.start);
+            return global.LivologDateTime.formatClock(record.start);
         }
-        return global.LifeLogDateTime.formatClock(record.start) + ' ~ ' +
-            global.LifeLogDateTime.formatClock(record.end);
+        return global.LivologDateTime.formatClock(record.start) + ' ~ ' +
+            global.LivologDateTime.formatClock(record.end);
     }
 
-    /** 分段日期时间输入统一走 LifeLogDateTime，这里只做一层转发方便本文件调用 */
+    /** 分段日期时间输入统一走 LivologDateTime，这里只做一层转发方便本文件调用 */
     function buildGroup(labelText, initial, onChange) {
-        return global.LifeLogDateTime.buildGroup(labelText, initial, onChange);
+        return global.LivologDateTime.buildGroup(labelText, initial, onChange);
     }
 
     function readGroup(group) {
-        return global.LifeLogDateTime.readGroup(group);
+        return global.LivologDateTime.readGroup(group);
     }
 
     function toTimestamp(values) {
-        return global.LifeLogDateTime.toTimestamp(values);
+        return global.LivologDateTime.toTimestamp(values);
     }
 
     // --- 视图栏 -------------------------------------------------------------
@@ -99,7 +99,7 @@
         render();
 
         if (changed && (!options || options.animate !== false)) {
-            global.LifeLogUI.animateEnter(listEl, to >= from ? 1 : -1);
+            global.LivologUI.animateEnter(listEl, to >= from ? 1 : -1);
         }
     }
 
@@ -117,7 +117,7 @@
             };
         });
 
-        global.LifeLogUI.openMenu(viewButton, items, function (value) {
+        global.LivologUI.openMenu(viewButton, items, function (value) {
             setView(value);
         });
     }
@@ -217,7 +217,7 @@
 
     /** 「09-01 ~ 09-07」这种月内的日期范围 */
     function weekRangeLabel(year, month, week) {
-        var pad = global.LifeLogDateTime.pad;
+        var pad = global.LivologDateTime.pad;
         var daysInMonth = new Date(year, month, 0).getDate();
         var from = (week - 1) * 7 + 1;
         var to = Math.min(week * 7, daysInMonth);
@@ -225,22 +225,22 @@
     }
 
     function section(node, kind, depth, buildBody) {
-        var li = global.LifeLogUI.el('li', 'group group-' + kind);
+        var li = global.LivologUI.el('li', 'group group-' + kind);
         var opened = !collapsed[node.key];
 
-        var head = global.LifeLogUI.el('button', 'group-head');
+        var head = global.LivologUI.el('button', 'group-head');
         head.type = 'button';
         head.style.paddingLeft = (20 + depth * 12) + 'px';
         head.setAttribute('aria-expanded', opened ? 'true' : 'false');
-        head.appendChild(global.LifeLogUI.el('span', 'group-chevron'))
+        head.appendChild(global.LivologUI.el('span', 'group-chevron'))
             .innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
             '<path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/></svg>';
-        head.appendChild(global.LifeLogUI.el('span', 'group-title', node.label));
+        head.appendChild(global.LivologUI.el('span', 'group-title', node.label));
         // 右侧标明这是哪一级（年 / 月 / 周），层级一眼能看出来
-        head.appendChild(global.LifeLogUI.el('span', 'group-level', t('time.level.' + kind)));
+        head.appendChild(global.LivologUI.el('span', 'group-level', t('time.level.' + kind)));
         li.appendChild(head);
 
-        var body = global.LifeLogUI.el('ul', 'group-body');
+        var body = global.LivologUI.el('ul', 'group-body');
         body.hidden = !opened;
         if (!opened) {
             li.classList.add('is-collapsed');
@@ -266,35 +266,35 @@
 
     /** 单条记录卡片（与行为详情页里的列表长一样） */
     function recordCard(record) {
-        var behavior = global.LifeLogStore.getBehavior(record.behaviorId);
+        var behavior = global.LivologStore.getBehavior(record.behaviorId);
 
-        var card = global.LifeLogUI.el('li', 'card');
+        var card = global.LivologUI.el('li', 'card');
         card.dataset.id = record.id;
-        card.appendChild(global.LifeLogUI.icon(
-            behavior ? behavior.icon : global.LifeLogIcons.fallback,
+        card.appendChild(global.LivologUI.icon(
+            behavior ? behavior.icon : global.LivologIcons.fallback,
             'card-icon'
         ));
-        card.appendChild(global.LifeLogUI.el('span', 'card-title', behavior ? behavior.name : '—'));
+        card.appendChild(global.LivologUI.el('span', 'card-title', behavior ? behavior.name : '—'));
 
-        var time = global.LifeLogUI.el('span', 'card-time');
-        time.appendChild(global.LifeLogUI.el('span', 'card-time-date', dateLine(record)));
-        time.appendChild(global.LifeLogUI.el('span', 'card-time-clock', clockLine(record)));
+        var time = global.LivologUI.el('span', 'card-time');
+        time.appendChild(global.LivologUI.el('span', 'card-time-date', dateLine(record)));
+        time.appendChild(global.LivologUI.el('span', 'card-time-clock', clockLine(record)));
         card.appendChild(time);
 
-        if (global.LifeLogUI.isSelected(record.id)) {
+        if (global.LivologUI.isSelected(record.id)) {
             card.classList.add('is-selected');
         }
 
-        global.LifeLogUI.attachLongPress(card, function () {
-            global.LifeLogUI.startSelection(record.id);
+        global.LivologUI.attachLongPress(card, function () {
+            global.LivologUI.startSelection(record.id);
         });
 
         card.addEventListener('click', function () {
-            if (global.LifeLogUI.justLongPressed()) {
+            if (global.LivologUI.justLongPressed()) {
                 return;
             }
-            if (global.LifeLogUI.isSelecting()) {
-                global.LifeLogUI.toggleSelection(record.id);
+            if (global.LivologUI.isSelecting()) {
+                global.LivologUI.toggleSelection(record.id);
                 return;
             }
             // 普通点击 = 修改这条记录
@@ -310,7 +310,7 @@
         if (!days) {
             return null;
         }
-        var today = global.LifeLogDateTime.startOfDay(Date.now());
+        var today = global.LivologDateTime.startOfDay(Date.now());
         return today - (days - 1) * DAY_MS;
     }
 
@@ -320,14 +320,14 @@
         }
 
         var start = rangeStart();
-        var records = global.LifeLogStore.getRecords().filter(function (record) {
+        var records = global.LivologStore.getRecords().filter(function (record) {
             return start === null || record.start >= start;
         });
 
         listEl.innerHTML = '';
 
         if (!records.length) {
-            listEl.appendChild(global.LifeLogUI.emptyState(t('time.empty')));
+            listEl.appendChild(global.LivologUI.emptyState(t('time.empty')));
             return;
         }
 
@@ -371,9 +371,9 @@
 
     /** 行为 / 类型两个下拉（自绘，统一 app 风格） */
     function createSelects() {
-        behaviorSelect = global.LifeLogUI.createSelect(document.getElementById('time-behavior'), {
+        behaviorSelect = global.LivologUI.createSelect(document.getElementById('time-behavior'), {
             getOptions: function () {
-                return global.LifeLogStore.getBehaviors().map(function (behavior) {
+                return global.LivologStore.getBehaviors().map(function (behavior) {
                     return { value: behavior.id, label: behavior.name };
                 });
             },
@@ -385,14 +385,14 @@
                 validate();
             },
             isDisabled: function () {
-                return global.LifeLogStore.getBehaviors().length === 0;
+                return global.LivologStore.getBehaviors().length === 0;
             },
             placeholder: function () {
                 return t('time.form.needBehavior');
             }
         });
 
-        typeSelect = global.LifeLogUI.createSelect(document.getElementById('time-type'), {
+        typeSelect = global.LivologUI.createSelect(document.getElementById('time-type'), {
             getOptions: function () {
                 return [
                     { value: 'moment', label: t('view.moment') },
@@ -470,7 +470,7 @@
      * @param {object} [record] 传了就是「修改已有记录」，不传就是「新增」
      */
     function openForm(record) {
-        var behaviors = global.LifeLogStore.getBehaviors();
+        var behaviors = global.LivologStore.getBehaviors();
 
         editingId = record && record.id ? record.id : null;
 
@@ -487,11 +487,11 @@
         typeSelect.refresh();
         buildTimeFields(editingId ? { start: record.start, end: record.end } : null);
 
-        global.LifeLogUI.openSheet(sheet);
+        global.LivologUI.openSheet(sheet);
     }
 
     function validate() {
-        var hasBehaviors = global.LifeLogStore.getBehaviors().length > 0;
+        var hasBehaviors = global.LivologStore.getBehaviors().length > 0;
         var type = typeValue;
         var start = null;
         var end = null;
@@ -535,7 +535,7 @@
         }
 
         if (editingId) {
-            global.LifeLogStore.updateRecord(
+            global.LivologStore.updateRecord(
                 editingId,
                 behaviorValue,
                 result.type,
@@ -543,7 +543,7 @@
                 result.end
             );
         } else {
-            global.LifeLogStore.addRecord(
+            global.LivologStore.addRecord(
                 behaviorValue,
                 result.type,
                 result.start,
@@ -552,7 +552,7 @@
         }
 
         editingId = null;
-        global.LifeLogUI.closeSheet();
+        global.LivologUI.closeSheet();
 
         // 当前视图看不到这条记录时切过去，保证有反馈
         if (currentView !== 'all' && currentView !== result.type) {
@@ -582,17 +582,17 @@
         });
         cancelBtn.addEventListener('click', function () {
             editingId = null;
-            global.LifeLogUI.closeSheet();
+            global.LivologUI.closeSheet();
         });
         confirmBtn.addEventListener('click', submit);
 
-        global.LifeLogStore.onChange(function () {
+        global.LivologStore.onChange(function () {
             render();
             // 行为被删掉后，表单里的下拉要跟着更新
             behaviorSelect.refresh();
         });
-        if (global.LifeLogI18n) {
-            global.LifeLogI18n.onChange(function () {
+        if (global.LivologI18n) {
+            global.LivologI18n.onChange(function () {
                 renderViewBar();
                 render();
                 behaviorSelect.refresh();
@@ -610,15 +610,15 @@
         setView(VIEWS.indexOf(saved) >= 0 ? saved : DEFAULT_VIEW, { animate: false });
     }
 
-    /** 交给 LifeLogUI 的多选目标 */
+    /** 交给 LivologUI 的多选目标 */
     var selection = {
         onSelectionChange: render,
         onDelete: function (ids) {
-            global.LifeLogStore.removeRecords(ids);
+            global.LivologStore.removeRecords(ids);
         }
     };
 
-    global.LifeLogTimePage = {
+    global.LivologTimePage = {
         init: init,
         render: render,
         openForm: openForm,

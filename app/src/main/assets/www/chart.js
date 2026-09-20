@@ -1,5 +1,5 @@
 /**
- * LifeLog - 统计图。
+ * Livolog - 统计图。
  *
  * 用内联 SVG 手绘，不引第三方图表库；颜色全部走 CSS 变量，跟随主题。
  * 横坐标刻度**永远是日**；纵坐标由调用方决定含义（时长 / 次数 / 取值）。
@@ -233,7 +233,7 @@
         return { start: startOfDay(min), end: startOfDay(max) };
     }
 
-    global.LifeLogChart = {
+    global.LivologChart = {
         build: build,
         bucketByDay: bucketByDay,
         rangeOf: rangeOf,

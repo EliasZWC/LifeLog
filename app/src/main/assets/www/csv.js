@@ -1,5 +1,5 @@
 /**
- * LifeLog - CSV 序列化 / 解析（时间记录的落盘格式）。
+ * Livolog - CSV 序列化 / 解析（时间记录的落盘格式）。
  *
  * 表头固定为：id,behavior,type,start,end
  * - behavior 写的是行为**名称**而不是 id，这样文件人能读、也能跨设备迁移
@@ -203,7 +203,7 @@
         return { ok: true, records: records, behaviorNames: behaviorNames };
     }
 
-    global.LifeLogCsv = {
+    global.LivologCsv = {
         header: HEADER,
         stringify: stringify,
         parse: parse,

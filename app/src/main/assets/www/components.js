@@ -1,5 +1,5 @@
 /**
- * LifeLog - 通用 UI 组件：弹窗（底部表单）、下拉菜单、进入动画、DOM 小工具。
+ * Livolog - 通用 UI 组件：弹窗（底部表单）、下拉菜单、进入动画、DOM 小工具。
  */
 (function (global) {
     'use strict';
@@ -30,7 +30,7 @@
         var span = el('span', className || 'icon');
         span.setAttribute('aria-hidden', 'true');
         span.innerHTML = '<svg viewBox="0 0 24 24" focusable="false">' +
-            global.LifeLogIcons.get(name) + '</svg>';
+            global.LivologIcons.get(name) + '</svg>';
         return span;
     }
 
@@ -39,7 +39,7 @@
     }
 
     function t(key) {
-        return global.LifeLogI18n ? global.LifeLogI18n.t(key) : key;
+        return global.LivologI18n ? global.LivologI18n.t(key) : key;
     }
 
     // --- 轻提示 -------------------------------------------------------------
@@ -93,8 +93,8 @@
 
         setVersion: function (name, code) {
             shell.version = { name: String(name), code: code };
-            if (global.LifeLogSettingPage && global.LifeLogSettingPage.refreshVersion) {
-                global.LifeLogSettingPage.refreshVersion();
+            if (global.LivologSettingPage && global.LivologSettingPage.refreshVersion) {
+                global.LivologSettingPage.refreshVersion();
             }
         },
 
@@ -102,12 +102,12 @@
             return shell.version;
         },
 
-        /** 原生读完 LifeLog/records.csv 后把内容与路径推过来 */
+        /** 原生读完 Livolog/records.csv 后把内容与路径推过来 */
         onStorageReady: function (csv, path) {
             shell.storagePath = path || '';
             refreshStorageUi();
-            if (global.LifeLogStore && global.LifeLogStore.applyStoredCsv) {
-                global.LifeLogStore.applyStoredCsv(csv);
+            if (global.LivologStore && global.LivologStore.applyStoredCsv) {
+                global.LivologStore.applyStoredCsv(csv);
             }
         },
 
@@ -125,8 +125,8 @@
 
         /** 原生读完 metrics.csv 后把内容推过来（与 records.csv 同一个目录） */
         onMetricsReady: function (csv) {
-            if (global.LifeLogMetrics && global.LifeLogMetrics.applyStoredCsv) {
-                global.LifeLogMetrics.applyStoredCsv(csv);
+            if (global.LivologMetrics && global.LivologMetrics.applyStoredCsv) {
+                global.LivologMetrics.applyStoredCsv(csv);
             }
         },
 
@@ -167,44 +167,44 @@
         // --- 应用内更新（实现在 update.js） ---------------------------------
 
         onUpdateAvailable: function (version, current, size, stalled) {
-            if (global.LifeLogUpdate) {
-                global.LifeLogUpdate.onAvailable(version, current, size, stalled);
+            if (global.LivologUpdate) {
+                global.LivologUpdate.onAvailable(version, current, size, stalled);
             }
         },
 
         onUpdateProgress: function (percent) {
-            if (global.LifeLogUpdate) {
-                global.LifeLogUpdate.onProgress(percent);
+            if (global.LivologUpdate) {
+                global.LivologUpdate.onProgress(percent);
             }
         },
 
         onUpdateReady: function () {
-            if (global.LifeLogUpdate) {
-                global.LifeLogUpdate.onReady();
+            if (global.LivologUpdate) {
+                global.LivologUpdate.onReady();
             }
         },
 
         onUpdateFailed: function (reason, downloaded) {
-            if (global.LifeLogUpdate) {
-                global.LifeLogUpdate.onFailed(reason, downloaded);
+            if (global.LivologUpdate) {
+                global.LivologUpdate.onFailed(reason, downloaded);
             }
         },
 
         /** 语言切换时刷新更新弹窗里的文案 */
         refreshUpdate: function () {
-            if (global.LifeLogUpdate) {
-                global.LifeLogUpdate.refresh();
+            if (global.LivologUpdate) {
+                global.LivologUpdate.refresh();
             }
         }
     };
 
     function refreshStorageUi() {
-        if (global.LifeLogSettingPage && global.LifeLogSettingPage.refreshStoragePath) {
-            global.LifeLogSettingPage.refreshStoragePath();
+        if (global.LivologSettingPage && global.LivologSettingPage.refreshStoragePath) {
+            global.LivologSettingPage.refreshStoragePath();
         }
     }
 
-    global.LifeLogShell = shell;
+    global.LivologShell = shell;
 
     // --- 自定义下拉选择器 ---------------------------------------------------
 
@@ -350,7 +350,7 @@
      * @returns {{ select: (name: string) => void, getSelected: () => string }}
      */
     function createIconPicker(mount, initial) {
-        var names = global.LifeLogIcons.names();
+        var names = global.LivologIcons.names();
         var selected = null;
 
         mount.innerHTML = '';
@@ -709,7 +709,7 @@
         });
     }
 
-    global.LifeLogUI = {
+    global.LivologUI = {
         init: init,
         el: el,
         icon: icon,
