@@ -1,10 +1,14 @@
-# LifeLog
+# Livolog
 
 记录生活行为的 Android 应用，采用「网页套壳」（原生 WebView 容器 + 内置网页前端）的方式实现。
+
+> 应用显示名是 **Livolog**（原名 LifeLog，重名太多）。为保证能覆盖安装、应用内更新不断链，
+> **包名 `com.eliaszwc.lifelog`、仓库名 `EliasZWC/LifeLog`、数据目录 `Documents/LifeLog/` 一律保持不变**。
 
 | 项目 | 值 |
 | --- | --- |
 | 当前版本 | **v0.0.16** |
+| 显示名 | Livolog |
 | 包名 | `com.eliaszwc.lifelog` |
 | 最低支持 | Android 8.0（API 26） |
 | 目标版本 | Android 15（API 35） |

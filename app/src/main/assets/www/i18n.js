@@ -12,7 +12,7 @@
 
     var MESSAGES = {
         en: {
-            'app.name': 'LifeLog',
+            'app.name': 'Livolog',
             'nav.label': 'Main navigation',
             'nav.time': 'Time',
             'nav.behavior': 'Behavior',
@@ -178,7 +178,7 @@
             'setting.theme.system': 'Follow system'
         },
         zh: {
-            'app.name': 'LifeLog',
+            'app.name': 'Livolog',
             'nav.label': '主导航',
             'nav.time': '时间',
             'nav.behavior': '行为',

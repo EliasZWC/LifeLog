@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">LifeLog</string>
+    <string name="app_name">Livolog</string>
     <string name="diagnostics_last_crash">Last launch crashed</string>
     <string name="diagnostics_start_failed">Startup failed</string>
 </resources>

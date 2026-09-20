@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Livolog 图标预览</title>
+    <style>
+        :root { --bg: #EFEFED; --ink: #1B1B1B; --muted: #6E6E6E; --line: #DCDCD8; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 32px 28px 64px; background: var(--bg); color: var(--ink);
+            font: 14px/1.7 Roboto, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+        }
+        h1 { margin: 0 0 6px; font-size: 20px; }
+        h2 { margin: 40px 0 14px; font-size: 15px; letter-spacing: .4px; }
+        p.note { margin: 0 0 8px; color: var(--muted); font-size: 13px; }
+        p.note b { color: var(--ink); }
+        code { color: var(--ink); }
+        .row { display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; }
+        .cell { text-align: center; }
+        .cell .name { margin-top: 12px; font-size: 13px; font-weight: 600; }
+
+        /* ------------------------------------------------------------------
+           图标本体：几何与 res/drawable/ic_launcher_foreground.xml 一一对应
+             .ring   = 填充型圆环扇形（这里用 conic-gradient + clip-path 模拟 sweep 渐变）
+             svg     = 两端圆头 + 1 点圆点 + 两针 + 中心圆点
+           改动 XML 时记得同步这里的数字。
+           ------------------------------------------------------------------ */
+        .icon-slots { width: 432px; height: 432px; position: relative; }
+        .icon {
+            position: absolute; left: 0; top: 0;
+            width: 108px; height: 108px; background: #1B1B1B;
+        }
+        .icon .ring {
+            position: absolute; inset: 0;
+            background: conic-gradient(from 90deg,
+                #7C7C7C 0deg, #FFFFFF 270deg, #6E6E6E 330deg, #7C7C7C 360deg);
+            clip-path: path("M78.25,40 A28,28 0 1 1 54,26 L54,31.94 A22.06,22.06 0 1 0 73.11,42.97 Z");
+        }
+        .icon svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+        /* 遮罩预览：虚线圆 = 72dp，即自适应图标在圆形遮罩下常见的可见范围 */
+        .masked { position: relative; }
+        .masked .guide {
+            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            width: 288px; height: 288px; border: 1px dashed #B4B4B2; border-radius: 50%;
+            pointer-events: none;
+        }
+        .zoom2 { transform: scale(2); transform-origin: 0 0; }
+        .zoom4 { transform: scale(4); transform-origin: 0 0; }
+        .sq { border-radius: 22%; overflow: hidden; }
+        .ci { border-radius: 50%; overflow: hidden; }
+        .squircle { border-radius: 30%; overflow: hidden; }
+        .sizes { display: flex; gap: 18px; align-items: flex-end; }
+        .sizes .cell .name { font-weight: 400; color: var(--muted); font-size: 12px; }
+    </style>
+</head>
+
+<body>
+    <h1>Livolog 图标预览</h1>
+    <p class="note">
+        这块页面里的几何和 <code>app/src/main/res/drawable/ic_launcher_foreground.xml</code> 是同一组数字，
+        改资源时记得一起改。
+    </p>
+
+    <!-- ---------------------------------------------------------------- -->
+    <h2>① 大图（4 倍）</h2>
+    <div class="row">
+        <div class="cell">
+            <div class="icon-slots">
+                <div class="icon zoom4">
+                    <div class="ring"></div>
+                    <svg viewBox="0 0 108 108">
+                        <path fill="#FFFFFF" d="M51.03,28.97 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z" />
+                        <path fill="#6E6E6E" d="M72.71,41.49 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z" />
+                        <path fill="#6E6E6E" d="M63.55,32.32 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z" />
+                        <path d="M54,54 L54,40.42 M54,54 L45.92,58.67" stroke="#FFFFFF" stroke-width="5.09"
+                            stroke-linecap="round" fill="none" />
+                        <path fill="#FFFFFF" d="M51.45,54 a2.55,2.55 0 1 0 5.1,0 a2.55,2.55 0 1 0 -5.1,0 Z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="name">方形圆角（108 × 108）</div>
+        </div>
+        <div class="cell masked">
+            <div class="icon-slots">
+                <div class="icon zoom4 ci">
+                    <div class="ring"></div>
+                    <svg viewBox="0 0 108 108">
+                        <path fill="#FFFFFF" d="M51.03,28.97 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z" />
+                        <path fill="#6E6E6E" d="M72.71,41.49 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z" />
+                        <path fill="#6E6E6E" d="M63.55,32.32 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z" />
+                        <path d="M54,54 L54,40.42 M54,54 L45.92,58.67" stroke="#FFFFFF" stroke-width="5.09"
+                            stroke-linecap="round" fill="none" />
+                        <path fill="#FFFFFF" d="M51.45,54 a2.55,2.55 0 1 0 5.1,0 a2.55,2.55 0 1 0 -5.1,0 Z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="guide"></div>
+            <div class="name">圆形遮罩（虚线 = 72dp 可见范围）</div>
+        </div>
+    </div>
+
+    <!-- ---------------------------------------------------------------- -->
+    <h2>② 常见遮罩下会不会被裁</h2>
+    <p class="note">
+        圆环现在的外径是 <b>56</b>（视口 108），四周留 26；相对虚线圈（72dp）还有 <b>约 7.6</b> 的余量。
+    </p>
+    <div class="row">
+        <div class="cell">
+            <div class="icon-slots">
+                <div class="icon zoom2 ci">
+                    <div class="ring"></div>
+                    <svg viewBox="0 0 108 108">
+                        <path fill="#FFFFFF" d="M51.03,28.97 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z" />
+                        <path fill="#6E6E6E" d="M72.71,41.49 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z" />
+                        <path fill="#6E6E6E" d="M63.55,32.32 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z" />
+                        <path d="M54,54 L54,40.42 M54,54 L45.92,58.67" stroke="#FFFFFF" stroke-width="5.09"
+                            stroke-linecap="round" fill="none" />
+                        <path fill="#FFFFFF" d="M51.45,54 a2.55,2.55 0 1 0 5.1,0 a2.55,2.55 0 1 0 -5.1,0 Z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="name">圆形</div>
+        </div>
+        <div class="cell">
+            <div class="icon-slots">
+                <div class="icon zoom2 squircle">
+                    <div class="ring"></div>
+                    <svg viewBox="0 0 108 108">
+                        <path fill="#FFFFFF" d="M51.03,28.97 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z" />
+                        <path fill="#6E6E6E" d="M72.71,41.49 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z" />
+                        <path fill="#6E6E6E" d="M63.55,32.32 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z" />
+                        <path d="M54,54 L54,40.42 M54,54 L45.92,58.67" stroke="#FFFFFF" stroke-width="5.09"
+                            stroke-linecap="round" fill="none" />
+                        <path fill="#FFFFFF" d="M51.45,54 a2.55,2.55 0 1 0 5.1,0 a2.55,2.55 0 1 0 -5.1,0 Z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="name">方圆（squircle）</div>
+        </div>
+        <div class="cell">
+            <div class="icon-slots">
+                <div class="icon zoom2 sq">
+                    <div class="ring"></div>
+                    <svg viewBox="0 0 108 108">
+                        <path fill="#FFFFFF" d="M51.03,28.97 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z" />
+                        <path fill="#6E6E6E" d="M72.71,41.49 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z" />
+                        <path fill="#6E6E6E" d="M63.55,32.32 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z" />
+                        <path d="M54,54 L54,40.42 M54,54 L45.92,58.67" stroke="#FFFFFF" stroke-width="5.09"
+                            stroke-linecap="round" fill="none" />
+                        <path fill="#FFFFFF" d="M51.45,54 a2.55,2.55 0 1 0 5.1,0 a2.55,2.55 0 1 0 -5.1,0 Z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="name">方形圆角</div>
+        </div>
+    </div>
+
+    <!-- ---------------------------------------------------------------- -->
+    <h2>③ 实际大小（108 / 72 / 48 / 36 px）</h2>
+    <div class="sizes" id="sizes"></div>
+
+    <script>
+        // 用同一份 SVG 片段按不同尺寸生成小图标
+        var BODY =
+            '<path fill="#FFFFFF" d="M51.03,28.97 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z"/>' +
+            '<path fill="#6E6E6E" d="M72.71,41.49 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z"/>' +
+            '<path fill="#6E6E6E" d="M63.55,32.32 a2.97,2.97 0 1 0 5.94,0 a2.97,2.97 0 1 0 -5.94,0 Z"/>' +
+            '<path d="M54,54 L54,40.42 M54,54 L45.92,58.67" stroke="#FFFFFF" stroke-width="5.09" ' +
+            'stroke-linecap="round" fill="none"/>' +
+            '<path fill="#FFFFFF" d="M51.45,54 a2.55,2.55 0 1 0 5.1,0 a2.55,2.55 0 1 0 -5.1,0 Z"/>';
+
+        document.getElementById('sizes').innerHTML = [108, 72, 48, 36].map(function (s) {
+            return '<div class="cell"><div class="icon ci" style="position:relative;width:' + s +
+                'px;height:' + s + 'px"><div class="ring"></div><svg viewBox="0 0 108 108">' + BODY +
+                '</svg></div><div class="name">' + s + '</div></div>';
+        }).join('');
+    </script>
+</body>
+
+</html>
