@@ -9,11 +9,11 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.FrameLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.activity.addCallback
@@ -36,6 +36,12 @@ import kotlin.math.roundToInt
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
+
+    /**
+     * 布局根视图。必须是字段：在 `with(webView) { ... }` 作用域里写
+     * `findViewById(...)` 会被解析成 `webView.findViewById(...)`，从 WebView 往下找是找不到根视图的。
+     */
+    private lateinit var rootView: View
 
     /**
      * 应用内主题设置：`light` / `dark` / `system`。
@@ -91,8 +97,8 @@ class MainActivity : AppCompatActivity() {
         configureWebView()
 
         // WebView 铺满整屏（包括状态栏与系统导航条区域），使遮罩、弹窗能盖住整屏
-        val root = findViewById<FrameLayout>(R.id.root)
-        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+        rootView = findViewById(R.id.root)
+        ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, insets ->
             pushInsetsToWeb(insets)
             insets
         }
@@ -170,7 +176,9 @@ class MainActivity : AppCompatActivity() {
                 pageReady = true
                 // 页面脚本就绪后把版本号与内边距补发一次
                 pushVersionToWeb()
-                ViewCompat.requestApplyInsets(findViewById(R.id.root))
+                if (::rootView.isInitialized) {
+                    ViewCompat.requestApplyInsets(rootView)
+                }
             }
         }
     }

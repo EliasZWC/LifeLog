@@ -12,7 +12,10 @@
 - APK 改用固定发布密钥签名。此前缺少密钥时会回退到 debug 签名，而 CI 每次构建都会新生成随机密钥，
   导致新旧版本签名不一致、覆盖安装报 `conflicting signature`。现在缺少密钥时 release 构建直接失败。
 - 设置页的版本号只显示版本名，形如 `0.0.6`。
-- 修复启动闪退：
+- 修复启动闪退（根因）：`onPageFinished` 里的 `findViewById(R.id.root)` 位于 `configureWebView()` 的
+  `with(webView) { ... }` 作用域内，被解析成 `webView.findViewById(...)`；而根视图是 WebView 的**父容器**，
+  从 WebView 往下找只会得到 null，于是 `requestApplyInsets(null)` 抛 NPE。改为把根视图存成字段引用。
+- 以下为排查过程中顺手做掉的加固：
   - JS 桥 `WebAppBridge` 改为独立的 **public 类**（原先是 `private inner class`，而 Android 的 JS 桥
     是用反射查找并调用 `@JavascriptInterface` 方法的，非 public 类在部分系统上会调用失败）。
   - `evaluateJavascript` 改为**页面加载完成后**才注入，不再在首次布局时就调用。
