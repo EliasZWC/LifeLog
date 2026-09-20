@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
+import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -30,6 +31,13 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
 
+    /**
+     * 应用内主题设置：`light` / `dark` / `system`。
+     * 与网页端 localStorage 里的 `lifelog.theme` 保持同步，
+     * 网页改设置时通过 [WebAppBridge.setThemeMode] 通知过来。
+     */
+    private var themeMode: String = THEME_SYSTEM
+
     private val assetLoader: WebViewAssetLoader by lazy {
         WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
@@ -40,11 +48,13 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        themeMode = readThemeMode()
+
         // 全屏内容 + 自行处理系统栏内边距（targetSdk 35 起系统强制 edge-to-edge）
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
-        applySystemBarAppearance()
+        applyTheme()
 
         setContentView(R.layout.activity_main)
 
@@ -80,6 +90,7 @@ class MainActivity : AppCompatActivity() {
         setBackgroundColor(Color.TRANSPARENT)
         isLongClickable = false
         setOnLongClickListener { true }
+        addJavascriptInterface(WebAppBridge(), JS_BRIDGE_NAME)
 
         settings.apply {
             javaScriptEnabled = true
@@ -121,18 +132,61 @@ class MainActivity : AppCompatActivity() {
         true
     }
 
-    private fun applySystemBarAppearance() {
-        val nightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+    // -----------------------------------------------------------------------
+    // 主题
+    // -----------------------------------------------------------------------
+
+    private fun readThemeMode(): String =
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .getString(KEY_THEME_MODE, THEME_SYSTEM)
+            ?.takeIf { it in THEME_MODES }
+            ?: THEME_SYSTEM
+
+    private fun isDarkAppearance(): Boolean = when (themeMode) {
+        THEME_LIGHT -> false
+        THEME_DARK -> true
+        else -> (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
             Configuration.UI_MODE_NIGHT_YES
+    }
+
+    /** 把当前主题落到窗口背景与状态栏／导航栏图标颜色上 */
+    private fun applyTheme() {
+        val dark = isDarkAppearance()
+
+        window.setBackgroundDrawableResource(
+            if (dark) R.color.app_background_dark else R.color.app_background_light
+        )
+
         WindowInsetsControllerCompat(window, window.decorView).apply {
-            isAppearanceLightStatusBars = !nightMode
-            isAppearanceLightNavigationBars = !nightMode
+            isAppearanceLightStatusBars = !dark
+            isAppearanceLightNavigationBars = !dark
         }
+    }
+
+    private fun setThemeMode(mode: String) {
+        val normalized = if (mode in THEME_MODES) mode else THEME_SYSTEM
+        if (normalized == themeMode) return
+
+        themeMode = normalized
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .edit()
+            .putString(KEY_THEME_MODE, themeMode)
+            .apply()
+        applyTheme()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        applySystemBarAppearance()
+        // 「跟随系统」时系统深浅色切换需要重新解析
+        applyTheme()
+    }
+
+    /** 暴露给网页的接口，名称见 [JS_BRIDGE_NAME] */
+    private inner class WebAppBridge {
+        @JavascriptInterface
+        fun setThemeMode(mode: String) {
+            runOnUiThread { this@MainActivity.setThemeMode(mode) }
+        }
     }
 
     override fun onDestroy() {
@@ -143,5 +197,15 @@ class MainActivity : AppCompatActivity() {
     private companion object {
         const val APP_ASSETS_HOST = "appassets.androidplatform.net"
         const val WEB_ENTRY_URL = "https://appassets.androidplatform.net/assets/www/index.html"
+
+        const val JS_BRIDGE_NAME = "LifeLogNative"
+
+        const val PREFS_NAME = "lifelog"
+        const val KEY_THEME_MODE = "theme_mode"
+
+        const val THEME_LIGHT = "light"
+        const val THEME_DARK = "dark"
+        const val THEME_SYSTEM = "system"
+        val THEME_MODES = listOf(THEME_LIGHT, THEME_DARK, THEME_SYSTEM)
     }
 }

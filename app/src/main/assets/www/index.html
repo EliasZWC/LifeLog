@@ -6,14 +6,29 @@
     <meta name="viewport"
         content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F4F2" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121212" />
+    <meta name="theme-color" content="#F4F4F2" />
     <title>LifeLog</title>
     <link rel="stylesheet" href="styles.css" />
+
+    <!-- 在解析样式前先套用已保存的主题，避免首屏闪一下系统主题 -->
+    <script>
+        (function () {
+            try {
+                var mode = localStorage.getItem('lifelog.theme');
+                if (mode === 'light' || mode === 'dark') {
+                    document.documentElement.setAttribute('data-theme', mode);
+                }
+            } catch (e) { /* 忽略 */ }
+        })();
+    </script>
 </head>
 
 <body>
     <div id="app">
+        <header class="page-header">
+            <h1 class="page-title" id="page-title" data-i18n="nav.period">Period</h1>
+        </header>
+
         <main id="content">
             <!-- 时段页：记录有持续过程的行动（如睡眠）。暂时留空 -->
             <section class="page" id="page-period" role="tabpanel" aria-labelledby="tab-period"></section>
@@ -24,8 +39,27 @@
             <!-- 统计页：展示记录数据的统计。暂时留空 -->
             <section class="page" id="page-stats" role="tabpanel" aria-labelledby="tab-stats" hidden></section>
 
-            <!-- 设置页：修改应用设置。暂时留空 -->
-            <section class="page" id="page-settings" role="tabpanel" aria-labelledby="tab-settings" hidden></section>
+            <!-- 设置页：修改应用设置 -->
+            <section class="page" id="page-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+                <ul class="settings-list">
+                    <li class="settings-item">
+                        <label class="settings-label" for="setting-theme"
+                            data-i18n="settings.theme">Theme</label>
+
+                        <div class="settings-control">
+                            <select class="settings-select" id="setting-theme" data-setting="theme">
+                                <option value="light" data-i18n="settings.theme.light">Light</option>
+                                <option value="dark" data-i18n="settings.theme.dark">Dark</option>
+                                <option value="system" data-i18n="settings.theme.system">Follow system</option>
+                            </select>
+                            <!-- Google Material Icons: expand_more -->
+                            <svg class="settings-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z" />
+                            </svg>
+                        </div>
+                    </li>
+                </ul>
+            </section>
         </main>
 
         <nav class="bottom-nav" role="tablist" aria-label="Main navigation"
@@ -84,6 +118,8 @@
     </div>
 
     <script src="i18n.js"></script>
+    <script src="theme.js"></script>
+    <script src="settings.js"></script>
     <script src="app.js"></script>
 </body>
 

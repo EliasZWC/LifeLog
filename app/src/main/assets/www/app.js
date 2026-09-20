@@ -1,6 +1,6 @@
 /**
  * LifeLog - 应用外壳逻辑
- * 只负责底部导航的切换与状态记忆，四个页面内容暂时留空。
+ * 负责底部导航切换、顶部标题同步，以及各模块的启动。
  */
 (function () {
     'use strict';
@@ -10,6 +10,7 @@
     var TAB_ORDER = ['period', 'moment', 'stats', 'settings'];
 
     var tabs = Array.prototype.slice.call(document.querySelectorAll('.nav-item'));
+    var titleEl = document.getElementById('page-title');
     var pages = {};
     TAB_ORDER.forEach(function (name) {
         pages[name] = document.getElementById('page-' + name);
@@ -32,6 +33,12 @@
             }
         });
 
+        if (titleEl) {
+            // 标题文案复用导航词条，切语言时也能一起更新
+            titleEl.setAttribute('data-i18n', 'nav.' + name);
+            titleEl.textContent = window.LifeLogI18n ? window.LifeLogI18n.t('nav.' + name) : name;
+        }
+
         try {
             localStorage.setItem(STORAGE_KEY, name);
         } catch (e) {
@@ -47,6 +54,12 @@
 
     if (window.LifeLogI18n) {
         window.LifeLogI18n.init();
+    }
+    if (window.LifeLogTheme) {
+        window.LifeLogTheme.init();
+    }
+    if (window.LifeLogSettings) {
+        window.LifeLogSettings.init();
     }
 
     var initial = DEFAULT_TAB;

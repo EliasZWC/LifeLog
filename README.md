@@ -4,7 +4,7 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前版本 | **v0.0.2** |
+| 当前版本 | **v0.0.3** |
 | 包名 | `com.eliaszwc.lifelog` |
 | 最低支持 | Android 8.0（API 26） |
 | 目标版本 | Android 15（API 35） |
@@ -19,6 +19,19 @@
   - 主题色定义集中在 `app/src/main/assets/www/styles.css` 的 `:root` 与 `@media (prefers-color-scheme: dark)` 中，加壳侧的系统栏颜色在 `res/values/colors.xml` 与 `res/values-night/colors.xml`。
 - **语言**：默认英文（`en`）。网页端 i18n 在 `app/src/main/assets/www/i18n.js`，原生端以 `res/values/strings.xml`
   作为英文默认资源；中文（`zh`）词条已备好，等「设置」页做好后接上切换入口。
+- **主题设置**：设置页可在「日间 / 夜间 / 跟随系统」间切换。网页端通过 `<html data-theme>` 覆盖系统配色，
+  原生端同步窗口背景与状态栏图标颜色，保证系统与应用内设置不一致时不露错色。
+
+## 网页与原生通信
+
+原生通过 `addJavascriptInterface` 向网页暴露 `LifeLogNative` 对象（见 `MainActivity`）。目前只有一个方法：
+
+| 方法 | 说明 |
+| --- | --- |
+| `setThemeMode(mode)` | 网页切换主题后通知原生，`mode` 为 `light` / `dark` / `system` |
+
+原生会把该值落到 `SharedPreferences`，保证冷启动时先上对背景色，不用等网页接管。
+网页侧的偏好则存在 `localStorage`，两者由这一桥接保持同步。
 
 ## 目录结构
 
@@ -32,7 +45,7 @@ LifeLog/
 │   └── src/main/
 │       ├── AndroidManifest.xml
 │       ├── java/com/eliaszwc/lifelog/MainActivity.kt   # WebView 容器
-│       ├── assets/www/           # 网页前端（index.html / styles.css / i18n.js / app.js）
+│       ├── assets/www/           # 网页前端（index.html / styles.css / i18n.js / theme.js / settings.js / app.js）
 │       └── res/                  # 主题、配色、启动图标
 ├── build.gradle.kts
 ├── settings.gradle.kts
@@ -108,9 +121,11 @@ git push origin v0.0.2
 ## 开发进度
 
 - [x] 应用骨架 + 黑白主题 + 启动图标
-- [x] 底部导航栏（时段 / 时点 / 统计 / 设置），页面暂留空
+- [x] 底部导航栏（时段 / 时点 / 统计 / 设置），页面留空
+- [x] 每个页面顶部居中标题
 - [x] 中英双语基础，默认英文
+- [x] 设置页：列表布局 + 主题（日间 / 夜间 / 跟随系统）
 - [ ] 时段页：记录行动过程时段
 - [ ] 时点页：记录一过性行动
 - [ ] 统计页：数据统计
-- [ ] 设置页：应用设置
+- [ ] 设置页：其余设置项

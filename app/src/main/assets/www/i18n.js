@@ -16,7 +16,11 @@
             'nav.period': 'Period',
             'nav.moment': 'Moment',
             'nav.stats': 'Stats',
-            'nav.settings': 'Settings'
+            'nav.settings': 'Settings',
+            'settings.theme': 'Theme',
+            'settings.theme.light': 'Light',
+            'settings.theme.dark': 'Dark',
+            'settings.theme.system': 'Follow system'
         },
         zh: {
             'app.name': 'LifeLog',
@@ -24,7 +28,11 @@
             'nav.period': '时段',
             'nav.moment': '时点',
             'nav.stats': '统计',
-            'nav.settings': '设置'
+            'nav.settings': '设置',
+            'settings.theme': '主题',
+            'settings.theme.light': '日间模式',
+            'settings.theme.dark': '夜间模式',
+            'settings.theme.system': '跟随系统模式'
         }
     };
 

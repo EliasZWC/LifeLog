@@ -4,10 +4,10 @@
    白天主题以白为主，夜间主题以黑为主。
    ========================================================================== */
 
+/* 白天主题（默认） */
 :root {
     color-scheme: light dark;
 
-    /* 白天主题 */
     --bg: #F4F4F2;
     --surface: #FFFFFF;
     --surface-raised: #EDEDEA;
@@ -18,9 +18,9 @@
     --nav-inactive: #8C8C8A;
 }
 
+/* 夜间主题：跟随系统（用户显式选了日间时不生效） */
 @media (prefers-color-scheme: dark) {
-    :root {
-        /* 夜间主题 */
+    :root:not([data-theme="light"]) {
         --bg: #121212;
         --surface: #1C1C1C;
         --surface-raised: #262626;
@@ -30,6 +30,27 @@
         --nav-active: #F2F2F0;
         --nav-inactive: #7E7E7C;
     }
+}
+
+/* 夜间主题：用户在设置里手动指定 */
+:root[data-theme="dark"] {
+    --bg: #121212;
+    --surface: #1C1C1C;
+    --surface-raised: #262626;
+    --on-surface: #ECECEA;
+    --on-surface-variant: #9A9A98;
+    --outline: #2E2E2E;
+    --nav-active: #F2F2F0;
+    --nav-inactive: #7E7E7C;
+}
+
+/* 让原生表单控件（如下拉框）的配色也跟随手动主题 */
+:root[data-theme="light"] {
+    color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
 }
 
 *,
@@ -70,6 +91,102 @@ body {
     flex: 1 1 auto;
     min-height: 0;
     position: relative;
+}
+
+/* --------------------------------------------------------------------------
+   页面顶部标题
+   -------------------------------------------------------------------------- */
+
+.page-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 56px;
+    padding: 0 16px;
+}
+
+.page-title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 24px;
+    letter-spacing: 0.2px;
+    color: var(--on-surface);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --------------------------------------------------------------------------
+   设置列表
+   -------------------------------------------------------------------------- */
+
+.settings-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.settings-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 56px;
+    padding: 6px 20px;
+    border-bottom: 1px solid var(--outline);
+}
+
+.settings-item:last-child {
+    border-bottom: 0;
+}
+
+.settings-label {
+    flex: 0 1 auto;
+    min-width: 0;
+    font-size: 15px;
+    color: var(--on-surface);
+}
+
+.settings-control {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    max-width: 62%;
+}
+
+/* 去掉系统默认外观，只留下文字 + 右侧箭头 */
+.settings-select {
+    appearance: none;
+    -webkit-appearance: none;
+    margin: 0;
+    border: 0;
+    background: transparent;
+    color: var(--on-surface-variant);
+    font: inherit;
+    font-size: 15px;
+    line-height: 24px;
+    text-align: right;
+    text-align-last: right;
+    text-overflow: ellipsis;
+    padding: 8px 22px 8px 10px;
+    cursor: pointer;
+    outline: none;
+}
+
+.settings-select:active {
+    color: var(--on-surface);
+}
+
+.settings-chevron {
+    position: absolute;
+    right: 0;
+    width: 18px;
+    height: 18px;
+    fill: var(--on-surface-variant);
+    pointer-events: none;
 }
 
 /* --------------------------------------------------------------------------
