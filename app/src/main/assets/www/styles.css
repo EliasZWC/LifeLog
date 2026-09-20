@@ -24,6 +24,8 @@
     --outline: #E1E1DE;
     --nav-active: #1B1B1B;
     --nav-inactive: #8C8C8A;
+    /* 破坏性操作（删除等）专用：整站黑白，只有这里破例用红 */
+    --danger: #B3261E;
 
     /* 悬浮按钮 / 主按钮：反色，跟随当前主题最强的前景色 */
     --fab-bg: var(--nav-active);
@@ -42,6 +44,7 @@
         --outline: #333333;
         --nav-active: #F2F2F0;
         --nav-inactive: #7E7E7C;
+        --danger: #F2B8B5;
     }
 }
 
@@ -56,6 +59,7 @@
     --outline: #333333;
     --nav-active: #F2F2F0;
     --nav-inactive: #7E7E7C;
+    --danger: #F2B8B5;
 }
 
 /* 让原生表单控件（如下拉框）的配色也跟随手动主题 */
@@ -171,16 +175,17 @@ body {
 }
 
 .settings-label {
-    flex: 0 1 auto;
+    flex: 1 1 auto;
     min-width: 0;
     font-size: 15px;
     color: var(--on-surface);
 }
 
-/* 右侧当前值（主题名、版本号、存储路径等） */
+/* 右侧当前值（主题名、版本号、存储路径等）：右对齐，且不超过整行的一半 */
 .settings-value {
     flex: 0 1 auto;
     min-width: 0;
+    max-width: 50%;
     font-size: 15px;
     color: var(--on-surface-variant);
     font-variant-numeric: tabular-nums;
@@ -604,6 +609,47 @@ body {
 .btn-primary:disabled {
     color: var(--nav-inactive);
     opacity: 0.5;
+}
+
+/* --------------------------------------------------------------------------
+   应用内更新：下载进度条
+   -------------------------------------------------------------------------- */
+
+.update-progress {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0 0;
+}
+
+.update-progress[hidden] {
+    display: none;
+}
+
+.update-track {
+    flex: 1 1 auto;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--surface-raised);
+    overflow: hidden;
+}
+
+.update-fill {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--nav-active);
+    transition: width 200ms ease;
+}
+
+.update-percent {
+    flex: 0 0 auto;
+    min-width: 40px;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--on-surface-variant);
 }
 
 /* --------------------------------------------------------------------------
@@ -1126,9 +1172,15 @@ body {
     text-align: left;
 }
 
-/* 破坏性操作：主题是黑白，这里只靠字重强调 */
-.btn-danger {
+/* 破坏性操作：主题是黑白，这里只靠红色与字重强调 */
+.btn-danger,
+.btn-danger:disabled {
+    color: var(--danger);
     font-weight: 700;
+}
+
+.btn-danger:disabled {
+    opacity: 0.5;
 }
 
 /* --------------------------------------------------------------------------

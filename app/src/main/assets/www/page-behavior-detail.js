@@ -170,6 +170,11 @@
             ));
             card.appendChild(time);
 
+            // 与时间页一致：点卡片即可修改这条记录
+            card.addEventListener('click', function () {
+                global.LifeLogTimePage.openForm(record);
+            });
+
             listEl.appendChild(card);
         });
     }

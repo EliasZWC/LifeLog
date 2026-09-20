@@ -12,6 +12,10 @@ import android.webkit.JavascriptInterface
 class WebAppBridge(
     private val onThemeMode: (String) -> Unit,
     private val onSaveCsv: (String) -> Unit,
+    private val onExportCsv: (String) -> Unit,
+    private val onDownloadUpdate: () -> Unit,
+    private val onInstallUpdate: () -> Unit,
+    private val onCloseUpdate: () -> Unit,
 ) {
 
     @JavascriptInterface
@@ -23,5 +27,29 @@ class WebAppBridge(
     @JavascriptInterface
     fun saveRecordsCsv(csv: String) {
         onSaveCsv(csv)
+    }
+
+    /** 设置页「导出数据」：拉起系统「另存为」，把 CSV 写到用户选的位置 */
+    @JavascriptInterface
+    fun exportRecordsCsv(csv: String) {
+        onExportCsv(csv)
+    }
+
+    /** 更新弹窗点「更新」：开始下载新版 APK */
+    @JavascriptInterface
+    fun downloadUpdate() {
+        onDownloadUpdate()
+    }
+
+    /** 包已下好但安装被拦下时，点「重试安装」 */
+    @JavascriptInterface
+    fun installUpdate() {
+        onInstallUpdate()
+    }
+
+    /** 更新弹窗关掉了，原生可以重置「本次进入已检查过」的状态 */
+    @JavascriptInterface
+    fun closeUpdate() {
+        onCloseUpdate()
     }
 }

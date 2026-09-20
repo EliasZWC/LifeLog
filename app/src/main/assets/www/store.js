@@ -155,6 +155,28 @@
         return record;
     }
 
+    /** 改一条已有记录（行为 / 类型 / 起止时间都能改） */
+    function updateRecord(id, behaviorId, type, start, end) {
+        var list = read(RECORD_KEY);
+        var target = null;
+
+        list.forEach(function (item) {
+            if (item.id !== id) {
+                return;
+            }
+            item.behaviorId = behaviorId;
+            item.type = type;
+            item.start = start;
+            item.end = type === 'period' ? end : null;
+            target = item;
+        });
+
+        if (target) {
+            write(RECORD_KEY, list);
+        }
+        return target;
+    }
+
     function removeRecord(id) {
         removeRecords([id]);
     }
@@ -248,6 +270,7 @@
         removeBehaviors: removeBehaviors,
         getRecords: getRecords,
         addRecord: addRecord,
+        updateRecord: updateRecord,
         removeRecord: removeRecord,
         removeRecords: removeRecords,
         applyStoredCsv: applyStoredCsv,

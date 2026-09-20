@@ -101,6 +101,9 @@
     if (window.LifeLogSettings) {
         window.LifeLogSettings.init();
     }
+    if (window.LifeLogUpdate) {
+        window.LifeLogUpdate.init();
+    }
 
     var initial = DEFAULT_TAB;
     try {

@@ -21,7 +21,8 @@ object CsvStore {
 
     const val FILE_NAME = "records.csv"
     private const val DIR_NAME = "LifeLog"
-    private const val MIME = "text/csv"
+    /** 设置页「导出数据」用同一个 MIME 拉起系统「另存为」 */
+    const val MIME = "text/csv"
 
     /** 写成功时返回实际文件路径 */
     fun write(context: Context, content: String): String {

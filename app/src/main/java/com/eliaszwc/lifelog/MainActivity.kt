@@ -29,6 +29,10 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.webkit.WebViewAssetLoader
 import org.json.JSONObject
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
@@ -63,6 +67,20 @@ class MainActivity : AppCompatActivity() {
     /** 网页里 <input type="file"> 点开后，等系统选择器返回时要用 */
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
 
+    /** 设置页「导出数据」：等系统「另存为」返回时要把这份 CSV 写进用户选的位置 */
+    private var pendingExportCsv: String? = null
+
+    /** 本次进入前台是否已经查过更新（GitHub API 有频次限制，不重复查） */
+    private var updateChecked = false
+    /** 更新弹窗还开着就不重置上面的标志，否则从安装器回来会又弹一次 */
+    private var updateFlowActive = false
+    /** 已发现的新版本 */
+    private var pendingRelease: Updater.Release? = null
+    /** 已下载好、可以安装的安装包 */
+    private var downloadedApk: File? = null
+    /** 正在下载，避免重复触发 */
+    private var downloading = false
+
     private val openDocument =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             val callback = filePathCallback
@@ -72,6 +90,24 @@ class MainActivity : AppCompatActivity() {
             }
             val uri = if (result.resultCode == RESULT_OK) result.data?.data else null
             callback.onReceiveValue(if (uri != null) arrayOf(uri) else null)
+        }
+
+    /** 用系统「另存为」把数据导出成 CSV，用户取消就当什么都没发生 */
+    private val createCsvDocument =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val csv = pendingExportCsv
+            pendingExportCsv = null
+            val uri = if (result.resultCode == RESULT_OK) result.data?.data else null
+
+            if (csv == null) {
+                return@registerForActivityResult
+            }
+            if (uri == null) {
+                // 用户主动取消，不弹提示
+                notifyExported(true, "")
+                return@registerForActivityResult
+            }
+            writeExport(uri, csv)
         }
 
     private val assetLoader: WebViewAssetLoader by lazy {
@@ -162,6 +198,10 @@ class MainActivity : AppCompatActivity() {
             WebAppBridge(
                 onThemeMode = { mode -> runOnUiThread { setThemeMode(mode) } },
                 onSaveCsv = { csv -> handleSaveCsv(csv) },
+                onExportCsv = { csv -> runOnUiThread { handleExportCsv(csv) } },
+                onDownloadUpdate = { runOnUiThread { startUpdateDownload() } },
+                onInstallUpdate = { runOnUiThread { installDownloaded() } },
+                onCloseUpdate = { runOnUiThread { closeUpdateFlow() } },
             ),
             JS_BRIDGE_NAME,
         )
@@ -204,6 +244,8 @@ class MainActivity : AppCompatActivity() {
                 if (::layoutRoot.isInitialized) {
                     ViewCompat.requestApplyInsets(layoutRoot)
                 }
+                // 首次进入时 onResume 可能比页面更早就跑完了，这里补一次
+                maybeCheckUpdate()
             }
         }
 
@@ -322,6 +364,156 @@ class MainActivity : AppCompatActivity() {
         true
     } catch (_: ActivityNotFoundException) {
         true
+    }
+
+    // -----------------------------------------------------------------------
+    // 导出数据
+    // -----------------------------------------------------------------------
+
+    /** 设置页「导出数据」：弹系统「另存为」让用户选位置 */
+    private fun handleExportCsv(csv: String) {
+        pendingExportCsv = csv
+
+        val stamp = SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = CsvStore.MIME
+            putExtra(Intent.EXTRA_TITLE, "lifelog-$stamp.csv")
+        }
+
+        try {
+            createCsvDocument.launch(intent)
+        } catch (t: Throwable) {
+            Log.w(TAG, "拉起导出选择器失败", t)
+            pendingExportCsv = null
+            notifyExported(false, t.message ?: "no-picker")
+        }
+    }
+
+    /** 把 CSV 写进「另存为」选中的文档 */
+    private fun writeExport(uri: Uri, csv: String) {
+        val resolver = applicationContext.contentResolver
+        Thread {
+            var ok = false
+            var detail = uri.lastPathSegment ?: "csv"
+            try {
+                val stream = resolver.openOutputStream(uri)
+                    ?: throw IllegalStateException("openOutputStream 返回 null")
+                stream.use {
+                    it.write(csv.toByteArray(Charsets.UTF_8))
+                    it.flush()
+                }
+                ok = true
+            } catch (t: Throwable) {
+                Log.w(TAG, "导出 CSV 失败", t)
+                detail = t.message ?: "unknown error"
+            }
+            runOnUiThread { notifyExported(ok, detail) }
+        }.start()
+    }
+
+    private fun notifyExported(ok: Boolean, detail: String) {
+        evaluateInWeb(
+            "window.LifeLogShell && window.LifeLogShell.onExported(" +
+                "$ok, ${JSONObject.quote(detail)});"
+        )
+    }
+
+    // -----------------------------------------------------------------------
+    // 应用内更新
+    // -----------------------------------------------------------------------
+
+    override fun onResume() {
+        super.onResume()
+        maybeCheckUpdate()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // 退到后台再回来算「重新进入 app」；更新流程进行中不重置，
+        // 否则从系统安装器切回来会又弹一次窗。
+        if (!updateFlowActive) {
+            updateChecked = false
+        }
+    }
+
+    /** 每次进入前台只查一次；页面还没就绪时什么都不做，等 onPageFinished 再来 */
+    private fun maybeCheckUpdate() {
+        if (updateChecked || updateFlowActive || !pageReady) return
+        updateChecked = true
+
+        Updater.check(this) { release ->
+            if (release == null || updateFlowActive) return@check
+
+            pendingRelease = release
+            updateFlowActive = true
+
+            val localVersion = try {
+                packageManager.getPackageInfo(packageName, 0).versionName ?: ""
+            } catch (_: Exception) {
+                ""
+            }
+
+            evaluateInWeb(
+                "window.LifeLogShell && window.LifeLogShell.onUpdateAvailable(" +
+                    "${JSONObject.quote(release.version)}, " +
+                    "${JSONObject.quote(localVersion)}, " +
+                    "${JSONObject.quote(Updater.formatSize(release.size))});"
+            )
+        }
+    }
+
+    /** 网页点了「更新」：开始下载新版 APK */
+    private fun startUpdateDownload() {
+        val release = pendingRelease ?: return
+        if (downloading) return
+        downloading = true
+
+        Updater.download(
+            this,
+            release.assetUrl,
+            onProgress = { percent ->
+                evaluateInWeb(
+                    "window.LifeLogShell && window.LifeLogShell.onUpdateProgress($percent);"
+                )
+            },
+            onDone = { file ->
+                downloading = false
+                if (file == null) {
+                    updateFlowActive = false
+                    notifyUpdateFailed(Updater.ERROR_NETWORK, downloaded = false)
+                    return@download
+                }
+                downloadedApk = file
+                installDownloaded()
+            },
+        )
+    }
+
+    /** 安装已下好的包（也可能是上次被权限拦下后的重试） */
+    private fun installDownloaded() {
+        val apk = downloadedApk ?: return
+
+        val error = Updater.install(this, apk)
+        if (error == null) {
+            evaluateInWeb("window.LifeLogShell && window.LifeLogShell.onUpdateReady();")
+        } else {
+            notifyUpdateFailed(error, downloaded = true)
+        }
+    }
+
+    private fun notifyUpdateFailed(reason: String, downloaded: Boolean) {
+        evaluateInWeb(
+            "window.LifeLogShell && window.LifeLogShell.onUpdateFailed(" +
+                "${JSONObject.quote(reason)}, $downloaded);"
+        )
+    }
+
+    /** 弹窗被关掉：清干净状态，下次进入 app 可以重新检查 */
+    private fun closeUpdateFlow() {
+        updateFlowActive = false
+        pendingRelease = null
+        downloadedApk = null
     }
 
     // -----------------------------------------------------------------------

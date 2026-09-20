@@ -129,6 +129,52 @@
 
         getStorageError: function () {
             return shell.storageError;
+        },
+
+        /** 设置页「导出数据」的结果（原生写完后回推） */
+        onExported: function (ok, detail) {
+            if (!ok) {
+                toast(t('toast.exportFailed').replace('{reason}', detail || ''));
+                return;
+            }
+            if (detail) {
+                toast(t('toast.exported').replace('{path}', detail));
+            } else {
+                toast(t('toast.exportCanceled'));
+            }
+        },
+
+        // --- 应用内更新（实现在 update.js） ---------------------------------
+
+        onUpdateAvailable: function (version, current, size) {
+            if (global.LifeLogUpdate) {
+                global.LifeLogUpdate.onAvailable(version, current, size);
+            }
+        },
+
+        onUpdateProgress: function (percent) {
+            if (global.LifeLogUpdate) {
+                global.LifeLogUpdate.onProgress(percent);
+            }
+        },
+
+        onUpdateReady: function () {
+            if (global.LifeLogUpdate) {
+                global.LifeLogUpdate.onReady();
+            }
+        },
+
+        onUpdateFailed: function (reason, downloaded) {
+            if (global.LifeLogUpdate) {
+                global.LifeLogUpdate.onFailed(reason, downloaded);
+            }
+        },
+
+        /** 语言切换时刷新更新弹窗里的文案 */
+        refreshUpdate: function () {
+            if (global.LifeLogUpdate) {
+                global.LifeLogUpdate.refresh();
+            }
         }
     };
 

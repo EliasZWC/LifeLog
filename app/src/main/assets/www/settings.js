@@ -60,6 +60,9 @@
             global.LifeLogI18n.onChange(function () {
                 refresh();
                 refreshStoragePath();
+                if (global.LifeLogShell && global.LifeLogShell.refreshUpdate) {
+                    global.LifeLogShell.refreshUpdate();
+                }
             });
         }
 
@@ -72,8 +75,37 @@
             fileInput.addEventListener('change', handleFile);
         }
 
+        var exportButton = document.getElementById('setting-export');
+        if (exportButton) {
+            exportButton.addEventListener('click', handleExport);
+        }
+
         refreshVersion();
         refreshStoragePath();
+    }
+
+    /** 导出全部数据：交给原生弹系统「另存为」，浏览器预览时退回下载文件 */
+    function handleExport() {
+        var csv = global.LifeLogStore.exportCsv();
+
+        if (global.LifeLogNative && typeof global.LifeLogNative.exportRecordsCsv === 'function') {
+            global.LifeLogNative.exportRecordsCsv(csv);
+            return;
+        }
+
+        try {
+            var blob = new Blob([csv], { type: 'text/csv' });
+            var url = global.URL.createObjectURL(blob);
+            var link = document.createElement('a');
+            link.href = url;
+            link.download = 'lifelog.csv';
+            link.click();
+            global.setTimeout(function () {
+                global.URL.revokeObjectURL(url);
+            }, 0);
+        } catch (e) {
+            global.LifeLogUI.toast(t('toast.exportFailed').replace('{reason}', 'unsupported'));
+        }
     }
 
     /** 选完 CSV 后直接在前端解析，不绕原生（原生只负责拉起选择器） */

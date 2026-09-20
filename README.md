@@ -4,7 +4,7 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前版本 | **v0.0.8** |
+| 当前版本 | **v0.0.9** |
 | 包名 | `com.eliaszwc.lifelog` |
 | 最低支持 | Android 8.0（API 26） |
 | 目标版本 | Android 15（API 35） |
@@ -26,11 +26,16 @@
 
 ## 网页与原生通信
 
-原生通过 `addJavascriptInterface` 向网页暴露 `LifeLogNative` 对象（见 `MainActivity`）。目前只有一个方法：
+原生通过 `addJavascriptInterface` 向网页暴露 `LifeLogNative` 对象（见 `WebAppBridge`）：
 
 | 方法 | 说明 |
 | --- | --- |
 | `setThemeMode(mode)` | 网页切换主题后通知原生，`mode` 为 `light` / `dark` / `system` |
+| `saveRecordsCsv(csv)` | 把全部时间记录的 CSV 镜像写入 LifeLog 目录 |
+| `exportRecordsCsv(csv)` | 设置页「导出数据」：拉起系统「另存为」 |
+| `downloadUpdate()` | 更新弹窗点「更新」：开始下载新版 APK |
+| `installUpdate()` | 安装被权限拦下后点「重试安装」 |
+| `closeUpdate()` | 弹窗关掉，原生可以重置「本次进入已检查过」的状态 |
 
 反方向（原生 → 网页）用 `evaluateJavascript` 调用 `LifeLogShell`：
 
@@ -40,12 +45,37 @@
 | `setVersion(name, code)` | 推送版本名与版本号，供设置页只读显示 |
 | `onStorageReady(csv, path)` | 推送 `LifeLog/records.csv` 的内容与路径（文件不存在时内容为空串） |
 | `onCsvSaved(ok, detail)` | CSV 落盘结果 |
+| `onExported(ok, detail)` | 导出结果（`detail` 为空串表示用户取消） |
+| `onUpdateAvailable(version, current, size)` | 发现新版本，网页弹窗 |
+| `onUpdateProgress(percent)` | 下载进度 0~100 |
+| `onUpdateReady()` | 下载完成，安装器已拉起 |
+| `onUpdateFailed(reason, downloaded)` | 更新失败；`reason` 为 `permission` / `network` / `install` |
 
 **WebView 是全屏的**（包括状态栏与系统导航条区域），所以遮罩与底部弹窗能盖住整屏。
 内容要让开多少由 CSS 变量决定，不依赖 `env(safe-area-inset-*)`（WebView 里的取值不可靠，只在 `:root` 里作为兜底）。
 
 原生会把主题偏好落到 `SharedPreferences`，保证冷启动时先上对背景色，不用等网页接管。
 网页侧的偏好则存在 `localStorage`，两者由这一桥接保持同步。
+
+## 应用内更新
+
+每次重新进入 app（`onResume`，且页面已就绪）会去查一次
+`https://api.github.com/repos/EliasZWC/LifeLog/releases/latest`：
+
+- 取 `tag_name` 去掉 `v` 与本地 `versionName` 按段比较，**只认更新不回退**；
+- 从 `assets[]` 里挑第一个 `.apk`，用它的 `browser_download_url` 与 `size`；
+- 有新版本才推给网页弹窗，用户确认后由原生下载到 `cacheDir/update/`；
+- 下完用 `FileProvider`（authority `${applicationId}.fileprovider`）以 `content://` 交给系统安装器；
+- 若系统未授予「安装未知应用」（`canRequestPackageInstalls()` 为 false），
+  先跳 `ACTION_MANAGE_UNKNOWN_APP_SOURCES`，回来后点「重试安装」即可，无需重下。
+
+几个刻意的限制：
+
+- **每次进入前台只查一次**。GitHub 未登录 API 限额是每小时 60 次；
+  而拉起安装器会让 Activity 走一遍 `onStop`/`onResume`，所以弹窗还开着时不重置标志，
+  否则会反复弹窗。
+- 只能覆盖安装，**签名不同会装不上**；因此更新包必须是同一个发布密钥签的。
+- debug 构建的 `versionName` 带 `-debug` 后缀，比较时会先截掉。
 
 ## 数据模型
 
@@ -81,11 +111,11 @@ LifeLog/
 │   ├── build.gradle.kts          # 版本号唯一来源
 │   └── src/main/
 │       ├── AndroidManifest.xml
-│       ├── java/com/eliaszwc/lifelog/MainActivity.kt   # WebView 容器
 │       ├── java/com/eliaszwc/lifelog/
 │       │   ├── MainActivity.kt   # WebView 容器、系统栏、文件选择器
 │       │   ├── WebAppBridge.kt   # 暴露给网页的 JS 接口
 │       │   ├── CsvStore.kt       # CSV 落盘到 LifeLog 目录
+│       │   ├── Updater.kt        # 应用内更新：查 Release / 下载 APK / 拉起安装器
 │       │   └── CrashLog.kt       # 崩溃堆栈落盘并在下次启动显示
 │       ├── assets/www/           # 网页前端
 │       │   ├── index.html        # 页面结构（含表单弹窗、详情页）
@@ -97,6 +127,7 @@ LifeLog/
 │       │   ├── components.js     # 弹窗 / 下拉 / 多选 / 轻提示 / 壳通信
 │       │   ├── theme.js          # 主题偏好
 │       │   ├── settings.js       # 设置页
+│       │   ├── update.js         # 应用内更新弹窗
 │       │   ├── page-time.js      # 时间页
 │       │   ├── page-behavior.js  # 行为页
 │       │   ├── page-behavior-detail.js  # 行为详情页
@@ -191,6 +222,9 @@ git push origin v0.0.2
 - [x] 设置页分区
 - [x] 行为详情页的统计视图（直方图 + 统计信息）
 - [x] 设置项统一为「左名称 / 右值」，设置列表卡片化
+- [x] 时间记录点击修改
+- [x] 数据导出（系统「另存为」）
+- [x] 应用内检测更新 + 下载 + 安装
 - [ ] 卡片编辑
 - [ ] 统计页
 - [ ] 设置页：语言切换等其它设置项

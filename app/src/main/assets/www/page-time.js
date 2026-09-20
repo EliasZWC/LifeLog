@@ -18,6 +18,7 @@
     var viewButton = null;
     var fab = null;
     var sheet = null;
+    var sheetTitle = null;
     var behaviorSelect = null;
     var typeSelect = null;
     var fieldsEl = null;
@@ -29,6 +30,8 @@
     var groups = {};
     var behaviorValue = '';
     var typeValue = '';
+    /** 非空表示当前表单在编辑这条已有记录，提交时走 update 而不是 add */
+    var editingId = null;
 
     function t(key) {
         return global.LifeLogI18n ? global.LifeLogI18n.t(key) : key;
@@ -299,7 +302,10 @@
                 }
                 if (global.LifeLogUI.isSelecting()) {
                     global.LifeLogUI.toggleSelection(record.id);
+                    return;
                 }
+                // 普通点击 = 修改这条记录
+                openForm(record);
             });
 
             listEl.appendChild(card);
@@ -342,8 +348,10 @@
                 return typeValue;
             },
             onChange: function (value) {
+                // 换类型时把已填的时间带过去，别让用户重填
+                var seed = currentSeed();
                 typeValue = value;
-                buildTimeFields();
+                buildTimeFields(seed);
             },
             placeholder: function () {
                 return t('time.form.type.none');
@@ -351,19 +359,50 @@
         });
     }
 
+    /** 当前表单里已填的起止时间（读不出来就是 null） */
+    function currentSeed() {
+        var start = null;
+        var end = null;
+
+        if (groups.moment) {
+            start = toTimestamp(readGroup(groups.moment));
+        } else if (groups.start) {
+            start = toTimestamp(readGroup(groups.start));
+        }
+        if (groups.end) {
+            end = toTimestamp(readGroup(groups.end));
+        }
+
+        return { start: start, end: end };
+    }
+
     /** 类型决定时间怎么填：选之前第三行不可填写 */
-    function buildTimeFields() {
+    function buildTimeFields(seed) {
         fieldsEl.innerHTML = '';
         groups = {};
 
         var now = Date.now();
+        var startAt = now;
+        var endAt = now;
+
+        if (seed && seed.start !== null) {
+            // 编辑 / 切类型：沿用已有时间
+            startAt = seed.start;
+            endAt = seed.end !== null ? seed.end : seed.start;
+        } else if (typeValue === 'period') {
+            startAt = now - 60 * 60 * 1000;
+        }
+
+        if (typeValue === 'period' && endAt <= startAt) {
+            endAt = startAt + 60 * 60 * 1000;
+        }
 
         if (typeValue === 'moment') {
-            groups.moment = buildGroup(null, now);
+            groups.moment = buildGroup(null, startAt);
             fieldsEl.appendChild(groups.moment.root);
         } else if (typeValue === 'period') {
-            groups.start = buildGroup(t('time.form.start'), now - 60 * 60 * 1000);
-            groups.end = buildGroup(t('time.form.end'), now);
+            groups.start = buildGroup(t('time.form.start'), startAt);
+            groups.end = buildGroup(t('time.form.end'), endAt);
             fieldsEl.appendChild(groups.start.root);
             fieldsEl.appendChild(groups.end.root);
         }
@@ -371,14 +410,27 @@
         validate();
     }
 
-    function openForm() {
+    /**
+     * 打开表单。
+     * @param {object} [record] 传了就是「修改已有记录」，不传就是「新增」
+     */
+    function openForm(record) {
         var behaviors = global.LifeLogStore.getBehaviors();
-        behaviorValue = behaviors.length ? behaviors[0].id : '';
-        typeValue = '';
 
+        editingId = record && record.id ? record.id : null;
+
+        if (editingId) {
+            behaviorValue = record.behaviorId;
+            typeValue = record.type;
+        } else {
+            behaviorValue = behaviors.length ? behaviors[0].id : '';
+            typeValue = '';
+        }
+
+        sheetTitle.textContent = t(editingId ? 'time.form.editTitle' : 'time.form.title');
         behaviorSelect.refresh();
         typeSelect.refresh();
-        buildTimeFields();
+        buildTimeFields(editingId ? { start: record.start, end: record.end } : null);
 
         global.LifeLogUI.openSheet(sheet);
     }
@@ -427,16 +479,27 @@
             return;
         }
 
-        global.LifeLogStore.addRecord(
-            behaviorValue,
-            result.type,
-            result.start,
-            result.end
-        );
+        if (editingId) {
+            global.LifeLogStore.updateRecord(
+                editingId,
+                behaviorValue,
+                result.type,
+                result.start,
+                result.end
+            );
+        } else {
+            global.LifeLogStore.addRecord(
+                behaviorValue,
+                result.type,
+                result.start,
+                result.end
+            );
+        }
 
+        editingId = null;
         global.LifeLogUI.closeSheet();
 
-        // 当前视图看不到新记录时切过去，保证有反馈
+        // 当前视图看不到这条记录时切过去，保证有反馈
         if (currentView !== 'all' && currentView !== result.type) {
             setView(result.type);
         }
@@ -450,6 +513,7 @@
         viewButton = document.getElementById('view-button');
         fab = document.getElementById('time-fab');
         sheet = document.getElementById('sheet-time');
+        sheetTitle = document.getElementById('sheet-time-title');
         fieldsEl = document.getElementById('time-fields');
         hintEl = document.getElementById('time-hint');
         cancelBtn = document.getElementById('time-cancel');
@@ -458,8 +522,11 @@
         createSelects();
 
         viewButton.addEventListener('click', openViewMenu);
-        fab.addEventListener('click', openForm);
+        fab.addEventListener('click', function () {
+            openForm(null);
+        });
         cancelBtn.addEventListener('click', function () {
+            editingId = null;
             global.LifeLogUI.closeSheet();
         });
         confirmBtn.addEventListener('click', submit);
@@ -499,6 +566,7 @@
     global.LifeLogTimePage = {
         init: init,
         render: render,
+        openForm: openForm,
         selection: selection,
         // 行为详情页复用同一套时间格式化
         dateLine: dateLine,
