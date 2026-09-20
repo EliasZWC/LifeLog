@@ -74,8 +74,8 @@
             return;
         }
         var version = global.LifeLogShell ? global.LifeLogShell.getVersion() : null;
-        // 无括号，形如 0.0.6 · 6
-        node.textContent = version ? version.name + ' · ' + version.code : '—';
+        // 只显示版本名，形如 0.0.6
+        node.textContent = version ? version.name : '—';
     }
 
     global.LifeLogSettings = {

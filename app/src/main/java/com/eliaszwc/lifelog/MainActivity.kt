@@ -6,13 +6,16 @@ import android.content.Intent
 import android.content.pm.PackageInfo
 import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Bundle
-import android.webkit.JavascriptInterface
+import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
+import android.widget.ScrollView
+import android.widget.TextView
 import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.pm.PackageInfoCompat
@@ -41,6 +44,9 @@ class MainActivity : AppCompatActivity() {
      */
     private var themeMode: String = THEME_SYSTEM
 
+    /** 页面加载完成前不往网页里注入脚本 */
+    private var pageReady = false
+
     private val assetLoader: WebViewAssetLoader by lazy {
         WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
@@ -51,9 +57,29 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        CrashLog.install(this)
+
+        // 上次启动崩过就把堆栈直接显示出来，没 adb 也能定位
+        CrashLog.readAndClear(this)?.let { trace ->
+            showDiagnostics(getString(R.string.diagnostics_last_crash), trace)
+            return
+        }
+
+        try {
+            startApp(savedInstanceState)
+        } catch (t: Throwable) {
+            Log.e(TAG, "启动失败", t)
+            showDiagnostics(
+                getString(R.string.diagnostics_start_failed),
+                Log.getStackTraceString(t),
+            )
+        }
+    }
+
+    private fun startApp(savedInstanceState: Bundle?) {
         themeMode = readThemeMode()
 
-        // 全屏内容 + 自行处理系统栏内边距（targetSdk 35 起系统强制 edge-to-edge）
+        // 全屏内容；系统栏要让开多少交给网页自己决定（targetSdk 35 起系统强制 edge-to-edge）
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
@@ -64,8 +90,7 @@ class MainActivity : AppCompatActivity() {
         webView = findViewById(R.id.web_view)
         configureWebView()
 
-        // WebView 铺满整屏（包括状态栏与系统导航条区域），让遮罩、弹窗能盖住整屏；
-        // 内容要靠边多少由网页用这些尺寸自己决定。
+        // WebView 铺满整屏（包括状态栏与系统导航条区域），使遮罩、弹窗能盖住整屏
         val root = findViewById<FrameLayout>(R.id.root)
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             pushInsetsToWeb(insets)
@@ -74,7 +99,7 @@ class MainActivity : AppCompatActivity() {
 
         // 返回键优先让网页回退历史
         onBackPressedDispatcher.addCallback(this) {
-            if (webView.canGoBack()) {
+            if (::webView.isInitialized && webView.canGoBack()) {
                 webView.goBack()
             } else {
                 isEnabled = false
@@ -87,12 +112,29 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** 出问题时用最简单的控件把信息显示出来，而不是直接闪退 */
+    private fun showDiagnostics(title: String, body: String) {
+        val content = TextView(this).apply {
+            text = title + "\n\n" + body
+            textSize = 11f
+            typeface = Typeface.MONOSPACE
+            setTextIsSelectable(true)
+            setTextColor(Color.BLACK)
+            setBackgroundColor(Color.WHITE)
+            setPadding(40, 80, 40, 40)
+        }
+        setContentView(ScrollView(this).apply { addView(content) })
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     private fun configureWebView() = with(webView) {
         setBackgroundColor(Color.TRANSPARENT)
         isLongClickable = false
         setOnLongClickListener { true }
-        addJavascriptInterface(WebAppBridge(), JS_BRIDGE_NAME)
+        addJavascriptInterface(
+            WebAppBridge { mode -> runOnUiThread { setThemeMode(mode) } },
+            JS_BRIDGE_NAME,
+        )
 
         settings.apply {
             javaScriptEnabled = true
@@ -124,7 +166,8 @@ class MainActivity : AppCompatActivity() {
                 return openExternally(url.toString())
             }
 
-            override fun onPageFinished(view: WebView, url: String) {
+            override fun onPageFinished(view: WebView, url: String?) {
+                pageReady = true
                 // 页面脚本就绪后把版本号与内边距补发一次
                 pushVersionToWeb()
                 ViewCompat.requestApplyInsets(findViewById(R.id.root))
@@ -137,8 +180,13 @@ class MainActivity : AppCompatActivity() {
     // -----------------------------------------------------------------------
 
     private fun evaluateInWeb(script: String) {
-        if (!::webView.isInitialized) return
-        webView.evaluateJavascript(script, null)
+        // 页面没就绪时注入没有意义，也容易出问题
+        if (!pageReady || !::webView.isInitialized) return
+        try {
+            webView.evaluateJavascript(script, null)
+        } catch (t: Throwable) {
+            Log.w(TAG, "evaluateJavascript 失败", t)
+        }
     }
 
     private fun toDp(pixels: Int): Int = (pixels / resources.displayMetrics.density).roundToInt()
@@ -201,14 +249,17 @@ class MainActivity : AppCompatActivity() {
     /** 把当前主题落到窗口背景与状态栏／导航栏图标颜色上 */
     private fun applyTheme() {
         val dark = isDarkAppearance()
-
-        window.setBackgroundDrawableResource(
-            if (dark) R.color.app_background_dark else R.color.app_background_light
-        )
-
-        WindowInsetsControllerCompat(window, window.decorView).apply {
-            isAppearanceLightStatusBars = !dark
-            isAppearanceLightNavigationBars = !dark
+        try {
+            window.setBackgroundDrawableResource(
+                if (dark) R.color.app_background_dark else R.color.app_background_light
+            )
+            WindowInsetsControllerCompat(window, window.decorView).apply {
+                isAppearanceLightStatusBars = !dark
+                isAppearanceLightNavigationBars = !dark
+            }
+        } catch (t: Throwable) {
+            // 纯外观问题，绝不能因此崩溃
+            Log.w(TAG, "应用主题失败", t)
         }
     }
 
@@ -230,20 +281,16 @@ class MainActivity : AppCompatActivity() {
         applyTheme()
     }
 
-    /** 暴露给网页的接口，名称见 [JS_BRIDGE_NAME] */
-    private inner class WebAppBridge {
-        @JavascriptInterface
-        fun setThemeMode(mode: String) {
-            runOnUiThread { this@MainActivity.setThemeMode(mode) }
-        }
-    }
-
     override fun onDestroy() {
-        webView.destroy()
+        if (::webView.isInitialized) {
+            webView.destroy()
+        }
         super.onDestroy()
     }
 
     private companion object {
+        const val TAG = "LifeLog"
+
         const val APP_ASSETS_HOST = "appassets.androidplatform.net"
         const val WEB_ENTRY_URL = "https://appassets.androidplatform.net/assets/www/index.html"
 
