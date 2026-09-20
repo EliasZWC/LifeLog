@@ -7,9 +7,12 @@ import android.content.pm.PackageInfo
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Typeface
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -17,6 +20,7 @@ import android.webkit.WebViewClient
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.activity.addCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.view.ViewCompat
@@ -24,6 +28,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.webkit.WebViewAssetLoader
+import org.json.JSONObject
 import kotlin.math.roundToInt
 
 /**
@@ -54,6 +59,20 @@ class MainActivity : AppCompatActivity() {
 
     /** 页面加载完成前不往网页里注入脚本 */
     private var pageReady = false
+
+    /** 网页里 <input type="file"> 点开后，等系统选择器返回时要用 */
+    private var filePathCallback: ValueCallback<Array<Uri>>? = null
+
+    private val openDocument =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val callback = filePathCallback
+            filePathCallback = null
+            if (callback == null) {
+                return@registerForActivityResult
+            }
+            val uri = if (result.resultCode == RESULT_OK) result.data?.data else null
+            callback.onReceiveValue(if (uri != null) arrayOf(uri) else null)
+        }
 
     private val assetLoader: WebViewAssetLoader by lazy {
         WebViewAssetLoader.Builder()
@@ -140,7 +159,10 @@ class MainActivity : AppCompatActivity() {
         isLongClickable = false
         setOnLongClickListener { true }
         addJavascriptInterface(
-            WebAppBridge { mode -> runOnUiThread { setThemeMode(mode) } },
+            WebAppBridge(
+                onThemeMode = { mode -> runOnUiThread { setThemeMode(mode) } },
+                onSaveCsv = { csv -> handleSaveCsv(csv) },
+            ),
             JS_BRIDGE_NAME,
         )
 
@@ -176,10 +198,36 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView, url: String?) {
                 pageReady = true
-                // 页面脚本就绪后把版本号与内边距补发一次
+                // 页面脚本就绪后把版本号、CSV 内容与内边距补发一次
                 pushVersionToWeb()
+                pushCsvToWeb()
                 if (::layoutRoot.isInitialized) {
                     ViewCompat.requestApplyInsets(layoutRoot)
+                }
+            }
+        }
+
+        // 网页里点 <input type="file"> 时拉起系统文件选择器（用于导入 CSV）
+        webChromeClient = object : WebChromeClient() {
+            override fun onShowFileChooser(
+                webView: WebView,
+                filePathCallback: ValueCallback<Array<Uri>>?,
+                fileChooserParams: FileChooserParams?,
+            ): Boolean {
+                if (filePathCallback == null || fileChooserParams == null) {
+                    return false
+                }
+
+                this@MainActivity.filePathCallback?.onReceiveValue(null)
+                this@MainActivity.filePathCallback = filePathCallback
+
+                return try {
+                    openDocument.launch(fileChooserParams.createIntent())
+                    true
+                } catch (t: Throwable) {
+                    Log.w(TAG, "拉起文件选择器失败", t)
+                    this@MainActivity.filePathCallback = null
+                    false
                 }
             }
         }
@@ -229,6 +277,43 @@ class MainActivity : AppCompatActivity() {
         val name = info.versionName ?: return
         val code = PackageInfoCompat.getLongVersionCode(info)
         evaluateInWeb("window.LifeLogShell && window.LifeLogShell.setVersion(\"$name\", $code);")
+    }
+
+    /** 把 LifeLog 目录里的 CSV 内容与路径推给网页（文件不存在时内容为空串） */
+    private fun pushCsvToWeb() {
+        val context = applicationContext
+        Thread {
+            val csv = CsvStore.read(context) ?: ""
+            val path = CsvStore.describe(context)
+            runOnUiThread {
+                evaluateInWeb(
+                    "window.LifeLogShell && window.LifeLogShell.onStorageReady(" +
+                        "${JSONObject.quote(csv)}, ${JSONObject.quote(path)});"
+                )
+            }
+        }.start()
+    }
+
+    /** 网页把最新的 CSV 交过来落盘，成功与否回推给网页 */
+    private fun handleSaveCsv(csv: String) {
+        val context = applicationContext
+        Thread {
+            var ok = false
+            var detail = "unknown error"
+            try {
+                detail = CsvStore.write(context, csv)
+                ok = true
+            } catch (t: Throwable) {
+                Log.w(TAG, "写 CSV 失败", t)
+                detail = t.message ?: "unknown error"
+            }
+            runOnUiThread {
+                evaluateInWeb(
+                    "window.LifeLogShell && window.LifeLogShell.onCsvSaved(" +
+                        "$ok, ${JSONObject.quote(detail)});"
+                )
+            }
+        }.start()
     }
 
     /** 用系统浏览器 / 其它应用打开站外链接 */

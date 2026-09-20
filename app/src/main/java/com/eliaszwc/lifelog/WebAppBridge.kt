@@ -9,10 +9,19 @@ import android.webkit.JavascriptInterface
  * `@JavascriptInterface` 方法的，放在 private 内部类里在部分系统上会调用失败。
  * 回调里只做转交，避免把 Activity 的引用泄漏进 JS 层。
  */
-class WebAppBridge(private val onThemeMode: (String) -> Unit) {
+class WebAppBridge(
+    private val onThemeMode: (String) -> Unit,
+    private val onSaveCsv: (String) -> Unit,
+) {
 
     @JavascriptInterface
     fun setThemeMode(mode: String) {
         onThemeMode(mode)
+    }
+
+    /** 把全部时间记录的 CSV 内容落盘到 LifeLog 目录 */
+    @JavascriptInterface
+    fun saveRecordsCsv(csv: String) {
+        onSaveCsv(csv)
     }
 }
