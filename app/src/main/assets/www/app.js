@@ -1,18 +1,19 @@
 /**
  * LifeLog - 应用外壳逻辑
- * 目前只负责底部导航的切换与状态记忆，两个页面内容暂时留空。
+ * 只负责底部导航的切换与状态记忆，四个页面内容暂时留空。
  */
 (function () {
     'use strict';
 
     var STORAGE_KEY = 'lifelog.activeTab';
-    var DEFAULT_TAB = 'log';
+    var DEFAULT_TAB = 'period';
+    var TAB_ORDER = ['period', 'moment', 'stats', 'settings'];
 
     var tabs = Array.prototype.slice.call(document.querySelectorAll('.nav-item'));
-    var pages = {
-        log: document.getElementById('page-log'),
-        stats: document.getElementById('page-stats')
-    };
+    var pages = {};
+    TAB_ORDER.forEach(function (name) {
+        pages[name] = document.getElementById('page-' + name);
+    });
 
     function selectTab(name) {
         if (!pages[name]) {
@@ -44,6 +45,10 @@
         });
     });
 
+    if (window.LifeLogI18n) {
+        window.LifeLogI18n.init();
+    }
+
     var initial = DEFAULT_TAB;
     try {
         initial = localStorage.getItem(STORAGE_KEY) || DEFAULT_TAB;
@@ -59,6 +64,7 @@
 
     // 暴露给后续功能扩展使用
     window.LifeLog = {
-        selectTab: selectTab
+        selectTab: selectTab,
+        TAB_ORDER: TAB_ORDER
     };
 })();

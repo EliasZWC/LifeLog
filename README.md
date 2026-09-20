@@ -4,7 +4,7 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前版本 | **v0.0.1** |
+| 当前版本 | **v0.0.2** |
 | 包名 | `com.eliaszwc.lifelog` |
 | 最低支持 | Android 8.0（API 26） |
 | 目标版本 | Android 15（API 35） |
@@ -17,6 +17,8 @@
   - 白天主题：以白为主（背景 `#F4F4F2`，卡片 `#FFFFFF`，文字 `#1B1B1B`）
   - 夜间主题：以黑为主（背景 `#121212`，卡片 `#1C1C1C`，文字 `#ECECEA`）
   - 主题色定义集中在 `app/src/main/assets/www/styles.css` 的 `:root` 与 `@media (prefers-color-scheme: dark)` 中，加壳侧的系统栏颜色在 `res/values/colors.xml` 与 `res/values-night/colors.xml`。
+- **语言**：默认英文（`en`）。网页端 i18n 在 `app/src/main/assets/www/i18n.js`，原生端以 `res/values/strings.xml`
+  作为英文默认资源；中文（`zh`）词条已备好，等「设置」页做好后接上切换入口。
 
 ## 目录结构
 
@@ -30,7 +32,7 @@ LifeLog/
 │   └── src/main/
 │       ├── AndroidManifest.xml
 │       ├── java/com/eliaszwc/lifelog/MainActivity.kt   # WebView 容器
-│       ├── assets/www/           # 网页前端（index.html / styles.css / app.js）
+│       ├── assets/www/           # 网页前端（index.html / styles.css / i18n.js / app.js）
 │       └── res/                  # 主题、配色、启动图标
 ├── build.gradle.kts
 ├── settings.gradle.kts
@@ -106,6 +108,9 @@ git push origin v0.0.2
 ## 开发进度
 
 - [x] 应用骨架 + 黑白主题 + 启动图标
-- [x] 底部导航栏（日志 / 统计），页面暂留空
-- [ ] 日志记录功能
-- [ ] 统计功能
+- [x] 底部导航栏（时段 / 时点 / 统计 / 设置），页面暂留空
+- [x] 中英双语基础，默认英文
+- [ ] 时段页：记录行动过程时段
+- [ ] 时点页：记录一过性行动
+- [ ] 统计页：数据统计
+- [ ] 设置页：应用设置

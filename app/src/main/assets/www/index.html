@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 
 <head>
     <meta charset="utf-8" />
@@ -15,24 +15,45 @@
 <body>
     <div id="app">
         <main id="content">
-            <!-- 日志页：暂时留空 -->
-            <section class="page" id="page-log" role="tabpanel" aria-labelledby="tab-log"></section>
+            <!-- 时段页：记录有持续过程的行动（如睡眠）。暂时留空 -->
+            <section class="page" id="page-period" role="tabpanel" aria-labelledby="tab-period"></section>
 
-            <!-- 统计页：暂时留空 -->
+            <!-- 时点页：记录一过性的行动（如吃药）。暂时留空 -->
+            <section class="page" id="page-moment" role="tabpanel" aria-labelledby="tab-moment" hidden></section>
+
+            <!-- 统计页：展示记录数据的统计。暂时留空 -->
             <section class="page" id="page-stats" role="tabpanel" aria-labelledby="tab-stats" hidden></section>
+
+            <!-- 设置页：修改应用设置。暂时留空 -->
+            <section class="page" id="page-settings" role="tabpanel" aria-labelledby="tab-settings" hidden></section>
         </main>
 
-        <nav class="bottom-nav" role="tablist" aria-label="主导航">
-            <button class="nav-item" type="button" role="tab" id="tab-log" aria-controls="page-log"
-                aria-selected="true" data-page="log">
+        <nav class="bottom-nav" role="tablist" aria-label="Main navigation"
+            data-i18n-aria-label="nav.label">
+
+            <button class="nav-item" type="button" role="tab" id="tab-period" aria-controls="page-period"
+                aria-selected="true" data-page="period">
                 <span class="nav-icon" aria-hidden="true">
-                    <!-- Google Material Icons: edit_note -->
+                    <!-- Google Material Icons: date_range -->
                     <svg viewBox="0 0 24 24" focusable="false">
                         <path
-                            d="M3,10h11v2H3V10z M3,8h11V6H3V8z M3,16h7v-2H3V16z M18.01,12.87l0.71-0.71c0.39-0.39,1.02-0.39,1.41,0l0.71,0.71 c0.39,0.39,0.39,1.02,0,1.41l-0.71,0.71L18.01,12.87z M17.3,13.58l-5.3,5.3V21h2.12l5.3-5.3L17.3,13.58z" />
+                            d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z" />
                     </svg>
                 </span>
-                <span class="nav-label">日志</span>
+                <span class="nav-label" data-i18n="nav.period">Period</span>
+            </button>
+
+            <button class="nav-item" type="button" role="tab" id="tab-moment" aria-controls="page-moment"
+                aria-selected="false" data-page="moment">
+                <span class="nav-icon" aria-hidden="true">
+                    <!-- Google Material Icons: schedule -->
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path
+                            d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" />
+                        <path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                    </svg>
+                </span>
+                <span class="nav-label" data-i18n="nav.moment">Moment</span>
             </button>
 
             <button class="nav-item" type="button" role="tab" id="tab-stats" aria-controls="page-stats"
@@ -45,11 +66,24 @@
                         <rect x="10" y="4" width="4" height="16" />
                     </svg>
                 </span>
-                <span class="nav-label">统计</span>
+                <span class="nav-label" data-i18n="nav.stats">Stats</span>
+            </button>
+
+            <button class="nav-item" type="button" role="tab" id="tab-settings" aria-controls="page-settings"
+                aria-selected="false" data-page="settings">
+                <span class="nav-icon" aria-hidden="true">
+                    <!-- Google Material Icons: settings -->
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path
+                            d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z" />
+                    </svg>
+                </span>
+                <span class="nav-label" data-i18n="nav.settings">Settings</span>
             </button>
         </nav>
     </div>
 
+    <script src="i18n.js"></script>
     <script src="app.js"></script>
 </body>
 
