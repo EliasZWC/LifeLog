@@ -12,6 +12,13 @@
     var VIEW_STORAGE_KEY = 'lifelog.timeView';
     /** 视图 = 看最近多少天；all 表示不限制 */
     var VIEW_DAYS = { all: 0, year: 365, month: 30, week: 7 };
+    /**
+     * 每个范围要显示到哪一级分组。
+     * 范围内已经固定了的层级不再重复显示（否则只会出现孤零零的一个分区）：
+     *   全部 → 年/月/周；最近一年 → 月/周；最近一月 → 周；最近一周 → 不分分区，直接列记录
+     */
+    var VIEW_LEVELS = { all: 3, year: 2, month: 1, week: 0 };
+    var LEVEL_KINDS = ['week', 'month', 'year'];
     var DAY_MS = 24 * 60 * 60 * 1000;
 
     var listEl = null;
@@ -124,11 +131,11 @@
     /** 已折叠的分组 key；只在本次会话里记着 */
     var collapsed = {};
 
-    function groupCount(node) {
-        return t('time.group.count').replace('{n}', String(node.count));
-    }
-
-    function buildTree(records) {
+    /**
+     * 先建成完整的年/月/周三棵树，再根据当前范围决定从哪一级开始显示。
+     * @returns {Array|null} null 表示不分分区（直接列记录）
+     */
+    function buildTree(records, levels) {
         var years = [];
         var yearIndex = {};
 
@@ -185,7 +192,27 @@
             weekNode.records.push(record);
         });
 
-        return years;
+        if (levels >= 3) {
+            return years;
+        }
+
+        var months = [];
+        years.forEach(function (yearNode) {
+            months = months.concat(yearNode.months);
+        });
+        if (levels === 2) {
+            return months;
+        }
+
+        var weeks = [];
+        months.forEach(function (monthNode) {
+            weeks = weeks.concat(monthNode.weeks);
+        });
+        if (levels === 1) {
+            return weeks;
+        }
+
+        return null;
     }
 
     /** 「09-01 ~ 09-07」这种月内的日期范围 */
@@ -209,7 +236,8 @@
             .innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
             '<path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/></svg>';
         head.appendChild(global.LifeLogUI.el('span', 'group-title', node.label));
-        head.appendChild(global.LifeLogUI.el('span', 'group-count', groupCount(node)));
+        // 右侧标明这是哪一级（年 / 月 / 周），层级一眼能看出来
+        head.appendChild(global.LifeLogUI.el('span', 'group-level', t('time.level.' + kind)));
         li.appendChild(head);
 
         var body = global.LifeLogUI.el('ul', 'group-body');
@@ -303,20 +331,39 @@
             return;
         }
 
-        buildTree(records).forEach(function (yearNode) {
-            listEl.appendChild(section(yearNode, 'year', 0, function (yearBody) {
-                yearNode.months.forEach(function (monthNode) {
-                    yearBody.appendChild(section(monthNode, 'month', 1, function (monthBody) {
-                        monthNode.weeks.forEach(function (weekNode) {
-                            monthBody.appendChild(section(weekNode, 'week', 2, function (weekBody) {
-                                weekNode.records.forEach(function (record) {
-                                    weekBody.appendChild(recordCard(record));
-                                });
-                            }));
-                        });
-                    }));
+        var levels = VIEW_LEVELS[currentView] === undefined ? 3 : VIEW_LEVELS[currentView];
+        var nodes = buildTree(records, levels);
+
+        // 范围内已经固定了的层级不重复显示：最近一周就直接列记录
+        if (!nodes) {
+            records.forEach(function (record) {
+                listEl.appendChild(recordCard(record));
+            });
+            return;
+        }
+
+        var kind = LEVEL_KINDS[levels - 1];
+        nodes.forEach(function (node) {
+            listEl.appendChild(renderNode(node, kind, 0));
+        });
+    }
+
+    /** 递归渲染一个分区（年 → 月 → 周，具体到哪一级由当前范围决定） */
+    function renderNode(node, kind, depth) {
+        var childKind = kind === 'year' ? 'month' : (kind === 'month' ? 'week' : null);
+        var children = kind === 'year' ? node.months : node.weeks;
+
+        return section(node, kind, depth, function (body) {
+            if (!childKind) {
+                node.records.forEach(function (record) {
+                    body.appendChild(recordCard(record));
                 });
-            }));
+                return;
+            }
+
+            (children || []).forEach(function (child) {
+                body.appendChild(renderNode(child, childKind, depth + 1));
+            });
         });
     }
 

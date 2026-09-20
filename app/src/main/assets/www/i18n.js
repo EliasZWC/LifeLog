@@ -33,7 +33,9 @@
             'time.group.year': '{y}',
             'time.group.month': '{y}-{m}',
             'time.group.week': 'W{n} · {range}',
-            'time.group.count': '{n}',
+            'time.level.year': 'Year',
+            'time.level.month': 'Month',
+            'time.level.week': 'Week',
 
             'date.invalid': 'Date is incomplete',
 
@@ -193,7 +195,9 @@
             'time.group.year': '{y} 年',
             'time.group.month': '{y} 年 {m} 月',
             'time.group.week': '第 {n} 周 · {range}',
-            'time.group.count': '{n} 条',
+            'time.level.year': '年',
+            'time.level.month': '月',
+            'time.level.week': '周',
 
             'date.invalid': '日期未填写完整',
 

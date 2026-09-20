@@ -1224,10 +1224,10 @@ body {
     text-overflow: ellipsis;
 }
 
-.group-count {
+.group-level {
     flex: 0 0 auto;
     font-size: 12px;
-    font-variant-numeric: tabular-nums;
+    font-weight: 500;
     opacity: 0.7;
 }
 
