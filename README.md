@@ -4,7 +4,7 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前版本 | **v0.0.3** |
+| 当前版本 | **v0.0.4** |
 | 包名 | `com.eliaszwc.lifelog` |
 | 最低支持 | Android 8.0（API 26） |
 | 目标版本 | Android 15（API 35） |
@@ -33,6 +33,20 @@
 原生会把该值落到 `SharedPreferences`，保证冷启动时先上对背景色，不用等网页接管。
 网页侧的偏好则存在 `localStorage`，两者由这一桥接保持同步。
 
+## 数据模型
+
+数据和偏好目前都存在 WebView 的 `localStorage` 里（键名见 `store.js`）：
+
+```js
+Behavior = { id, name, icon }                                  // icon 为 icons.js 里的图标名
+Record   = { id, behaviorId, type, start, end }                // type: 'period' | 'moment'
+                                                               // start/end 为 epoch 毫秒，moment 的 end 为 null
+```
+
+- **行为是时间记录的前提**：先在行为页建立行为，才能在时间页新增记录。
+- 时段（`period`）同时有开始和结束；时点（`moment`）只有 `start`。
+- 后续若要换成原生 SQLite，只需保持 `store.js` 对外的方法签名不变，页面代码不用改。
+
 ## 目录结构
 
 ```
@@ -45,7 +59,18 @@ LifeLog/
 │   └── src/main/
 │       ├── AndroidManifest.xml
 │       ├── java/com/eliaszwc/lifelog/MainActivity.kt   # WebView 容器
-│       ├── assets/www/           # 网页前端（index.html / styles.css / i18n.js / theme.js / settings.js / app.js）
+│       ├── assets/www/           # 网页前端
+│       │   ├── index.html        # 页面结构（含两个表单弹窗）
+│       │   ├── styles.css        # 主题变量 + 全部样式
+│       │   ├── i18n.js           # 中英文词条
+│       │   ├── icons.js          # 谷歌官方行为图标库
+│       │   ├── store.js          # 数据层（行为 / 时间记录）
+│       │   ├── components.js     # 弹窗 / 下拉菜单 / 进入动画
+│       │   ├── theme.js          # 主题偏好
+│       │   ├── settings.js       # 设置页绑定
+│       │   ├── page-time.js      # 时间页
+│       │   ├── page-behavior.js  # 行为页
+│       │   └── app.js            # 外壳：导航 / 标题 / 启动
 │       └── res/                  # 主题、配色、启动图标
 ├── build.gradle.kts
 ├── settings.gradle.kts
@@ -121,11 +146,12 @@ git push origin v0.0.2
 ## 开发进度
 
 - [x] 应用骨架 + 黑白主题 + 启动图标
-- [x] 底部导航栏（时段 / 时点 / 统计 / 设置），页面留空
-- [x] 每个页面顶部居中标题
+- [x] 底部导航（时间 / 行为 / 设置）+ 页面顶部居中标题
 - [x] 中英双语基础，默认英文
 - [x] 设置页：列表布局 + 主题（日间 / 夜间 / 跟随系统）
-- [ ] 时段页：记录行动过程时段
-- [ ] 时点页：记录一过性行动
-- [ ] 统计页：数据统计
-- [ ] 设置页：其余设置项
+- [x] 页面 / 列表切换动画
+- [x] 行为页：列表 + 新增行为表单（名称 + 图标）
+- [x] 时间页：三视图（全部 / 时段 / 时点）+ 列表 + 新增记录表单
+- [ ] 卡片编辑与删除
+- [ ] 统计页
+- [ ] 设置页：其余设置项（语言切换等）

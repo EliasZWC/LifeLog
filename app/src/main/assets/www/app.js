@@ -1,13 +1,13 @@
 /**
  * LifeLog - 应用外壳逻辑
- * 负责底部导航切换、顶部标题同步，以及各模块的启动。
+ * 负责底部导航切换、顶部标题同步、页面进入动画，以及各模块的启动。
  */
 (function () {
     'use strict';
 
     var STORAGE_KEY = 'lifelog.activeTab';
-    var DEFAULT_TAB = 'period';
-    var TAB_ORDER = ['period', 'moment', 'stats', 'settings'];
+    var DEFAULT_TAB = 'time';
+    var TAB_ORDER = ['time', 'behavior', 'settings'];
 
     var tabs = Array.prototype.slice.call(document.querySelectorAll('.nav-item'));
     var titleEl = document.getElementById('page-title');
@@ -16,10 +16,16 @@
         pages[name] = document.getElementById('page-' + name);
     });
 
-    function selectTab(name) {
+    var currentTab = null;
+
+    function selectTab(name, options) {
         if (!pages[name]) {
             name = DEFAULT_TAB;
         }
+
+        var changed = name !== currentTab;
+        // 向右切从右侧进入，向左切从左侧进入
+        var direction = TAB_ORDER.indexOf(name) >= TAB_ORDER.indexOf(currentTab) ? 1 : -1;
 
         tabs.forEach(function (tab) {
             var active = tab.dataset.page === name;
@@ -27,10 +33,15 @@
             tab.setAttribute('aria-selected', active ? 'true' : 'false');
         });
 
-        Object.keys(pages).forEach(function (key) {
+        TAB_ORDER.forEach(function (key) {
             if (pages[key]) {
                 pages[key].hidden = key !== name;
             }
+        });
+
+        // 悬浮按钮跟着当前页显示
+        Array.prototype.forEach.call(document.querySelectorAll('[data-tab]'), function (fab) {
+            fab.hidden = fab.dataset.tab !== name;
         });
 
         if (titleEl) {
@@ -38,6 +49,12 @@
             titleEl.setAttribute('data-i18n', 'nav.' + name);
             titleEl.textContent = window.LifeLogI18n ? window.LifeLogI18n.t('nav.' + name) : name;
         }
+
+        if (changed && (!options || options.animate !== false)) {
+            window.LifeLogUI.animateEnter(pages[name], direction);
+        }
+
+        currentTab = name;
 
         try {
             localStorage.setItem(STORAGE_KEY, name);
@@ -58,6 +75,15 @@
     if (window.LifeLogTheme) {
         window.LifeLogTheme.init();
     }
+    if (window.LifeLogUI) {
+        window.LifeLogUI.init();
+    }
+    if (window.LifeLogBehaviorPage) {
+        window.LifeLogBehaviorPage.init();
+    }
+    if (window.LifeLogTimePage) {
+        window.LifeLogTimePage.init();
+    }
     if (window.LifeLogSettings) {
         window.LifeLogSettings.init();
     }
@@ -68,7 +94,8 @@
     } catch (e) {
         /* 忽略 */
     }
-    selectTab(initial);
+    // 首屏不播切换动画
+    selectTab(initial, { animate: false });
 
     // 禁止双指缩放 / 长按放大镜造成的页面抖动
     document.addEventListener('gesturestart', function (event) {

@@ -2,6 +2,7 @@
  * LifeLog - 极简国际化。
  *
  * 默认语言为英文（DEFAULT_LOCALE），zh 词条已备好，交给后续「设置」页切换。
+ * 支持三种绑定：data-i18n（文本）、data-i18n-aria-label、data-i18n-placeholder。
  */
 (function (global) {
     'use strict';
@@ -13,10 +14,39 @@
         en: {
             'app.name': 'LifeLog',
             'nav.label': 'Main navigation',
-            'nav.period': 'Period',
-            'nav.moment': 'Moment',
-            'nav.stats': 'Stats',
+            'nav.time': 'Time',
+            'nav.behavior': 'Behavior',
             'nav.settings': 'Settings',
+
+            'view.all': 'All',
+            'view.period': 'Period',
+            'view.moment': 'Moment',
+            'view.switch': 'Switch view',
+
+            'time.empty': 'No records yet',
+            'time.add': 'Add record',
+            'time.form.title': 'New record',
+            'time.form.behavior': 'Behavior',
+            'time.form.type': 'Type',
+            'time.form.type.none': 'Select type',
+            'time.form.start': 'Start',
+            'time.form.end': 'End',
+            'time.form.needBehavior': 'Create a behavior first',
+            'time.form.needType': 'Select a type to fill in the time',
+            'time.form.invalidTime': 'Fill in the whole time',
+            'time.form.endBeforeStart': 'End time is earlier than start time',
+
+            'behavior.empty': 'No behaviors yet',
+            'behavior.add': 'Add behavior',
+            'behavior.form.title': 'New behavior',
+            'behavior.form.name': 'Name',
+            'behavior.form.namePlaceholder': 'e.g. Sleep',
+            'behavior.form.icon': 'Icon',
+            'behavior.form.needName': 'Enter a name',
+
+            'action.cancel': 'Cancel',
+            'action.confirm': 'Confirm',
+
             'settings.theme': 'Theme',
             'settings.theme.light': 'Light',
             'settings.theme.dark': 'Dark',
@@ -25,10 +55,39 @@
         zh: {
             'app.name': 'LifeLog',
             'nav.label': '主导航',
-            'nav.period': '时段',
-            'nav.moment': '时点',
-            'nav.stats': '统计',
+            'nav.time': '时间',
+            'nav.behavior': '行为',
             'nav.settings': '设置',
+
+            'view.all': '全部',
+            'view.period': '时段',
+            'view.moment': '时点',
+            'view.switch': '切换视图',
+
+            'time.empty': '还没有记录',
+            'time.add': '新增记录',
+            'time.form.title': '新增记录',
+            'time.form.behavior': '行为',
+            'time.form.type': '类型',
+            'time.form.type.none': '请选择类型',
+            'time.form.start': '开始',
+            'time.form.end': '结束',
+            'time.form.needBehavior': '请先到「行为」页创建行为',
+            'time.form.needType': '请先选择类型',
+            'time.form.invalidTime': '时间未填写完整',
+            'time.form.endBeforeStart': '结束时间早于开始时间',
+
+            'behavior.empty': '还没有行为',
+            'behavior.add': '新增行为',
+            'behavior.form.title': '新增行为',
+            'behavior.form.name': '名称',
+            'behavior.form.namePlaceholder': '例如：睡眠',
+            'behavior.form.icon': '图标',
+            'behavior.form.needName': '请输入名称',
+
+            'action.cancel': '取消',
+            'action.confirm': '确定',
+
             'settings.theme': '主题',
             'settings.theme.light': '日间模式',
             'settings.theme.dark': '夜间模式',
@@ -37,6 +96,7 @@
     };
 
     var current = DEFAULT_LOCALE;
+    var listeners = [];
 
     function normalize(locale) {
         if (!locale) {
@@ -73,6 +133,10 @@
             element.setAttribute('aria-label', t(element.dataset.i18nAriaLabel));
         });
 
+        Array.prototype.forEach.call(scope.querySelectorAll('[data-i18n-placeholder]'), function (element) {
+            element.setAttribute('placeholder', t(element.dataset.i18nPlaceholder));
+        });
+
         document.documentElement.lang = current === 'zh' ? 'zh-CN' : 'en';
         document.title = t('app.name');
     }
@@ -85,6 +149,9 @@
             /* 隐私模式下忽略 */
         }
         apply(document);
+        listeners.forEach(function (listener) {
+            listener(current);
+        });
         return current;
     }
 
@@ -108,6 +175,9 @@
             return current;
         },
         t: t,
-        apply: apply
+        apply: apply,
+        onChange: function (listener) {
+            listeners.push(listener);
+        }
     };
 })(window);

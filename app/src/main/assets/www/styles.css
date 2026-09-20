@@ -16,6 +16,10 @@
     --outline: #E4E4E0;
     --nav-active: #1B1B1B;
     --nav-inactive: #8C8C8A;
+
+    /* 悬浮按钮：反色，跟随当前主题最强的前景色 / 背景色 */
+    --fab-bg: var(--nav-active);
+    --fab-fg: var(--bg);
 }
 
 /* 夜间主题：跟随系统（用户显式选了日间时不生效） */
@@ -149,7 +153,8 @@ body {
     color: var(--on-surface);
 }
 
-.settings-control {
+/* 下拉选择：去掉系统默认外观，只留下文字 + 右侧箭头 */
+.select-wrap {
     position: relative;
     display: flex;
     align-items: center;
@@ -157,8 +162,7 @@ body {
     max-width: 62%;
 }
 
-/* 去掉系统默认外观，只留下文字 + 右侧箭头 */
-.settings-select {
+.form-select {
     appearance: none;
     -webkit-appearance: none;
     margin: 0;
@@ -176,11 +180,15 @@ body {
     outline: none;
 }
 
-.settings-select:active {
+.form-select:active {
     color: var(--on-surface);
 }
 
-.settings-chevron {
+.form-select:disabled {
+    opacity: 0.5;
+}
+
+.select-chevron {
     position: absolute;
     right: 0;
     width: 18px;
@@ -203,6 +211,540 @@ body {
 
 .page[hidden] {
     display: none;
+}
+
+/* --------------------------------------------------------------------------
+   视图栏（时间页标题下方）：左边当前视图名，右边切换按钮
+   -------------------------------------------------------------------------- */
+
+.view-bar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    height: 48px;
+    padding: 0 8px 0 20px;
+    background: var(--bg);
+}
+
+.view-current {
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    color: var(--on-surface-variant);
+}
+
+.icon-button {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--on-surface-variant);
+    cursor: pointer;
+    outline: none;
+    transition: background-color 160ms ease, color 160ms ease;
+}
+
+.icon-button:active {
+    background: var(--surface-raised);
+    color: var(--on-surface);
+}
+
+.icon-button svg {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+}
+
+/* --------------------------------------------------------------------------
+   列表与卡片
+   -------------------------------------------------------------------------- */
+
+.card-list {
+    list-style: none;
+    margin: 0;
+    /* 底部留出悬浮按钮的位置 */
+    padding: 4px 0 96px;
+}
+
+.card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 60px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--outline);
+}
+
+.card:last-child {
+    border-bottom: 0;
+}
+
+.card-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    color: var(--on-surface);
+}
+
+.card-icon svg {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+}
+
+.card-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 15px;
+    color: var(--on-surface);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 时间右对齐；年月日在上、时分在下 */
+.card-time {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.card-time-date {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--on-surface-variant);
+}
+
+.card-time-clock {
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 20px;
+    color: var(--on-surface);
+}
+
+.empty-state {
+    padding: 48px 20px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--on-surface-variant);
+}
+
+/* --------------------------------------------------------------------------
+   悬浮按钮
+   -------------------------------------------------------------------------- */
+
+.fab {
+    position: absolute;
+    right: 18px;
+    bottom: 18px;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--fab-bg);
+    color: var(--fab-fg);
+    cursor: pointer;
+    outline: none;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+    transition: transform 140ms ease, box-shadow 160ms ease;
+}
+
+.fab[hidden] {
+    display: none;
+}
+
+.fab:active {
+    transform: scale(0.92);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+}
+
+.fab svg {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+}
+
+/* --------------------------------------------------------------------------
+   弹窗（底部表单）
+   -------------------------------------------------------------------------- */
+
+.scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transition: opacity 220ms ease;
+}
+
+.scrim[hidden] {
+    display: none;
+}
+
+.scrim.is-open {
+    opacity: 1;
+}
+
+.sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 11;
+    max-height: 88%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 8px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.28);
+    transform: translateY(100%);
+    transition: transform 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.sheet[hidden] {
+    display: none;
+}
+
+.sheet.is-open {
+    transform: translateY(0);
+}
+
+.sheet-title {
+    margin: 12px 0 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--on-surface);
+}
+
+/* --------------------------------------------------------------------------
+   表单
+   -------------------------------------------------------------------------- */
+
+.form-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 56px;
+    border-bottom: 1px solid var(--outline);
+}
+
+.form-block {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--outline);
+}
+
+.form-block > .form-label {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: var(--on-surface-variant);
+}
+
+.form-label {
+    flex: 0 0 auto;
+    font-size: 15px;
+    color: var(--on-surface);
+}
+
+.form-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 8px 0;
+    border: 0;
+    background: transparent;
+    color: var(--on-surface);
+    font: inherit;
+    font-size: 15px;
+    text-align: right;
+    outline: none;
+}
+
+.form-input::placeholder {
+    color: var(--on-surface-variant);
+}
+
+.form-hint {
+    margin: 10px 0 0;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--on-surface-variant);
+}
+
+.form-hint[hidden] {
+    display: none;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 18px;
+}
+
+.btn {
+    min-width: 88px;
+    padding: 10px 18px;
+    border: 0;
+    border-radius: 20px;
+    background: transparent;
+    color: var(--on-surface-variant);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 160ms ease, opacity 160ms ease;
+}
+
+.btn:active {
+    background: var(--surface-raised);
+}
+
+.btn-primary {
+    background: var(--fab-bg);
+    color: var(--fab-fg);
+}
+
+.btn-primary:active {
+    background: var(--fab-bg);
+    opacity: 0.85;
+}
+
+.btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.btn:disabled:active {
+    background: transparent;
+}
+
+.btn-primary:disabled:active {
+    background: var(--fab-bg);
+}
+
+/* --------------------------------------------------------------------------
+   图标选择器
+   -------------------------------------------------------------------------- */
+
+.icon-picker {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scrollbar-width: none;
+}
+
+.icon-picker::-webkit-scrollbar {
+    display: none;
+}
+
+.icon-option {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--on-surface-variant);
+    cursor: pointer;
+    outline: none;
+    transition: background-color 160ms ease, color 160ms ease;
+}
+
+.icon-option svg {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+}
+
+/* 选中态用反色块，不加描边 */
+.icon-option.is-selected {
+    background: var(--fab-bg);
+    color: var(--fab-fg);
+}
+
+/* --------------------------------------------------------------------------
+   分段时间输入：YYYY-MM-DD-HH:mm
+   -------------------------------------------------------------------------- */
+
+.time-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.datetime-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.datetime-label {
+    flex: 0 0 42px;
+    font-size: 13px;
+    color: var(--on-surface-variant);
+}
+
+.datetime-row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-variant-numeric: tabular-nums;
+}
+
+.datetime-sep {
+    padding: 0 1px;
+    font-size: 14px;
+    color: var(--on-surface-variant);
+}
+
+.seg {
+    width: 34px;
+    padding: 8px 0;
+    border: 0;
+    border-bottom: 1px solid var(--outline);
+    border-radius: 0;
+    background: transparent;
+    color: var(--on-surface);
+    font: inherit;
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    outline: none;
+    transition: border-color 160ms ease;
+}
+
+.seg[data-length="4"] {
+    width: 56px;
+}
+
+.seg:focus {
+    border-bottom-color: var(--on-surface);
+}
+
+.seg::placeholder {
+    font-size: 13px;
+    color: var(--on-surface-variant);
+}
+
+/* --------------------------------------------------------------------------
+   下拉菜单
+   -------------------------------------------------------------------------- */
+
+.menu {
+    position: fixed;
+    z-index: 20;
+    min-width: 160px;
+    padding: 6px;
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+    transform-origin: top right;
+    transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.menu.is-open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.menu-item {
+    display: block;
+    width: 100%;
+    padding: 10px 14px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--on-surface);
+    font: inherit;
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+    outline: none;
+}
+
+.menu-item:active {
+    background: var(--surface-raised);
+}
+
+.menu-item.is-selected {
+    font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   切换动画：页面 / 列表从切换方向滑入
+   -------------------------------------------------------------------------- */
+
+@keyframes enter-forward {
+    from {
+        opacity: 0;
+        transform: translate3d(16px, 0, 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@keyframes enter-backward {
+    from {
+        opacity: 0;
+        transform: translate3d(-16px, 0, 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+.enter-forward {
+    animation: enter-forward 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.enter-backward {
+    animation: enter-backward 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .enter-forward,
+    .enter-backward {
+        animation: none;
+    }
+
+    .sheet,
+    .menu,
+    .scrim {
+        transition: none;
+    }
 }
 
 /* --------------------------------------------------------------------------

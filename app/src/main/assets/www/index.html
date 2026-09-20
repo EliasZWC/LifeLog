@@ -26,18 +26,31 @@
 <body>
     <div id="app">
         <header class="page-header">
-            <h1 class="page-title" id="page-title" data-i18n="nav.period">Period</h1>
+            <h1 class="page-title" id="page-title" data-i18n="nav.time">Time</h1>
         </header>
 
         <main id="content">
-            <!-- 时段页：记录有持续过程的行动（如睡眠）。暂时留空 -->
-            <section class="page" id="page-period" role="tabpanel" aria-labelledby="tab-period"></section>
+            <!-- 时间页：记录行动发生的时间。分「全部 / 时段 / 时点」三个视图 -->
+            <section class="page" id="page-time" role="tabpanel" aria-labelledby="tab-time">
+                <div class="view-bar">
+                    <span class="view-current" id="view-current">All</span>
+                    <button class="icon-button" type="button" id="view-button" aria-haspopup="menu"
+                        aria-expanded="false" aria-label="Switch view" data-i18n-aria-label="view.switch">
+                        <!-- Google Material Icons: view_list -->
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path
+                                d="M3,14h4v-4H3V14z M3,19h4v-4H3V19z M3,9h4V5H3V9z M8,14h13v-4H8V14z M8,19h13v-4H8V19z M8,5v4h13V5H8z" />
+                        </svg>
+                    </button>
+                </div>
 
-            <!-- 时点页：记录一过性的行动（如吃药）。暂时留空 -->
-            <section class="page" id="page-moment" role="tabpanel" aria-labelledby="tab-moment" hidden></section>
+                <ul class="card-list" id="time-list"></ul>
+            </section>
 
-            <!-- 统计页：展示记录数据的统计。暂时留空 -->
-            <section class="page" id="page-stats" role="tabpanel" aria-labelledby="tab-stats" hidden></section>
+            <!-- 行为页：建立可被记录的行为 -->
+            <section class="page" id="page-behavior" role="tabpanel" aria-labelledby="tab-behavior" hidden>
+                <ul class="card-list" id="behavior-list"></ul>
+            </section>
 
             <!-- 设置页：修改应用设置 -->
             <section class="page" id="page-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
@@ -46,39 +59,44 @@
                         <label class="settings-label" for="setting-theme"
                             data-i18n="settings.theme">Theme</label>
 
-                        <div class="settings-control">
-                            <select class="settings-select" id="setting-theme" data-setting="theme">
+                        <div class="select-wrap">
+                            <select class="form-select" id="setting-theme" data-setting="theme">
                                 <option value="light" data-i18n="settings.theme.light">Light</option>
                                 <option value="dark" data-i18n="settings.theme.dark">Dark</option>
                                 <option value="system" data-i18n="settings.theme.system">Follow system</option>
                             </select>
                             <!-- Google Material Icons: expand_more -->
-                            <svg class="settings-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <svg class="select-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                                 <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z" />
                             </svg>
                         </div>
                     </li>
                 </ul>
             </section>
+
+            <!-- 悬浮按钮放在 #content 下（不在可滚动页面里），这样页面的进入动画不会影响它们的定位 -->
+            <button class="fab" type="button" id="time-fab" data-tab="time" aria-label="Add record"
+                data-i18n-aria-label="time.add">
+                <!-- Google Material Icons: add -->
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                </svg>
+            </button>
+
+            <button class="fab" type="button" id="behavior-fab" data-tab="behavior" aria-label="Add behavior"
+                data-i18n-aria-label="behavior.add" hidden>
+                <!-- Google Material Icons: add -->
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                </svg>
+            </button>
         </main>
 
         <nav class="bottom-nav" role="tablist" aria-label="Main navigation"
             data-i18n-aria-label="nav.label">
 
-            <button class="nav-item" type="button" role="tab" id="tab-period" aria-controls="page-period"
-                aria-selected="true" data-page="period">
-                <span class="nav-icon" aria-hidden="true">
-                    <!-- Google Material Icons: date_range -->
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <path
-                            d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z" />
-                    </svg>
-                </span>
-                <span class="nav-label" data-i18n="nav.period">Period</span>
-            </button>
-
-            <button class="nav-item" type="button" role="tab" id="tab-moment" aria-controls="page-moment"
-                aria-selected="false" data-page="moment">
+            <button class="nav-item" type="button" role="tab" id="tab-time" aria-controls="page-time"
+                aria-selected="true" data-page="time">
                 <span class="nav-icon" aria-hidden="true">
                     <!-- Google Material Icons: schedule -->
                     <svg viewBox="0 0 24 24" focusable="false">
@@ -87,20 +105,19 @@
                         <path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
                     </svg>
                 </span>
-                <span class="nav-label" data-i18n="nav.moment">Moment</span>
+                <span class="nav-label" data-i18n="nav.time">Time</span>
             </button>
 
-            <button class="nav-item" type="button" role="tab" id="tab-stats" aria-controls="page-stats"
-                aria-selected="false" data-page="stats">
+            <button class="nav-item" type="button" role="tab" id="tab-behavior" aria-controls="page-behavior"
+                aria-selected="false" data-page="behavior">
                 <span class="nav-icon" aria-hidden="true">
-                    <!-- Google Material Icons: bar_chart -->
+                    <!-- Google Material Icons: task_alt -->
                     <svg viewBox="0 0 24 24" focusable="false">
-                        <rect x="4" y="9" width="4" height="11" />
-                        <rect x="16" y="13" width="4" height="7" />
-                        <rect x="10" y="4" width="4" height="16" />
+                        <path
+                            d="M22,5.18L10.59,16.6l-4.24-4.24l1.41-1.41l2.83,2.83l10-10L22,5.18z M19.79,10.22C19.92,10.79,20,11.39,20,12 c0,4.42-3.58,8-8,8s-8-3.58-8-8c0-4.42,3.58-8,8-8c1.58,0,3.04,0.46,4.28,1.25l1.44-1.44C16.1,2.67,14.13,2,12,2C6.48,2,2,6.48,2,12 c0,5.52,4.48,10,10,10s10-4.48,10-10c0-1.19-0.22-2.33-0.6-3.39L19.79,10.22z" />
                     </svg>
                 </span>
-                <span class="nav-label" data-i18n="nav.stats">Stats</span>
+                <span class="nav-label" data-i18n="nav.behavior">Behavior</span>
             </button>
 
             <button class="nav-item" type="button" role="tab" id="tab-settings" aria-controls="page-settings"
@@ -117,8 +134,83 @@
         </nav>
     </div>
 
+    <!-- 弹窗遮罩 -->
+    <div class="scrim" id="scrim" hidden></div>
+
+    <!-- 行为表单：名称 / 图标 / 取消·确定 -->
+    <section class="sheet" id="sheet-behavior" role="dialog" aria-modal="true"
+        aria-labelledby="sheet-behavior-title" hidden>
+        <h2 class="sheet-title" id="sheet-behavior-title" data-i18n="behavior.form.title">New behavior</h2>
+
+        <div class="form-row">
+            <label class="form-label" for="behavior-name" data-i18n="behavior.form.name">Name</label>
+            <input class="form-input" id="behavior-name" type="text" maxlength="24" autocomplete="off"
+                data-i18n-placeholder="behavior.form.namePlaceholder" placeholder="e.g. Sleep" />
+        </div>
+
+        <div class="form-block">
+            <span class="form-label" data-i18n="behavior.form.icon">Icon</span>
+            <!-- 图标由 icons.js 提供，这里由脚本填充 -->
+            <div class="icon-picker" id="behavior-icon-picker"></div>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn" type="button" id="behavior-cancel"
+                data-i18n="action.cancel">Cancel</button>
+            <button class="btn btn-primary" type="button" id="behavior-confirm" disabled
+                data-i18n="action.confirm">Confirm</button>
+        </div>
+    </section>
+
+    <!-- 时间表单：行为 / 类型 / 时间 / 取消·确定 -->
+    <section class="sheet" id="sheet-time" role="dialog" aria-modal="true"
+        aria-labelledby="sheet-time-title" hidden>
+        <h2 class="sheet-title" id="sheet-time-title" data-i18n="time.form.title">New record</h2>
+
+        <div class="form-row">
+            <label class="form-label" for="time-behavior" data-i18n="time.form.behavior">Behavior</label>
+            <div class="select-wrap">
+                <select class="form-select" id="time-behavior"></select>
+                <svg class="select-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z" />
+                </svg>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <label class="form-label" for="time-type" data-i18n="time.form.type">Type</label>
+            <div class="select-wrap">
+                <select class="form-select" id="time-type">
+                    <option value="" data-i18n="time.form.type.none">Select type</option>
+                    <option value="moment" data-i18n="view.moment">Moment</option>
+                    <option value="period" data-i18n="view.period">Period</option>
+                </select>
+                <svg class="select-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z" />
+                </svg>
+            </div>
+        </div>
+
+        <div class="form-block">
+            <!-- 必须先选类型，这里才可填写 -->
+            <div class="time-fields" id="time-fields"></div>
+            <p class="form-hint" id="time-hint" hidden></p>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn" type="button" id="time-cancel" data-i18n="action.cancel">Cancel</button>
+            <button class="btn btn-primary" type="button" id="time-confirm" disabled
+                data-i18n="action.confirm">Confirm</button>
+        </div>
+    </section>
+
     <script src="i18n.js"></script>
+    <script src="icons.js"></script>
+    <script src="store.js"></script>
+    <script src="components.js"></script>
     <script src="theme.js"></script>
+    <script src="page-behavior.js"></script>
+    <script src="page-time.js"></script>
     <script src="settings.js"></script>
     <script src="app.js"></script>
 </body>
