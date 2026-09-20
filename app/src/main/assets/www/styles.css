@@ -138,12 +138,17 @@ body {
 
 /* --------------------------------------------------------------------------
    设置列表
+   整个列表是一张卡片（--surface），与页面背景（--bg）拉开差异，
+   从而一眼看出「这是一栏」；每行统一为 左名称 / 右值。
    -------------------------------------------------------------------------- */
 
 .settings-list {
     list-style: none;
-    margin: 0;
+    margin: 0 16px;
     padding: 0;
+    background: var(--surface);
+    border-radius: 16px;
+    overflow: hidden;
 }
 
 .settings-item {
@@ -160,6 +165,11 @@ body {
     border-bottom: 0;
 }
 
+/* 按下反馈：仅整行可点的设置项（:has 不支持时自动退化为无反馈） */
+.settings-item:has(.settings-action:active) {
+    background: var(--surface-raised);
+}
+
 .settings-label {
     flex: 0 1 auto;
     min-width: 0;
@@ -167,7 +177,7 @@ body {
     color: var(--on-surface);
 }
 
-/* 只读值，如版本号 */
+/* 右侧当前值（主题名、版本号、存储路径等） */
 .settings-value {
     flex: 0 1 auto;
     min-width: 0;
@@ -176,6 +186,7 @@ body {
     font-variant-numeric: tabular-nums;
     overflow: hidden;
     white-space: nowrap;
+    text-align: right;
     text-overflow: ellipsis;
 }
 
@@ -848,7 +859,7 @@ body {
 
 .settings-group-title {
     margin: 0;
-    padding: 14px 20px 6px;
+    padding: 14px 32px 6px;
     font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.8px;
@@ -860,14 +871,6 @@ body {
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
-}
-
-.settings-caption {
-    max-width: 100%;
-    font-size: 12px;
-    line-height: 16px;
-    color: var(--on-surface-variant);
-    word-break: break-all;
 }
 
 /* 整行可点的设置项（如导入 CSV） */
@@ -989,6 +992,95 @@ body {
 /* 详情页的视图栏是固定的一行，不需要吸顶 */
 .detail .view-bar {
     position: static;
+}
+
+/* --------------------------------------------------------------------------
+   统计视图
+   布局：上面一个直方图，下面统计信息文本。
+   直方图纵坐标 = 时长累计（分钟），横坐标 = 天数。
+   -------------------------------------------------------------------------- */
+
+.stats {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 12px 20px 8px;
+}
+
+.stats-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.stats-chart-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--on-surface-variant);
+}
+
+.chart {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.chart-bar {
+    fill: var(--on-surface);
+}
+
+.chart-axis {
+    stroke: var(--on-surface);
+    stroke-opacity: 0.45;
+    stroke-width: 1;
+}
+
+.chart-grid {
+    stroke: var(--on-surface);
+    stroke-opacity: 0.16;
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+}
+
+.chart-tick {
+    fill: var(--on-surface-variant);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+}
+
+.stats-list {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0;
+    margin: 0;
+    padding: 0 16px;
+    background: var(--surface);
+    border-radius: 16px;
+}
+
+.stats-key,
+.stats-value {
+    margin: 0;
+    padding: 13px 0;
+    font-size: 15px;
+    border-bottom: 1px solid var(--outline);
+}
+
+.stats-key {
+    color: var(--on-surface);
+}
+
+.stats-value {
+    color: var(--on-surface-variant);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.stats-key:nth-last-of-type(1),
+.stats-value:nth-last-of-type(1) {
+    border-bottom: 0;
 }
 
 /* --------------------------------------------------------------------------

@@ -223,6 +223,60 @@
         return { refresh: refresh };
     }
 
+    /**
+     * 「整行可点」的设置项选择器：左边名称、右边当前值，点整行弹下拉菜单。
+     * 设置页用它；表单里就地显示下拉控件的地方仍用 createSelect。
+     *
+     * @param {HTMLElement} row 可点击的整行
+     * @param {HTMLElement} valueEl 显示当前值的元素
+     * @param {object} config 同 createSelect
+     */
+    function createRowPicker(row, valueEl, config) {
+        function refresh() {
+            var value = config.getValue();
+            var found = null;
+            (config.getOptions() || []).forEach(function (option) {
+                if (option.value === value && found === null) {
+                    found = option;
+                }
+            });
+
+            valueEl.textContent = found
+                ? found.label
+                : (config.placeholder ? config.placeholder() : '');
+            row.disabled = config.isDisabled ? !!config.isDisabled() : false;
+        }
+
+        row.addEventListener('click', function () {
+            if (row.disabled) {
+                return;
+            }
+
+            var value = config.getValue();
+            var items = (config.getOptions() || []).map(function (option) {
+                return {
+                    value: option.value,
+                    label: option.label,
+                    selected: option.value === value
+                };
+            });
+
+            if (!items.length) {
+                return;
+            }
+
+            row.setAttribute('aria-expanded', 'true');
+            openMenu(row, items, function (next) {
+                row.setAttribute('aria-expanded', 'false');
+                config.onChange(next);
+            });
+        });
+
+        refresh();
+
+        return { refresh: refresh };
+    }
+
     // --- 长按 ---------------------------------------------------------------
 
     var LONG_PRESS_MS = 500;
@@ -557,6 +611,7 @@
         t: t,
         animateEnter: animateEnter,
         createSelect: createSelect,
+        createRowPicker: createRowPicker,
         attachLongPress: attachLongPress,
         justLongPressed: justLongPressed,
         toast: toast,

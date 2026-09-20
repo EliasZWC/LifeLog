@@ -59,8 +59,11 @@
                         data-i18n="settings.group.personalization">Personalization</h2>
                     <ul class="settings-list">
                         <li class="settings-item">
-                            <span class="settings-label" data-i18n="settings.theme">Theme</span>
-                            <div class="select-wrap" id="setting-theme"></div>
+                            <button class="settings-action" type="button" id="setting-theme"
+                                aria-haspopup="menu" aria-expanded="false">
+                                <span class="settings-label" data-i18n="settings.theme">Theme</span>
+                                <span class="settings-value" id="setting-theme-value">—</span>
+                            </button>
                         </li>
                     </ul>
                 </section>
@@ -79,9 +82,9 @@
                                 </span>
                             </button>
                         </li>
-                        <li class="settings-item settings-item-column">
+                        <li class="settings-item">
                             <span class="settings-label" data-i18n="settings.import.hint">Database file</span>
-                            <span class="settings-caption" id="setting-storage-path">—</span>
+                            <span class="settings-value" id="setting-storage-path">—</span>
                         </li>
                     </ul>
                     <!-- 由原生 WebChromeClient 接管，弹出系统文件选择器 -->
@@ -124,11 +127,10 @@
             <button class="nav-item" type="button" role="tab" id="tab-time" aria-controls="page-time"
                 aria-selected="true" data-page="time">
                 <span class="nav-icon" aria-hidden="true">
-                    <!-- Google Material Icons: schedule -->
+                    <!-- Google Material Icons: hourglass_full -->
                     <svg viewBox="0 0 24 24" focusable="false">
                         <path
-                            d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" />
-                        <path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                            d="M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6z" />
                     </svg>
                 </span>
                 <span class="nav-label" data-i18n="nav.time">Time</span>
@@ -137,10 +139,11 @@
             <button class="nav-item" type="button" role="tab" id="tab-behavior" aria-controls="page-behavior"
                 aria-selected="false" data-page="behavior">
                 <span class="nav-icon" aria-hidden="true">
-                    <!-- Google Material Icons: touch_app -->
+                    <!-- Google Material Icons: category -->
                     <svg viewBox="0 0 24 24" focusable="false">
-                        <path
-                            d="M9,11.24V7.5C9,6.12,10.12,5,11.5,5S14,6.12,14,7.5v3.74c1.21-0.81,2-2.18,2-3.74C16,5.01,13.99,3,11.5,3S7,5.01,7,7.5 C7,9.06,7.79,10.43,9,11.24z M18.84,15.87l-4.54-2.26c-0.17-0.07-0.35-0.11-0.54-0.11H13v-6C13,6.67,12.33,6,11.5,6 S10,6.67,10,7.5v10.74c-3.6-0.76-3.54-0.75-3.67-0.75c-0.31,0-0.59,0.13-0.79,0.33l-0.79,0.8l4.94,4.94 C9.96,23.83,10.34,24,10.75,24h6.79c0.75,0,1.33-0.55,1.44-1.28l0.75-5.27c0.01-0.07,0.02-0.14,0.02-0.2 C19.75,16.63,19.37,16.09,18.84,15.87z" />
+                        <path d="M12 2l-5.5 9h11z" />
+                        <circle cx="17.5" cy="17.5" r="4.5" />
+                        <path d="M3 13.5h8v8H3z" />
                     </svg>
                 </span>
                 <span class="nav-label" data-i18n="nav.behavior">Behavior</span>

@@ -143,7 +143,7 @@
         listEl.innerHTML = '';
 
         if (currentView === 'stats') {
-            listEl.appendChild(global.LifeLogUI.emptyState(t('behavior.detail.statsEmpty')));
+            renderStats(behavior);
             return;
         }
 
@@ -172,6 +172,196 @@
 
             listEl.appendChild(card);
         });
+    }
+
+    // --- 统计视图 -----------------------------------------------------------
+    //
+    // 布局：上面一个直方图（纵坐标 = 时长累计，横坐标 = 天数），下面统计信息文本。
+    // 直方图用内联 SVG 手绘，不引第三方图表库；颜色全部走 CSS 变量，跟随主题。
+    // 只有「时刻」记录的行为没有时长可言，此时退化为按天记次数。
+
+    var DAY_MS = 24 * 60 * 60 * 1000;
+
+    var CHART_W = 320;
+    var CHART_H = 170;
+    var CHART_PAD_LEFT = 40;
+    var CHART_PAD_RIGHT = 8;
+    var CHART_PAD_TOP = 14;
+    var CHART_PAD_BOTTOM = 26;
+
+    /** 取某个时间戳所在自然日的零点 */
+    function startOfDay(ms) {
+        var date = new Date(ms);
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    }
+
+    /** 时长格式化：不足 1 小时只显示分钟，正好整点不显示 0 分钟 */
+    function formatDuration(ms) {
+        var minutes = Math.max(0, Math.round((ms || 0) / 60000));
+        var hours = Math.floor(minutes / 60);
+        var rest = minutes % 60;
+
+        if (hours <= 0) {
+            return rest + t('unit.minute');
+        }
+        if (rest === 0) {
+            return hours + t('unit.hour');
+        }
+        return hours + t('unit.hour') + ' ' + rest + t('unit.minute');
+    }
+
+    /** 横轴刻度：月-日（不补零，窄屏更省空间） */
+    function dateLabel(ms) {
+        var date = new Date(ms);
+        return (date.getMonth() + 1) + '-' + date.getDate();
+    }
+
+    function tickLabel(value) {
+        return String(Math.round(value * 10) / 10);
+    }
+
+    function renderStats(behavior) {
+        var records = global.LifeLogStore.getRecords().filter(function (record) {
+            return record.behaviorId === behavior.id;
+        });
+
+        if (!records.length) {
+            listEl.appendChild(global.LifeLogUI.emptyState(t('behavior.detail.statsEmpty')));
+            return;
+        }
+
+        var totalMs = 0;
+        var earliest = Infinity;
+        records.forEach(function (record) {
+            if (record.type === 'period' && record.end !== null) {
+                totalMs += Math.max(0, record.end - record.start);
+            }
+            if (record.start < earliest) {
+                earliest = record.start;
+            }
+        });
+
+        // 有「时段」记录才画时长；否则退化为按天记次数
+        var useDuration = totalMs > 0;
+
+        var today = startOfDay(Date.now());
+        var spanDays = Math.max(1, Math.round((today - startOfDay(earliest)) / DAY_MS) + 1);
+        // 窗口自适应：至少一周，最多一个月，免得只有两天数据时出现两根孤零零的柱子
+        var windowDays = Math.min(30, Math.max(7, spanDays));
+        var windowStart = today - (windowDays - 1) * DAY_MS;
+
+        var points = [];
+        for (var i = 0; i < windowDays; i += 1) {
+            points.push({ day: windowStart + i * DAY_MS, value: 0 });
+        }
+
+        records.forEach(function (record) {
+            var index = Math.round((startOfDay(record.start) - windowStart) / DAY_MS);
+            if (index < 0 || index >= windowDays) {
+                return;
+            }
+            if (!useDuration) {
+                points[index].value += 1;
+                return;
+            }
+            if (record.type === 'period' && record.end !== null) {
+                points[index].value += Math.max(0, record.end - record.start) / 60000;
+            }
+        });
+
+        var wrap = global.LifeLogUI.el('li', 'stats');
+
+        var chartBlock = global.LifeLogUI.el('div', 'stats-chart');
+        chartBlock.appendChild(global.LifeLogUI.el(
+            'span',
+            'stats-chart-title',
+            t(useDuration ? 'behavior.detail.chartDuration' : 'behavior.detail.chartCount')
+        ));
+        chartBlock.appendChild(buildChart(points));
+        wrap.appendChild(chartBlock);
+
+        var list = global.LifeLogUI.el('dl', 'stats-list');
+        [
+            [t('behavior.detail.total'), formatDuration(totalMs)],
+            [t('behavior.detail.count'), String(records.length)],
+            [t('behavior.detail.perTime'), formatDuration(totalMs / records.length)],
+            [t('behavior.detail.perDay'), formatDuration(totalMs / spanDays)]
+        ].forEach(function (row) {
+            list.appendChild(global.LifeLogUI.el('dt', 'stats-key', row[0]));
+            list.appendChild(global.LifeLogUI.el('dd', 'stats-value', row[1]));
+        });
+        wrap.appendChild(list);
+
+        listEl.appendChild(wrap);
+    }
+
+    function buildChart(points) {
+        var plotW = CHART_W - CHART_PAD_LEFT - CHART_PAD_RIGHT;
+        var plotH = CHART_H - CHART_PAD_TOP - CHART_PAD_BOTTOM;
+        var baseY = CHART_PAD_TOP + plotH;
+
+        var max = 0;
+        points.forEach(function (point) {
+            if (point.value > max) {
+                max = point.value;
+            }
+        });
+        if (max <= 0) {
+            max = 1;
+        }
+
+        var slot = plotW / points.length;
+        var barW = Math.max(3, Math.min(slot - 3, 22));
+
+        var parts = [
+            '<line class="chart-grid" x1="' + CHART_PAD_LEFT + '" y1="' + CHART_PAD_TOP +
+                '" x2="' + (CHART_W - CHART_PAD_RIGHT) + '" y2="' + CHART_PAD_TOP + '" />',
+            '<line class="chart-axis" x1="' + CHART_PAD_LEFT + '" y1="' + baseY +
+                '" x2="' + (CHART_W - CHART_PAD_RIGHT) + '" y2="' + baseY + '" />',
+            '<text class="chart-tick" x="' + (CHART_PAD_LEFT - 6) + '" y="' +
+                (CHART_PAD_TOP + 4) + '" text-anchor="end">' + tickLabel(max) + '</text>',
+            '<text class="chart-tick" x="' + (CHART_PAD_LEFT - 6) + '" y="' +
+                (baseY + 4) + '" text-anchor="end">0</text>'
+        ];
+
+        points.forEach(function (point, index) {
+            if (point.value <= 0) {
+                return;
+            }
+            var height = Math.max(2, (point.value / max) * plotH);
+            var x = CHART_PAD_LEFT + index * slot + (slot - barW) / 2;
+            parts.push(
+                '<rect class="chart-bar" x="' + x.toFixed(1) + '" y="' +
+                (baseY - height).toFixed(1) + '" width="' + barW.toFixed(1) +
+                '" height="' + height.toFixed(1) + '" rx="2" />'
+            );
+        });
+
+        // 横轴只标「首 / 中 / 尾」三处日期，避免挤成一团
+        [0, Math.floor((points.length - 1) / 2), points.length - 1]
+            .filter(function (value, index, array) {
+                return array.indexOf(value) === index;
+            })
+            .forEach(function (index) {
+                var cx = CHART_PAD_LEFT + index * slot + slot / 2;
+                var anchor = index === 0
+                    ? 'start'
+                    : (index === points.length - 1 ? 'end' : 'middle');
+                parts.push(
+                    '<text class="chart-tick" x="' + cx.toFixed(1) + '" y="' +
+                    (baseY + 17) + '" text-anchor="' + anchor + '">' +
+                    dateLabel(points[index].day) + '</text>'
+                );
+            });
+
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'chart');
+        svg.setAttribute('viewBox', '0 0 ' + CHART_W + ' ' + CHART_H);
+        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        svg.setAttribute('role', 'img');
+        svg.innerHTML = parts.join('');
+
+        return svg;
     }
 
     // --- 视图栏 -------------------------------------------------------------

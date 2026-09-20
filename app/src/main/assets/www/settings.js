@@ -2,7 +2,7 @@
  * LifeLog - 设置页。
  *
  * 按分区列出设置项（个性化 / 数据管理 / 关于）：
- * - 下拉框用 LifeLogUI.createSelect 自绘，以统一 app 风格（原生 select 会弹系统样式）
+ * - 每项都是统一的「左名称 / 右当前值」行，点整行才弹出选项（LifeLogUI.createRowPicker）
  * - 导入 CSV 用一个隐藏的 <input type="file">，原生 WebChromeClient 会接管选文件
  */
 (function (global) {
@@ -11,6 +11,7 @@
     var HANDLERS = {
         theme: {
             mount: 'setting-theme',
+            value: 'setting-theme-value',
             getOptions: function () {
                 return [
                     { value: 'light', label: t('settings.theme.light') },
@@ -27,7 +28,7 @@
         }
     };
 
-    var selects = {};
+    var rowPickers = {};
 
     function t(key) {
         return global.LifeLogI18n ? global.LifeLogI18n.t(key) : key;
@@ -37,11 +38,12 @@
         Object.keys(HANDLERS).forEach(function (name) {
             var handler = HANDLERS[name];
             var mount = document.getElementById(handler.mount);
-            if (!mount) {
+            var valueEl = document.getElementById(handler.value);
+            if (!mount || !valueEl) {
                 return;
             }
 
-            selects[name] = global.LifeLogUI.createSelect(mount, {
+            rowPickers[name] = global.LifeLogUI.createRowPicker(mount, valueEl, {
                 getOptions: handler.getOptions,
                 getValue: handler.getValue,
                 onChange: function (value) {
@@ -105,8 +107,8 @@
     }
 
     function refresh() {
-        Object.keys(selects).forEach(function (name) {
-            selects[name].refresh();
+        Object.keys(rowPickers).forEach(function (name) {
+            rowPickers[name].refresh();
         });
     }
 
@@ -129,6 +131,8 @@
         }
         var path = global.LifeLogShell ? global.LifeLogShell.getStoragePath() : '';
         node.textContent = path || t('settings.import.empty');
+        // 路径过长时值会被省略号截断，用 title 保留完整信息
+        node.title = path || '';
     }
 
     global.LifeLogSettings = {
