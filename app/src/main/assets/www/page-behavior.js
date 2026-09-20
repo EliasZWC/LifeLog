@@ -13,8 +13,6 @@
     var cancelBtn = null;
     var confirmBtn = null;
 
-    var selectedIcon = null;
-
     function t(key) {
         return global.LifeLogI18n ? global.LifeLogI18n.t(key) : key;
     }
@@ -24,11 +22,12 @@
         fab = document.getElementById('behavior-fab');
         sheet = document.getElementById('sheet-behavior');
         nameInput = document.getElementById('behavior-name');
-        iconPicker = document.getElementById('behavior-icon-picker');
         cancelBtn = document.getElementById('behavior-cancel');
         confirmBtn = document.getElementById('behavior-confirm');
 
-        buildIconPicker();
+        iconPicker = global.LifeLogUI.createIconPicker(
+            document.getElementById('behavior-icon-picker')
+        );
 
         fab.addEventListener('click', openForm);
         cancelBtn.addEventListener('click', function () {
@@ -49,36 +48,13 @@
         render();
     }
 
-    function buildIconPicker() {
-        global.LifeLogIcons.names().forEach(function (name) {
-            var button = global.LifeLogUI.el('button', 'icon-option');
-            button.type = 'button';
-            button.dataset.icon = name;
-            button.setAttribute('aria-label', name);
-            button.appendChild(global.LifeLogUI.icon(name));
-            button.addEventListener('click', function () {
-                selectIcon(name);
-            });
-            iconPicker.appendChild(button);
-        });
-
-        selectIcon(global.LifeLogIcons.names()[0]);
-    }
-
-    function selectIcon(name) {
-        selectedIcon = name;
-        Array.prototype.forEach.call(iconPicker.children, function (button) {
-            button.classList.toggle('is-selected', button.dataset.icon === name);
-        });
-    }
-
     /** 正在编辑的行为 id；为空表示新增 */
     var editingId = null;
 
     function openForm() {
         editingId = null;
         nameInput.value = '';
-        selectIcon(global.LifeLogIcons.names()[0]);
+        iconPicker.select(global.LifeLogIcons.names()[0]);
         applyTitle();
         validate();
         global.LifeLogUI.openSheet(sheet);
@@ -93,7 +69,7 @@
 
         editingId = id;
         nameInput.value = behavior.name;
-        selectIcon(behavior.icon);
+        iconPicker.select(behavior.icon);
         applyTitle();
         validate();
         global.LifeLogUI.openSheet(sheet);
@@ -121,10 +97,10 @@
         }
 
         if (editingId) {
-            global.LifeLogStore.updateBehavior(editingId, nameInput.value, selectedIcon);
+            global.LifeLogStore.updateBehavior(editingId, nameInput.value, iconPicker.getSelected());
             global.LifeLogBehaviorDetail.refresh();
         } else {
-            global.LifeLogStore.addBehavior(nameInput.value, selectedIcon);
+            global.LifeLogStore.addBehavior(nameInput.value, iconPicker.getSelected());
         }
 
         global.LifeLogUI.closeSheet();

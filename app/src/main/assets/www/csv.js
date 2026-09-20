@@ -207,6 +207,10 @@
         header: HEADER,
         stringify: stringify,
         parse: parse,
-        formatTimestamp: formatTimestamp
+        formatTimestamp: formatTimestamp,
+        // 跟踪数据用另一个表头，但行列解析/拼接规则一致，所以这些要开放出去
+        parseTimestamp: parseTimestamp,
+        parseRows: parseRows,
+        escapeField: escapeField
     };
 })(window);

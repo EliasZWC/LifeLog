@@ -70,6 +70,13 @@ class MainActivity : AppCompatActivity() {
     /** 设置页「导出数据」：等系统「另存为」返回时要把这份 CSV 写进用户选的位置 */
     private var pendingExportCsv: String? = null
 
+    /**
+     * 网页最近一次交过来的 CSV。
+     * 换存储文件夹时如果新文件夹里还没有数据库，就把这份搬过去。
+     */
+    private var latestRecordsCsv = ""
+    private var latestMetricsCsv = ""
+
     /** 本次进入前台是否已经查过更新（GitHub API 有频次限制，不重复查） */
     private var updateChecked = false
     /** 更新弹窗还开着就不重置上面的标志，否则从安装器回来会又弹一次 */
@@ -108,6 +115,28 @@ class MainActivity : AppCompatActivity() {
                 return@registerForActivityResult
             }
             writeExport(uri, csv)
+        }
+
+    /** 用系统文件夹选择器换掉数据存储位置（SAF，可持久授权） */
+    private val pickStorageTree =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val data = result.data
+            val uri = if (result.resultCode == RESULT_OK) data?.data else null
+            if (uri == null) {
+                // 用户取消，什么都不动
+                return@registerForActivityResult
+            }
+
+            // 不申请持久权限的话重启后就读不到了
+            try {
+                val flags = (data?.flags ?: 0) and
+                    (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                contentResolver.takePersistableUriPermission(uri, flags)
+            } catch (t: Throwable) {
+                Log.w(TAG, "持久化文件夹授权失败", t)
+            }
+
+            applyStorageTree(uri)
         }
 
     private val assetLoader: WebViewAssetLoader by lazy {
@@ -198,7 +227,10 @@ class MainActivity : AppCompatActivity() {
             WebAppBridge(
                 onThemeMode = { mode -> runOnUiThread { setThemeMode(mode) } },
                 onSaveCsv = { csv -> handleSaveCsv(csv) },
+                onSaveMetricsCsv = { csv -> handleSaveMetricsCsv(csv) },
                 onExportCsv = { csv -> runOnUiThread { handleExportCsv(csv) } },
+                onPickStorageFolder = { runOnUiThread { openStoragePicker() } },
+                onResetStorageFolder = { runOnUiThread { resetStorageLocation() } },
                 onDownloadUpdate = { runOnUiThread { startUpdateDownload() } },
                 onInstallUpdate = { runOnUiThread { installDownloaded() } },
                 onCloseUpdate = { runOnUiThread { closeUpdateFlow() } },
@@ -325,12 +357,22 @@ class MainActivity : AppCompatActivity() {
     private fun pushCsvToWeb() {
         val context = applicationContext
         Thread {
-            val csv = CsvStore.read(context) ?: ""
+            val records = CsvStore.read(context, CsvStore.FILE_RECORDS)
+            val metrics = CsvStore.read(context, CsvStore.FILE_METRICS)
             val path = CsvStore.describe(context)
+
+            // 记下来，换存储位置时要用
+            latestRecordsCsv = records ?: ""
+            latestMetricsCsv = metrics ?: ""
+
             runOnUiThread {
                 evaluateInWeb(
                     "window.LifeLogShell && window.LifeLogShell.onStorageReady(" +
-                        "${JSONObject.quote(csv)}, ${JSONObject.quote(path)});"
+                        "${JSONObject.quote(records ?: "")}, ${JSONObject.quote(path)});"
+                )
+                evaluateInWeb(
+                    "window.LifeLogShell && window.LifeLogShell.onMetricsReady(" +
+                        "${JSONObject.quote(metrics ?: "")});"
                 )
             }
         }.start()
@@ -338,12 +380,13 @@ class MainActivity : AppCompatActivity() {
 
     /** 网页把最新的 CSV 交过来落盘，成功与否回推给网页 */
     private fun handleSaveCsv(csv: String) {
+        latestRecordsCsv = csv
         val context = applicationContext
         Thread {
             var ok = false
             var detail = "unknown error"
             try {
-                detail = CsvStore.write(context, csv)
+                detail = CsvStore.write(context, csv, CsvStore.FILE_RECORDS)
                 ok = true
             } catch (t: Throwable) {
                 Log.w(TAG, "写 CSV 失败", t)
@@ -353,6 +396,124 @@ class MainActivity : AppCompatActivity() {
                 evaluateInWeb(
                     "window.LifeLogShell && window.LifeLogShell.onCsvSaved(" +
                         "$ok, ${JSONObject.quote(detail)});"
+                )
+            }
+        }.start()
+    }
+
+    /** 跟踪数据的 CSV（同一个目录，另一个文件） */
+    private fun handleSaveMetricsCsv(csv: String) {
+        latestMetricsCsv = csv
+        val context = applicationContext
+        Thread {
+            var ok = false
+            var detail = "unknown error"
+            try {
+                detail = CsvStore.write(context, csv, CsvStore.FILE_METRICS)
+                ok = true
+            } catch (t: Throwable) {
+                Log.w(TAG, "写跟踪 CSV 失败", t)
+                detail = t.message ?: "unknown error"
+            }
+            runOnUiThread {
+                evaluateInWeb(
+                    "window.LifeLogShell && window.LifeLogShell.onMetricsSaved(" +
+                        "$ok, ${JSONObject.quote(detail)});"
+                )
+            }
+        }.start()
+    }
+
+    // -----------------------------------------------------------------------
+    // 数据存储位置
+    // -----------------------------------------------------------------------
+
+    private fun openStoragePicker() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PREFIX_URI_PERMISSION,
+            )
+        }
+
+        try {
+            pickStorageTree.launch(intent)
+        } catch (t: Throwable) {
+            Log.w(TAG, "拉起文件夹选择器失败", t)
+            evaluateInWeb(
+                "window.LifeLogShell && window.LifeLogShell.onStoragePathChanged(" +
+                    "${JSONObject.quote(CsvStore.describe(this))});"
+            )
+        }
+    }
+
+    /**
+     * 切到用户选的文件夹：
+     * - 里面已经有 records.csv → 采用那份（相当于切换数据库）
+     * - 没有 → 把当前内存里的数据搬过去
+     */
+    private fun applyStorageTree(uri: Uri) {
+        val context = applicationContext
+        val recordsCsv = latestRecordsCsv
+        val metricsCsv = latestMetricsCsv
+
+        Thread {
+            var adopted: String? = null
+            var path = ""
+
+            try {
+                adopted = CsvStore.readFromTree(context, uri, CsvStore.FILE_RECORDS)
+                CsvStore.setTree(context, uri)
+
+                if (adopted == null) {
+                    CsvStore.write(context, recordsCsv, CsvStore.FILE_RECORDS)
+                    CsvStore.write(context, metricsCsv, CsvStore.FILE_METRICS)
+                }
+                path = CsvStore.describe(context)
+            } catch (t: Throwable) {
+                Log.w(TAG, "切换存储位置失败", t)
+                path = CsvStore.describe(context)
+            }
+
+            val adoptedCsv = adopted
+            runOnUiThread {
+                if (adoptedCsv == null) {
+                    // 内容没变，只报新路径，不要拿空串去覆盖现有数据
+                    evaluateInWeb(
+                        "window.LifeLogShell && window.LifeLogShell.onStoragePathChanged(" +
+                            "${JSONObject.quote(path)});"
+                    )
+                } else {
+                    pushCsvToWeb()
+                }
+            }
+        }.start()
+    }
+
+    /** 恢复到默认的 Documents/LifeLog */
+    private fun resetStorageLocation() {
+        val context = applicationContext
+        val recordsCsv = latestRecordsCsv
+        val metricsCsv = latestMetricsCsv
+
+        Thread {
+            var path = ""
+            try {
+                CsvStore.clearTree(context)
+                CsvStore.write(context, recordsCsv, CsvStore.FILE_RECORDS)
+                CsvStore.write(context, metricsCsv, CsvStore.FILE_METRICS)
+                path = CsvStore.describe(context)
+            } catch (t: Throwable) {
+                Log.w(TAG, "恢复默认存储位置失败", t)
+            }
+
+            val finalPath = path
+            runOnUiThread {
+                evaluateInWeb(
+                    "window.LifeLogShell && window.LifeLogShell.onStoragePathChanged(" +
+                        "${JSONObject.quote(finalPath)});"
                 )
             }
         }.start()

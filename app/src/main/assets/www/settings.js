@@ -80,8 +80,38 @@
             exportButton.addEventListener('click', handleExport);
         }
 
+        var storageRow = document.getElementById('setting-storage');
+        if (storageRow) {
+            // 点一下换文件夹；长按恢复默认（自定义位置时才有意义）
+            storageRow.addEventListener('click', function () {
+                if (global.LifeLogUI.justLongPressed()) {
+                    return;
+                }
+                pickStorageFolder();
+            });
+            global.LifeLogUI.attachLongPress(storageRow, function () {
+                resetStorageFolder();
+            });
+        }
+
         refreshVersion();
         refreshStoragePath();
+    }
+
+    function pickStorageFolder() {
+        if (!global.LifeLogNative || typeof global.LifeLogNative.pickStorageFolder !== 'function') {
+            global.LifeLogUI.toast(t('settings.storage.unavailable'));
+            return;
+        }
+        global.LifeLogNative.pickStorageFolder();
+    }
+
+    function resetStorageFolder() {
+        if (!global.LifeLogNative || typeof global.LifeLogNative.resetStorageFolder !== 'function') {
+            return;
+        }
+        global.LifeLogNative.resetStorageFolder();
+        global.LifeLogUI.toast(t('settings.storage.reset'));
     }
 
     /** 导出全部数据：交给原生弹系统「另存为」，浏览器预览时退回下载文件 */

@@ -10,8 +10,6 @@
     var VIEWS = ['all', 'period', 'moment'];
     var DEFAULT_VIEW = 'all';
     var VIEW_STORAGE_KEY = 'lifelog.timeView';
-    var CLOCK_DIGITS = 2;
-    var YEAR_DIGITS = 4;
 
     var listEl = null;
     var viewLabel = null;
@@ -38,174 +36,34 @@
     }
 
     // --- 时间格式化 ---------------------------------------------------------
+    // 与跟踪页共用 LifeLogDateTime（见 datetime.js），这里只保留
+    //「一条记录怎么显示成两行」的规则。
 
-    function pad(value, length) {
-        var text = String(value);
-        while (text.length < length) {
-            text = '0' + text;
-        }
-        return text;
-    }
-
-    function formatDate(timestamp) {
-        var date = new Date(timestamp);
-        return date.getFullYear() + '-' + pad(date.getMonth() + 1, 2) + '-' + pad(date.getDate(), 2);
-    }
-
-    function formatMonthDay(timestamp) {
-        var date = new Date(timestamp);
-        return pad(date.getMonth() + 1, 2) + '-' + pad(date.getDate(), 2);
-    }
-
-    function formatClock(timestamp) {
-        var date = new Date(timestamp);
-        return pad(date.getHours(), 2) + ':' + pad(date.getMinutes(), 2);
-    }
-
-    function sameDay(a, b) {
-        return formatDate(a) === formatDate(b);
-    }
-
-    /** 上排：年月日（跨天用波浪号连接） */
+    /** 上排：只显示「开始」那天的日期。跨天的时段也不展开，数据本身不受影响。 */
     function dateLine(record) {
-        if (record.type !== 'period' || record.end === null || sameDay(record.start, record.end)) {
-            return formatDate(record.start);
-        }
-        return formatDate(record.start) + ' ~ ' + formatMonthDay(record.end);
+        return global.LifeLogDateTime.formatDate(record.start);
     }
 
-    /** 下排：时分 */
+    /** 下排：时分（时段显示起止） */
     function clockLine(record) {
         if (record.type !== 'period' || record.end === null) {
-            return formatClock(record.start);
+            return global.LifeLogDateTime.formatClock(record.start);
         }
-        return formatClock(record.start) + ' ~ ' + formatClock(record.end);
+        return global.LifeLogDateTime.formatClock(record.start) + ' ~ ' +
+            global.LifeLogDateTime.formatClock(record.end);
     }
 
-    // --- 分段数字输入 -------------------------------------------------------
-
-    function segmentInput(digits, placeholder, name, inputs) {
-        var input = global.LifeLogUI.el('input', 'seg');
-        input.type = 'text';
-        input.inputMode = 'numeric';
-        input.autocomplete = 'off';
-        input.maxLength = digits;
-        input.placeholder = placeholder;
-        input.dataset.length = String(digits);
-        input.setAttribute('aria-label', placeholder);
-
-        input.addEventListener('input', function () {
-            var digitsOnly = input.value.replace(/\D/g, '').slice(0, digits);
-            if (input.value !== digitsOnly) {
-                input.value = digitsOnly;
-            }
-            if (digitsOnly.length === digits) {
-                focusSibling(input, 1);
-            }
-            validate();
-        });
-
-        input.addEventListener('keydown', function (event) {
-            if (event.key === 'Backspace' && input.value === '') {
-                focusSibling(input, -1);
-            }
-        });
-
-        input.addEventListener('focus', function () {
-            input.select();
-        });
-
-        inputs[name] = input;
-        return input;
-    }
-
-    function focusSibling(input, step) {
-        var all = Array.prototype.slice.call(sheet.querySelectorAll('.seg'));
-        var index = all.indexOf(input);
-        var next = all[index + step];
-        if (next) {
-            next.focus();
-        }
-    }
-
-    function appendSeparator(row, text) {
-        row.appendChild(global.LifeLogUI.el('span', 'datetime-sep', text));
-    }
-
-    /** 生成一组 [YYYY]-[MM]-[DD]-[HH]:[mm] 输入 */
-    function buildGroup(labelText, initial) {
-        var group = global.LifeLogUI.el('div', 'datetime-group');
-        var inputs = {};
-
-        if (labelText) {
-            group.appendChild(global.LifeLogUI.el('span', 'datetime-label', labelText));
-        }
-
-        var row = global.LifeLogUI.el('div', 'datetime-row');
-
-        row.appendChild(segmentInput(YEAR_DIGITS, 'YYYY', 'year', inputs));
-        appendSeparator(row, '-');
-        row.appendChild(segmentInput(CLOCK_DIGITS, 'MM', 'month', inputs));
-        appendSeparator(row, '-');
-        row.appendChild(segmentInput(CLOCK_DIGITS, 'DD', 'day', inputs));
-        appendSeparator(row, '-');
-        row.appendChild(segmentInput(CLOCK_DIGITS, 'HH', 'hour', inputs));
-        appendSeparator(row, ':');
-        row.appendChild(segmentInput(CLOCK_DIGITS, 'mm', 'minute', inputs));
-
-        group.appendChild(row);
-
-        var date = new Date(initial);
-        inputs.year.value = pad(date.getFullYear(), YEAR_DIGITS);
-        inputs.month.value = pad(date.getMonth() + 1, CLOCK_DIGITS);
-        inputs.day.value = pad(date.getDate(), CLOCK_DIGITS);
-        inputs.hour.value = pad(date.getHours(), CLOCK_DIGITS);
-        inputs.minute.value = pad(date.getMinutes(), CLOCK_DIGITS);
-
-        return { root: group, inputs: inputs };
+    /** 分段日期时间输入统一走 LifeLogDateTime，这里只做一层转发方便本文件调用 */
+    function buildGroup(labelText, initial, onChange) {
+        return global.LifeLogDateTime.buildGroup(labelText, initial, onChange);
     }
 
     function readGroup(group) {
-        var values = {};
-        Object.keys(group.inputs).forEach(function (name) {
-            values[name] = group.inputs[name].value;
-        });
-        return values;
+        return global.LifeLogDateTime.readGroup(group);
     }
 
     function toTimestamp(values) {
-        if (!values) {
-            return null;
-        }
-
-        var names = ['year', 'month', 'day', 'hour', 'minute'];
-        for (var i = 0; i < names.length; i += 1) {
-            var expected = names[i] === 'year' ? YEAR_DIGITS : CLOCK_DIGITS;
-            if (!values[names[i]] || values[names[i]].length !== expected) {
-                return null;
-            }
-        }
-
-        var year = Number(values.year);
-        var month = Number(values.month);
-        var day = Number(values.day);
-        var hour = Number(values.hour);
-        var minute = Number(values.minute);
-
-        if (month < 1 || month > 12 || day < 1 || day > 31) {
-            return null;
-        }
-        if (hour > 23 || minute > 59) {
-            return null;
-        }
-
-        var date = new Date(year, month - 1, day, hour, minute, 0, 0);
-        // 2 月 30 日这类不存在的日期会被 Date 自动进位，这里挡掉
-        if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
-            return null;
-        }
-
-        return date.getTime();
+        return global.LifeLogDateTime.toTimestamp(values);
     }
 
     // --- 视图栏 -------------------------------------------------------------
@@ -398,11 +256,11 @@
         }
 
         if (typeValue === 'moment') {
-            groups.moment = buildGroup(null, startAt);
+            groups.moment = buildGroup(null, startAt, validate);
             fieldsEl.appendChild(groups.moment.root);
         } else if (typeValue === 'period') {
-            groups.start = buildGroup(t('time.form.start'), startAt);
-            groups.end = buildGroup(t('time.form.end'), endAt);
+            groups.start = buildGroup(t('time.form.start'), startAt, validate);
+            groups.end = buildGroup(t('time.form.end'), endAt, validate);
             fieldsEl.appendChild(groups.start.root);
             fieldsEl.appendChild(groups.end.root);
         }

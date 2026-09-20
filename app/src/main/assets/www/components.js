@@ -123,6 +123,26 @@
             refreshStorageUi();
         },
 
+        /** 原生读完 metrics.csv 后把内容推过来（与 records.csv 同一个目录） */
+        onMetricsReady: function (csv) {
+            if (global.LifeLogMetrics && global.LifeLogMetrics.applyStoredCsv) {
+                global.LifeLogMetrics.applyStoredCsv(csv);
+            }
+        },
+
+        onMetricsSaved: function (ok, detail) {
+            if (!ok) {
+                toast(t('toast.saveFailed') + ': ' + (detail || 'error'));
+            }
+        },
+
+        /** 只换目录、内容不变（例如切到新文件夹后的回推），不动现有数据 */
+        onStoragePathChanged: function (path) {
+            shell.storagePath = path || '';
+            shell.storageError = '';
+            refreshStorageUi();
+        },
+
         getStoragePath: function () {
             return shell.storagePath;
         },
@@ -321,6 +341,46 @@
         refresh();
 
         return { refresh: refresh };
+    }
+
+    /**
+     * 图标选择器（横向滚动的图标条），行为表单与跟踪表单共用。
+     * @param {HTMLElement} mount 容器，会被清空
+     * @param {string} [initial] 初始选中的图标名
+     * @returns {{ select: (name: string) => void, getSelected: () => string }}
+     */
+    function createIconPicker(mount, initial) {
+        var names = global.LifeLogIcons.names();
+        var selected = null;
+
+        mount.innerHTML = '';
+        names.forEach(function (name) {
+            var button = el('button', 'icon-option');
+            button.type = 'button';
+            button.dataset.icon = name;
+            button.setAttribute('aria-label', name);
+            button.appendChild(icon(name));
+            button.addEventListener('click', function () {
+                select(name);
+            });
+            mount.appendChild(button);
+        });
+
+        function select(name) {
+            selected = name;
+            Array.prototype.forEach.call(mount.children, function (button) {
+                button.classList.toggle('is-selected', button.dataset.icon === name);
+            });
+        }
+
+        select(names.indexOf(initial) >= 0 ? initial : names[0]);
+
+        return {
+            select: select,
+            getSelected: function () {
+                return selected;
+            }
+        };
     }
 
     // --- 长按 ---------------------------------------------------------------
@@ -658,6 +718,7 @@
         animateEnter: animateEnter,
         createSelect: createSelect,
         createRowPicker: createRowPicker,
+        createIconPicker: createIconPicker,
         attachLongPress: attachLongPress,
         justLongPressed: justLongPressed,
         toast: toast,

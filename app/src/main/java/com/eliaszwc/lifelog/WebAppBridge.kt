@@ -12,7 +12,10 @@ import android.webkit.JavascriptInterface
 class WebAppBridge(
     private val onThemeMode: (String) -> Unit,
     private val onSaveCsv: (String) -> Unit,
+    private val onSaveMetricsCsv: (String) -> Unit,
     private val onExportCsv: (String) -> Unit,
+    private val onPickStorageFolder: () -> Unit,
+    private val onResetStorageFolder: () -> Unit,
     private val onDownloadUpdate: () -> Unit,
     private val onInstallUpdate: () -> Unit,
     private val onCloseUpdate: () -> Unit,
@@ -27,6 +30,24 @@ class WebAppBridge(
     @JavascriptInterface
     fun saveRecordsCsv(csv: String) {
         onSaveCsv(csv)
+    }
+
+    /** 把全部跟踪数据的 CSV 内容落盘（与 records.csv 同一个目录） */
+    @JavascriptInterface
+    fun saveMetricsCsv(csv: String) {
+        onSaveMetricsCsv(csv)
+    }
+
+    /** 设置页「数据存储位置」：拉起系统文件夹选择器 */
+    @JavascriptInterface
+    fun pickStorageFolder() {
+        onPickStorageFolder()
+    }
+
+    /** 恢复默认位置（Documents/LifeLog） */
+    @JavascriptInterface
+    fun resetStorageFolder() {
+        onResetStorageFolder()
     }
 
     /** 设置页「导出数据」：拉起系统「另存为」，把 CSV 写到用户选的位置 */

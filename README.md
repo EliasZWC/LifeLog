@@ -4,7 +4,7 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前版本 | **v0.0.9** |
+| 当前版本 | **v0.0.10** |
 | 包名 | `com.eliaszwc.lifelog` |
 | 最低支持 | Android 8.0（API 26） |
 | 目标版本 | Android 15（API 35） |
@@ -32,6 +32,9 @@
 | --- | --- |
 | `setThemeMode(mode)` | 网页切换主题后通知原生，`mode` 为 `light` / `dark` / `system` |
 | `saveRecordsCsv(csv)` | 把全部时间记录的 CSV 镜像写入 LifeLog 目录 |
+| `saveMetricsCsv(csv)` | 把全部跟踪数据的 CSV 镜像写入同一目录的 `metrics.csv` |
+| `pickStorageFolder()` | 拉起系统文件夹选择器，换数据存储位置 |
+| `resetStorageFolder()` | 恢复默认存储位置 |
 | `exportRecordsCsv(csv)` | 设置页「导出数据」：拉起系统「另存为」 |
 | `downloadUpdate()` | 更新弹窗点「更新」：开始下载新版 APK |
 | `installUpdate()` | 安装被权限拦下后点「重试安装」 |
@@ -44,7 +47,10 @@
 | `setInsets(top, right, bottom, left, keyboard)` | 推送系统栏与输入法尺寸（dp），网页写进 `--safe-*` / `--keyboard` CSS 变量 |
 | `setVersion(name, code)` | 推送版本名与版本号，供设置页只读显示 |
 | `onStorageReady(csv, path)` | 推送 `LifeLog/records.csv` 的内容与路径（文件不存在时内容为空串） |
-| `onCsvSaved(ok, detail)` | CSV 落盘结果 |
+| `onMetricsReady(csv)` | 推送 `metrics.csv` 的内容 |
+| `onCsvSaved(ok, detail)` | 时间记录 CSV 落盘结果 |
+| `onMetricsSaved(ok, detail)` | 跟踪数据 CSV 落盘结果 |
+| `onStoragePathChanged(path)` | 只换了目录、内容未变（例如切到新文件夹后的回推） |
 | `onExported(ok, detail)` | 导出结果（`detail` 为空串表示用户取消） |
 | `onUpdateAvailable(version, current, size)` | 发现新版本，网页弹窗 |
 | `onUpdateProgress(percent)` | 下载进度 0~100 |
@@ -100,6 +106,28 @@ Record   = { id, behaviorId, type, start, end }                // type: 'period'
 - 删除行为会连带删除它名下的全部时间记录。
 - 时间记录的增删改都会重写整个 CSV（个人量级足够快）。
 
+### 跟踪数据（`metrics.csv`）
+
+跟跟踪是与「行为 / 时间记录」完全独立的另一套数据，存在于导航栏第二个页签（Track）：
+
+```js
+Metric       = { id, name, icon }
+MetricRecord = { id, metricId, time, value }
+```
+
+- 跟踪项就是「被跟踪的数据」，比如体重、腰围、每日喝水量。
+- 跟踪记录本质上都是**时点**：只有记录时间与记录值，没有起止时间，
+  所以它们永远不会出现在时间页，只能从跟踪详情页的悬浮按钮添加。
+- CSV 表头为 `id,metric,time,value`，`metric` 同样写名称，与 `records.csv` 放在同一个目录。
+
+### 存储位置
+
+设置页的「数据存储位置」可以换成任意文件夹（`ACTION_OPEN_DOCUMENT_TREE`，授权会持久化）：
+
+- 目标文件夹里已有 `records.csv` → 采用它（相当于换一个数据库）
+- 没有 → 把当前内存里的数据搬过去
+- 长按那一栏恢复默认位置（`Documents/LifeLog`）
+
 ## 目录结构
 
 ```
@@ -124,15 +152,20 @@ LifeLog/
 │       │   ├── icons.js          # 谷歌官方行为图标库
 │       │   ├── csv.js            # CSV 序列化 / 解析
 │       │   ├── store.js          # 数据层（行为 / 时间记录）
-│       │   ├── components.js     # 弹窗 / 下拉 / 多选 / 轻提示 / 壳通信
+│       │   ├── metrics.js        # 数据层（跟踪项 / 跟踪记录）
+│       │   ├── components.js     # 弹窗 / 下拉 / 图标选择器 / 多选 / 轻提示 / 壳通信
+│       │   ├── datetime.js       # 日期格式化 + 分段日期时间输入
+│       │   ├── chart.js          # 直方图（内联 SVG）
 │       │   ├── theme.js          # 主题偏好
 │       │   ├── settings.js       # 设置页
 │       │   ├── update.js         # 应用内更新弹窗
 │       │   ├── page-time.js      # 时间页
 │       │   ├── page-behavior.js  # 行为页
 │       │   ├── page-behavior-detail.js  # 行为详情页
+│       │   ├── page-metric.js    # 跟踪页
+│       │   ├── page-metric-detail.js    # 跟踪详情页
 │       │   └── app.js            # 外壳：导航 / 标题 / 启动
-│       └── res/                  # 主题、配色、启动图标
+│       └── res/                  # 主题、配色、启动图标、FileProvider 路径
 ├── build.gradle.kts
 ├── settings.gradle.kts
 ├── gradle.properties
@@ -209,7 +242,7 @@ git push origin v0.0.2
 ## 开发进度
 
 - [x] 应用骨架 + 黑白主题 + 启动图标
-- [x] 底部导航（时间 / 行为 / 设置）+ 页面顶部居中标题
+- [x] 底部导航（时间 / 行为 / 跟踪 / 设置）+ 页面顶部居中标题
 - [x] 中英双语基础，默认英文
 - [x] 设置页：列表布局 + 主题（日间 / 夜间 / 跟随系统）
 - [x] 页面 / 列表切换动画
@@ -225,6 +258,10 @@ git push origin v0.0.2
 - [x] 时间记录点击修改
 - [x] 数据导出（系统「另存为」）
 - [x] 应用内检测更新 + 下载 + 安装
+- [x] 时间记录点击修改
+- [x] 数据导出（系统「另存为」）
+- [x] 跟踪页（跟踪项 + 时点式记录 + 统计）
+- [x] 数据存储位置可换文件夹
 - [ ] 卡片编辑
 - [ ] 统计页
 - [ ] 设置页：语言切换等其它设置项

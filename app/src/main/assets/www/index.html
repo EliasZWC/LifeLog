@@ -52,6 +52,11 @@
                 <ul class="card-list" id="behavior-list"></ul>
             </section>
 
+            <!-- 跟踪页：建立被跟踪的数据项（体重 / 腰围 / 喝水量 …），不参与时间记录 -->
+            <section class="page" id="page-metric" role="tabpanel" aria-labelledby="tab-metric" hidden>
+                <ul class="card-list" id="metric-list"></ul>
+            </section>
+
             <!-- 设置页：按分区列出应用设置 -->
             <section class="page" id="page-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
                 <section class="settings-group">
@@ -72,8 +77,10 @@
                     <h2 class="settings-group-title" data-i18n="settings.group.data">Data</h2>
                     <ul class="settings-list">
                         <li class="settings-item">
-                            <span class="settings-label" data-i18n="settings.storage">Storage location</span>
-                            <span class="settings-value" id="setting-storage-path">—</span>
+                            <button class="settings-action" type="button" id="setting-storage">
+                                <span class="settings-label" data-i18n="settings.storage">Storage location</span>
+                                <span class="settings-value" id="setting-storage-path">—</span>
+                            </button>
                         </li>
                         <li class="settings-item">
                             <button class="settings-action" type="button" id="setting-import">
@@ -130,6 +137,14 @@
                     <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                 </svg>
             </button>
+
+            <button class="fab" type="button" id="metric-fab" data-tab="metric" aria-label="Add tracker"
+                data-i18n-aria-label="metric.add" hidden>
+                <!-- Google Material Icons: add -->
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                </svg>
+            </button>
         </main>
 
         <nav class="bottom-nav" role="tablist" aria-label="Main navigation"
@@ -158,6 +173,18 @@
                     </svg>
                 </span>
                 <span class="nav-label" data-i18n="nav.behavior">Behavior</span>
+            </button>
+
+            <button class="nav-item" type="button" role="tab" id="tab-metric" aria-controls="page-metric"
+                aria-selected="false" data-page="metric">
+                <span class="nav-icon" aria-hidden="true">
+                    <!-- Google Material Icons: analytics -->
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path
+                            d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-5h2v5zm4 0h-2v-3h2v3zm0-5h-2v-2h2v2zm4 5h-2V7h2v10z" />
+                    </svg>
+                </span>
+                <span class="nav-label" data-i18n="nav.metric">Track</span>
             </button>
 
             <button class="nav-item" type="button" role="tab" id="tab-settings" aria-controls="page-settings"
@@ -237,6 +264,56 @@
         </div>
     </section>
 
+    <!-- 跟踪详情页：与行为详情页同构（标题栏 + 视图栏），但记录视图自带悬浮按钮 -->
+    <section class="detail" id="metric-detail" role="dialog" aria-modal="true"
+        aria-labelledby="metric-detail-title" hidden>
+        <header class="detail-header">
+            <button class="icon-button" type="button" id="metric-detail-back" aria-label="Back"
+                data-i18n-aria-label="behavior.detail.back">
+                <!-- Google Material Icons: arrow_back -->
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+                </svg>
+            </button>
+
+            <h1 class="page-title" id="metric-detail-title"></h1>
+
+            <button class="icon-button" type="button" id="metric-detail-menu" aria-haspopup="menu"
+                aria-expanded="false" aria-label="More options" data-i18n-aria-label="behavior.menu.open">
+                <!-- Google Material Icons: more_vert -->
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path
+                        d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                </svg>
+            </button>
+        </header>
+
+        <div class="view-bar">
+            <span class="view-current" id="metric-detail-view-current"></span>
+            <button class="icon-button" type="button" id="metric-detail-view-button" aria-haspopup="menu"
+                aria-expanded="false" aria-label="Switch view" data-i18n-aria-label="view.switch">
+                <!-- Google Material Icons: view_list -->
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path
+                        d="M3,14h4v-4H3V14z M3,19h4v-4H3V19z M3,9h4V5H3V9z M8,14h13v-4H8V14z M8,19h13v-4H8V19z M8,5v4h13V5H8z" />
+                </svg>
+            </button>
+        </div>
+
+        <div class="detail-body">
+            <ul class="card-list" id="metric-detail-list"></ul>
+        </div>
+
+        <!-- 跟踪记录不属于时间记录，加不进时间页，所以这是它唯一的入口 -->
+        <button class="fab" type="button" id="metric-record-fab" aria-label="Add entry"
+            data-i18n-aria-label="metric.record.add" hidden>
+            <!-- Google Material Icons: add -->
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+            </svg>
+        </button>
+    </section>
+
     <!-- 删除行为确认：必须输入行为名称（类似 GitHub 删仓库） -->
     <section class="sheet" id="sheet-delete-behavior" role="dialog" aria-modal="true"
         aria-labelledby="sheet-delete-title" hidden>
@@ -258,8 +335,80 @@
         </div>
     </section>
 
+    <!-- 删除跟踪项确认：同样要输入名称 -->
+    <section class="sheet" id="sheet-delete-metric" role="dialog" aria-modal="true"
+        aria-labelledby="sheet-delete-metric-title" hidden>
+        <h2 class="sheet-title" id="sheet-delete-metric-title" data-i18n="metric.delete.title">
+            Delete tracker</h2>
+        <p class="sheet-text" id="metric-delete-tip"></p>
+
+        <div class="form-row">
+            <input class="form-input form-input-left" id="metric-delete-input" type="text"
+                autocomplete="off" data-i18n-placeholder="metric.delete.hint"
+                placeholder="Tracker name" />
+        </div>
+
+        <div class="form-actions">
+            <button class="btn" type="button" id="metric-delete-cancel"
+                data-i18n="action.cancel">Cancel</button>
+            <button class="btn btn-danger" type="button" id="metric-delete-confirm" disabled
+                data-i18n="metric.delete.confirm">Delete</button>
+        </div>
+    </section>
+
     <!-- 弹窗遮罩 -->
     <div class="scrim" id="scrim" hidden></div>
+
+    <!-- 跟踪项表单：名称 / 图标 / 取消·确定 -->
+    <section class="sheet" id="sheet-metric" role="dialog" aria-modal="true"
+        aria-labelledby="sheet-metric-title" hidden>
+        <h2 class="sheet-title" id="sheet-metric-title" data-i18n="metric.form.title">New tracker</h2>
+
+        <div class="form-row">
+            <label class="form-label" for="metric-name" data-i18n="metric.form.name">Name</label>
+            <input class="form-input" id="metric-name" type="text" maxlength="24" autocomplete="off"
+                data-i18n-placeholder="metric.form.namePlaceholder" placeholder="e.g. Weight" />
+        </div>
+
+        <div class="form-block">
+            <span class="form-label" data-i18n="behavior.form.icon">Icon</span>
+            <!-- 图标由 icons.js 提供，这里由脚本填充 -->
+            <div class="icon-picker" id="metric-icon-picker"></div>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn" type="button" id="metric-cancel"
+                data-i18n="action.cancel">Cancel</button>
+            <button class="btn btn-primary" type="button" id="metric-confirm" disabled
+                data-i18n="action.confirm">Confirm</button>
+        </div>
+    </section>
+
+    <!-- 跟踪记录表单：记录本身是时点，所以只有记录时间与记录值 -->
+    <section class="sheet" id="sheet-metric-record" role="dialog" aria-modal="true"
+        aria-labelledby="sheet-metric-record-title" hidden>
+        <h2 class="sheet-title" id="sheet-metric-record-title" data-i18n="metric.record.title">
+            New entry</h2>
+
+        <div class="form-block">
+            <div class="time-fields" id="metric-record-fields"></div>
+            <p class="form-hint" id="metric-record-hint" hidden></p>
+        </div>
+
+        <div class="form-row">
+            <label class="form-label" for="metric-record-value" data-i18n="metric.record.value">Value</label>
+            <input class="form-input" id="metric-record-value" type="text" inputmode="decimal"
+                autocomplete="off" data-i18n-placeholder="metric.record.valuePlaceholder"
+                placeholder="0" />
+        </div>
+
+        <div class="form-actions">
+            <button class="btn" type="button" id="metric-record-cancel"
+                data-i18n="action.cancel">Cancel</button>
+            <button class="btn btn-primary" type="button" id="metric-record-confirm" disabled
+                data-i18n="action.confirm">Confirm</button>
+        </div>
+    </section>
 
     <!-- 行为表单：名称 / 图标 / 取消·确定 -->
     <section class="sheet" id="sheet-behavior" role="dialog" aria-modal="true"
@@ -338,11 +487,16 @@
     <script src="icons.js"></script>
     <script src="csv.js"></script>
     <script src="store.js"></script>
+    <script src="metrics.js"></script>
     <script src="components.js"></script>
+    <script src="datetime.js"></script>
+    <script src="chart.js"></script>
     <script src="theme.js"></script>
     <script src="page-behavior.js"></script>
     <script src="page-behavior-detail.js"></script>
     <script src="page-time.js"></script>
+    <script src="page-metric.js"></script>
+    <script src="page-metric-detail.js"></script>
     <script src="settings.js"></script>
     <script src="update.js"></script>
     <script src="app.js"></script>

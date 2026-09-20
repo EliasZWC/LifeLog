@@ -905,7 +905,8 @@ body {
 
 .settings-group-title {
     margin: 0;
-    padding: 14px 32px 6px;
+    /* 左内边距 = 卡片外边距(16) + 行内边距(20)，保证分区标题与设置项名称左对齐 */
+    padding: 14px 36px 6px;
     font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.8px;
