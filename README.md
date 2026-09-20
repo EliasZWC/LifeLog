@@ -135,23 +135,25 @@ git push origin v0.0.2
 
 标签推送后，`Release` 工作流会构建 APK，并自动创建 GitHub Release 挂上 `LifeLog-v0.0.2.apk`。
 
-### 配置发布签名（推荐）
+### 发布签名
 
-未配置时 APK 会用 debug 密钥签名，可以安装但不适合正式分发。
-在仓库 `Settings → Secrets and variables → Actions` 中添加以下 4 个 Secret 即可启用正式签名：
+**发布包必须用固定密钥签名**。否则每次 CI 都会新生成一个随机 debug 密钥，导致新旧版本签名不一致，
+用户覆盖安装时会报 `conflicting signature` / 无法安装。
+
+因此 `app/build.gradle.kts` 在缺少密钥时会**直接让 release 任务失败**，绝不会产出「能装但签不了名」的包。
+
+密钥库放在本地 `.signing/`（已被 gitignore），同目录有密码，**务必备份**。仓库 Secrets 已配置：
 
 | Secret | 说明 |
 | --- | --- |
-| `KEYSTORE_BASE64` | keystore 文件的 base64 内容 |
-| `KEYSTORE_PASSWORD` | keystore 密码 |
-| `KEY_ALIAS` | 密钥别名 |
+| `KEYSTORE_BASE64` | `lifelog-release.p12` 的 base64 |
+| `KEYSTORE_PASSWORD` | 密钥库密码 |
+| `KEY_ALIAS` | `lifelog` |
 | `KEY_PASSWORD` | 密钥密码 |
 
-生成 base64（PowerShell）：
+详见 `.signing/README.md`。
 
-```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("release.jks")) | Set-Clipboard
-```
+> ⚠️ 换密钥 = 换签名，用户必须先卸载再装新版（数据全丢），所以**不要轻易更换**。
 
 ## 开发进度
 

@@ -38,6 +38,8 @@ android {
                 storePassword = envKeystorePassword
                 keyAlias = envKeyAlias
                 keyPassword = envKeyPassword
+                // 由 openssl 生成的 PKCS12 密钥库，显式声明避免依 JDK 默认类型
+                storeType = "PKCS12"
                 enableV1Signing = true
                 enableV2Signing = true
             }
@@ -52,10 +54,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            // 没配置发布密钥时留空，由下面的任务守卫直接报错。
+            // 绝不要回退到 debug 签名：CI 每次生成的 debug 密钥都不同，
+            // 会导致新旧版本签名不一致、无法覆盖安装。
             signingConfig = if (hasReleaseKeystore) {
                 signingConfigs.getByName("release")
             } else {
-                signingConfigs.getByName("debug")
+                null
             }
         }
         debug {
@@ -92,4 +97,16 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.webkit:webkit:1.12.1")
+}
+
+// 发布包必须用固定密钥签名，否则直接失败。
+tasks.matching { it.name.contains("Release") }.configureEach {
+    doFirst {
+        if (!hasReleaseKeystore) {
+            throw GradleException(
+                "缺少发布签名：请先设置 KEYSTORE_FILE / KEYSTORE_PASSWORD / KEY_ALIAS / " +
+                    "KEY_PASSWORD 环境变量。用随机 debug 密钥签名会导致无法覆盖安装。"
+            )
+        }
+    }
 }

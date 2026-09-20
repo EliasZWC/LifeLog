@@ -24,6 +24,8 @@ captures/
 # 签名文件绝不入库
 *.jks
 *.keystore
+*.p12
+.signing/
 
 # OS
 .DS_Store

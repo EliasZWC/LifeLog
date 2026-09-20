@@ -56,31 +56,41 @@ jobs:
           fi
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
 
-      - name: 准备发布签名（可选）
-        id: signing
+      - name: 准备发布签名
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
-          if [ -n "${KEYSTORE_BASE64:-}" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
-            echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
-            echo "✅ 使用发布密钥签名"
-          else
-            echo "::warning::未配置 KEYSTORE_BASE64，本次 APK 将使用 debug 密钥签名（不推荐用于正式分发）。"
+          if [ -z "${KEYSTORE_BASE64:-}" ]; then
+            echo "::error::未配置 KEYSTORE_BASE64。发布包必须用固定密钥签名，否则每次构建密钥都不同，用户无法覆盖安装。"
+            exit 1
           fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          echo "KEYSTORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+          echo "✅ 已准备发布密钥库"
 
       - name: 构建 Release APK
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: gradle --no-daemon --stacktrace assembleRelease
+        run: |
+          if [ -z "${KEYSTORE_PASSWORD:-}" ] || [ -z "${KEY_ALIAS:-}" ] || [ -z "${KEY_PASSWORD:-}" ]; then
+            echo "::error::请同时配置 KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD 三个 Secret。"
+            exit 1
+          fi
+          gradle --no-daemon --stacktrace assembleRelease
 
       - name: 收集产物
         run: |
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk "dist/LifeLog-v${VERSION_NAME}.apk"
           ls -lh dist
+
+      - name: 校验签名
+        run: |
+          APK="app/build/outputs/apk/release/app-release.apk"
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BUILD_TOOLS/apksigner" verify --print-certs "$APK" | head -6
 
       - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v3
