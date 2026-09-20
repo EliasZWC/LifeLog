@@ -14,9 +14,9 @@
             value: 'setting-theme-value',
             getOptions: function () {
                 return [
-                    { value: 'light', label: t('settings.theme.light') },
-                    { value: 'dark', label: t('settings.theme.dark') },
-                    { value: 'system', label: t('settings.theme.system') }
+                    { value: 'light', label: t('setting.theme.light') },
+                    { value: 'dark', label: t('setting.theme.dark') },
+                    { value: 'system', label: t('setting.theme.system') }
                 ];
             },
             getValue: function () {
@@ -100,7 +100,7 @@
 
     function pickStorageFolder() {
         if (!global.LifeLogNative || typeof global.LifeLogNative.pickStorageFolder !== 'function') {
-            global.LifeLogUI.toast(t('settings.storage.unavailable'));
+            global.LifeLogUI.toast(t('setting.storage.unavailable'));
             return;
         }
         global.LifeLogNative.pickStorageFolder();
@@ -111,7 +111,7 @@
             return;
         }
         global.LifeLogNative.resetStorageFolder();
-        global.LifeLogUI.toast(t('settings.storage.reset'));
+        global.LifeLogUI.toast(t('setting.storage.reset'));
     }
 
     /** 导出全部数据：交给原生弹系统「另存为」，浏览器预览时退回下载文件 */
@@ -192,12 +192,12 @@
             return;
         }
         var path = global.LifeLogShell ? global.LifeLogShell.getStoragePath() : '';
-        node.textContent = path || t('settings.import.empty');
+        node.textContent = path || t('setting.import.empty');
         // 路径过长时值会被省略号截断，用 title 保留完整信息
         node.title = path || '';
     }
 
-    global.LifeLogSettings = {
+    global.LifeLogSettingPage = {
         init: init,
         refreshVersion: refreshVersion,
         refreshStoragePath: refreshStoragePath

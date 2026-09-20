@@ -3,6 +3,21 @@
 本项目的所有重要变更都会记录在此文件中。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)，Git 标签格式为 `vX.Y.Z`。
 
+## [v0.0.11] - 2026-09-21
+
+### 修复
+
+- **设置页的名称真的左对齐了**。上一版只对齐了分区标题的内边距，没注意到「整行可点」的设置项是
+  `<button>`，而浏览器给按钮的默认 `text-align` 是 `center`——名称文字其实是被居中的
+  （实测在 155~223px 附近），只有非按钮的「版本」行是左对齐的。现在给这两处显式加了
+  `text-align: left`，所有名称的文字左边缘与分区标题一致。
+
+### 变更
+
+- 设置页相关的命名由 `settings` 统一改为 `setting`：导航词条 `nav.setting`、
+  `data-page` / `#page-setting` / `#tab-setting`、i18n 键前缀 `setting.*`、CSS 类 `.setting-*`、
+  模块名 `LifeLogSettingPage`、文件名 `setting.js`，英文标题与导航文案改为「Setting」。
+
 ## [v0.0.10] - 2026-09-21
 
 ### 新增

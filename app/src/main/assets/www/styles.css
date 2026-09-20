@@ -146,7 +146,7 @@ body {
    从而一眼看出「这是一栏」；每行统一为 左名称 / 右值。
    -------------------------------------------------------------------------- */
 
-.settings-list {
+.setting-list {
     list-style: none;
     margin: 0 16px;
     padding: 0;
@@ -155,7 +155,7 @@ body {
     overflow: hidden;
 }
 
-.settings-item {
+.setting-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -165,24 +165,26 @@ body {
     border-bottom: 1px solid var(--outline);
 }
 
-.settings-item:last-child {
+.setting-item:last-child {
     border-bottom: 0;
 }
 
 /* 按下反馈：仅整行可点的设置项（:has 不支持时自动退化为无反馈） */
-.settings-item:has(.settings-action:active) {
+.setting-item:has(.setting-action:active) {
     background: var(--surface-raised);
 }
 
-.settings-label {
+.setting-label {
     flex: 1 1 auto;
     min-width: 0;
+    /* 名称必须贴左；整行可点的行是 <button>，浏览器默认 text-align:center 会把名字挤到中间 */
+    text-align: left;
     font-size: 15px;
     color: var(--on-surface);
 }
 
 /* 右侧当前值（主题名、版本号、存储路径等）：右对齐，且不超过整行的一半 */
-.settings-value {
+.setting-value {
     flex: 0 1 auto;
     min-width: 0;
     max-width: 50%;
@@ -899,11 +901,11 @@ body {
    设置页分区
    -------------------------------------------------------------------------- */
 
-.settings-group {
+.setting-group {
     padding: 4px 0;
 }
 
-.settings-group-title {
+.setting-group-title {
     margin: 0;
     /* 左内边距 = 卡片外边距(16) + 行内边距(20)，保证分区标题与设置项名称左对齐 */
     padding: 14px 36px 6px;
@@ -914,14 +916,14 @@ body {
     color: var(--on-surface-variant);
 }
 
-.settings-item-column {
+.setting-item-column {
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
 }
 
 /* 整行可点的设置项（如导入 CSV） */
-.settings-action {
+.setting-action {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -932,24 +934,26 @@ body {
     background: none;
     color: inherit;
     font: inherit;
+    /* button 的 UA 默认是居中，不改的话名称看起来就不是左对齐的 */
+    text-align: left;
     cursor: pointer;
     outline: none;
     -webkit-tap-highlight-color: transparent;
     transition: transform 120ms ease, opacity 120ms ease;
 }
 
-.settings-action:active {
+.setting-action:active {
     transform: scale(0.985);
     opacity: 0.6;
 }
 
-.settings-action .icon {
+.setting-action .icon {
     display: grid;
     place-items: center;
     color: var(--on-surface-variant);
 }
 
-.settings-action .icon svg {
+.setting-action .icon svg {
     display: block;
     width: 20px;
     height: 20px;

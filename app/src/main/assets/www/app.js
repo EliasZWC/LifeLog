@@ -7,7 +7,7 @@
 
     var STORAGE_KEY = 'lifelog.activeTab';
     var DEFAULT_TAB = 'time';
-    var TAB_ORDER = ['time', 'behavior', 'metric', 'settings'];
+    var TAB_ORDER = ['time', 'behavior', 'metric', 'setting'];
 
     var tabs = Array.prototype.slice.call(document.querySelectorAll('.nav-item'));
     var titleEl = document.getElementById('page-title');
@@ -104,8 +104,8 @@
     if (window.LifeLogMetricDetail) {
         window.LifeLogMetricDetail.init();
     }
-    if (window.LifeLogSettings) {
-        window.LifeLogSettings.init();
+    if (window.LifeLogSettingPage) {
+        window.LifeLogSettingPage.init();
     }
     if (window.LifeLogUpdate) {
         window.LifeLogUpdate.init();

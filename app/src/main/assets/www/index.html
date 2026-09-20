@@ -58,33 +58,33 @@
             </section>
 
             <!-- 设置页：按分区列出应用设置 -->
-            <section class="page" id="page-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
-                <section class="settings-group">
-                    <h2 class="settings-group-title"
-                        data-i18n="settings.group.personalization">Personalization</h2>
-                    <ul class="settings-list">
-                        <li class="settings-item">
-                            <button class="settings-action" type="button" id="setting-theme"
+            <section class="page" id="page-setting" role="tabpanel" aria-labelledby="tab-setting" hidden>
+                <section class="setting-group">
+                    <h2 class="setting-group-title"
+                        data-i18n="setting.group.personalization">Personalization</h2>
+                    <ul class="setting-list">
+                        <li class="setting-item">
+                            <button class="setting-action" type="button" id="setting-theme"
                                 aria-haspopup="menu" aria-expanded="false">
-                                <span class="settings-label" data-i18n="settings.theme">Theme</span>
-                                <span class="settings-value" id="setting-theme-value">—</span>
+                                <span class="setting-label" data-i18n="setting.theme">Theme</span>
+                                <span class="setting-value" id="setting-theme-value">—</span>
                             </button>
                         </li>
                     </ul>
                 </section>
 
-                <section class="settings-group">
-                    <h2 class="settings-group-title" data-i18n="settings.group.data">Data</h2>
-                    <ul class="settings-list">
-                        <li class="settings-item">
-                            <button class="settings-action" type="button" id="setting-storage">
-                                <span class="settings-label" data-i18n="settings.storage">Storage location</span>
-                                <span class="settings-value" id="setting-storage-path">—</span>
+                <section class="setting-group">
+                    <h2 class="setting-group-title" data-i18n="setting.group.data">Data</h2>
+                    <ul class="setting-list">
+                        <li class="setting-item">
+                            <button class="setting-action" type="button" id="setting-storage">
+                                <span class="setting-label" data-i18n="setting.storage">Storage location</span>
+                                <span class="setting-value" id="setting-storage-path">—</span>
                             </button>
                         </li>
-                        <li class="settings-item">
-                            <button class="settings-action" type="button" id="setting-import">
-                                <span class="settings-label" data-i18n="settings.import">Import data</span>
+                        <li class="setting-item">
+                            <button class="setting-action" type="button" id="setting-import">
+                                <span class="setting-label" data-i18n="setting.import">Import data</span>
                                 <span class="icon" aria-hidden="true">
                                     <!-- Google Material Icons: file_upload -->
                                     <svg viewBox="0 0 24 24" focusable="false">
@@ -93,9 +93,9 @@
                                 </span>
                             </button>
                         </li>
-                        <li class="settings-item">
-                            <button class="settings-action" type="button" id="setting-export">
-                                <span class="settings-label" data-i18n="settings.export">Export data</span>
+                        <li class="setting-item">
+                            <button class="setting-action" type="button" id="setting-export">
+                                <span class="setting-label" data-i18n="setting.export">Export data</span>
                                 <span class="icon" aria-hidden="true">
                                     <!-- Google Material Icons: file_download -->
                                     <svg viewBox="0 0 24 24" focusable="false">
@@ -110,12 +110,12 @@
                         accept=".csv,text/csv,text/comma-separated-values" />
                 </section>
 
-                <section class="settings-group">
-                    <h2 class="settings-group-title" data-i18n="settings.group.about">About</h2>
-                    <ul class="settings-list">
-                        <li class="settings-item">
-                            <span class="settings-label" data-i18n="settings.version">Version</span>
-                            <span class="settings-value" id="setting-version">—</span>
+                <section class="setting-group">
+                    <h2 class="setting-group-title" data-i18n="setting.group.about">About</h2>
+                    <ul class="setting-list">
+                        <li class="setting-item">
+                            <span class="setting-label" data-i18n="setting.version">Version</span>
+                            <span class="setting-value" id="setting-version">—</span>
                         </li>
                     </ul>
                 </section>
@@ -187,8 +187,8 @@
                 <span class="nav-label" data-i18n="nav.metric">Track</span>
             </button>
 
-            <button class="nav-item" type="button" role="tab" id="tab-settings" aria-controls="page-settings"
-                aria-selected="false" data-page="settings">
+            <button class="nav-item" type="button" role="tab" id="tab-setting" aria-controls="page-setting"
+                aria-selected="false" data-page="setting">
                 <span class="nav-icon" aria-hidden="true">
                     <!-- Google Material Icons: settings -->
                     <svg viewBox="0 0 24 24" focusable="false">
@@ -196,7 +196,7 @@
                             d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z" />
                     </svg>
                 </span>
-                <span class="nav-label" data-i18n="nav.settings">Settings</span>
+                <span class="nav-label" data-i18n="nav.setting">Setting</span>
             </button>
         </nav>
     </div>
@@ -497,7 +497,7 @@
     <script src="page-time.js"></script>
     <script src="page-metric.js"></script>
     <script src="page-metric-detail.js"></script>
-    <script src="settings.js"></script>
+    <script src="setting.js"></script>
     <script src="update.js"></script>
     <script src="app.js"></script>
 </body>

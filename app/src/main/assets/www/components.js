@@ -93,8 +93,8 @@
 
         setVersion: function (name, code) {
             shell.version = { name: String(name), code: code };
-            if (global.LifeLogSettings && global.LifeLogSettings.refreshVersion) {
-                global.LifeLogSettings.refreshVersion();
+            if (global.LifeLogSettingPage && global.LifeLogSettingPage.refreshVersion) {
+                global.LifeLogSettingPage.refreshVersion();
             }
         },
 
@@ -199,8 +199,8 @@
     };
 
     function refreshStorageUi() {
-        if (global.LifeLogSettings && global.LifeLogSettings.refreshStoragePath) {
-            global.LifeLogSettings.refreshStoragePath();
+        if (global.LifeLogSettingPage && global.LifeLogSettingPage.refreshStoragePath) {
+            global.LifeLogSettingPage.refreshStoragePath();
         }
     }
 

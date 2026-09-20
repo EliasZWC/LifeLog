@@ -17,7 +17,7 @@
             'nav.time': 'Time',
             'nav.behavior': 'Behavior',
             'nav.metric': 'Track',
-            'nav.settings': 'Settings',
+            'nav.setting': 'Setting',
 
             'view.all': 'All',
             'view.period': 'Period',
@@ -99,13 +99,13 @@
             'metric.delete.hint': 'Tracker name',
             'metric.delete.confirm': 'Delete',
 
-            'settings.group.personalization': 'Personalization',
-            'settings.group.data': 'Data',
-            'settings.group.about': 'About',
-            'settings.import': 'Import data',
-            'settings.export': 'Export data',
-            'settings.storage': 'Storage location',
-            'settings.import.empty': 'Not created yet',
+            'setting.group.personalization': 'Personalization',
+            'setting.group.data': 'Data',
+            'setting.group.about': 'About',
+            'setting.import': 'Import data',
+            'setting.export': 'Export data',
+            'setting.storage': 'Storage location',
+            'setting.import.empty': 'Not created yet',
 
             'toast.imported': 'Imported {n} records',
             'toast.importFailed': 'Import failed: {reason}',
@@ -135,15 +135,15 @@
             'selection.delete': 'Delete selected',
             'selection.count': '{n} selected',
 
-            'settings.version': 'Version',
-            'settings.storage.pick': 'Tap to choose another folder',
-            'settings.storage.unavailable': 'Changing the folder is only available in the app',
-            'settings.storage.reset': 'Restored the default location',
+            'setting.version': 'Version',
+            'setting.storage.pick': 'Tap to choose another folder',
+            'setting.storage.unavailable': 'Changing the folder is only available in the app',
+            'setting.storage.reset': 'Restored the default location',
 
-            'settings.theme': 'Theme',
-            'settings.theme.light': 'Light',
-            'settings.theme.dark': 'Dark',
-            'settings.theme.system': 'Follow system'
+            'setting.theme': 'Theme',
+            'setting.theme.light': 'Light',
+            'setting.theme.dark': 'Dark',
+            'setting.theme.system': 'Follow system'
         },
         zh: {
             'app.name': 'LifeLog',
@@ -151,7 +151,7 @@
             'nav.time': '时间',
             'nav.behavior': '行为',
             'nav.metric': '跟踪',
-            'nav.settings': '设置',
+            'nav.setting': '设置',
 
             'view.all': '全部',
             'view.period': '时段',
@@ -231,13 +231,13 @@
             'metric.delete.tip': '请输入 {name} 以确认，该跟踪项下的全部记录也会一并删除。',
             'metric.delete.hint': '跟踪项名称',
             'metric.delete.confirm': '删除',
-            'settings.group.personalization': '个性化',
-            'settings.group.data': '数据管理',
-            'settings.group.about': '关于',
-            'settings.import': '导入数据',
-            'settings.export': '导出数据',
-            'settings.storage': '数据存储位置',
-            'settings.import.empty': '尚未创建',
+            'setting.group.personalization': '个性化',
+            'setting.group.data': '数据管理',
+            'setting.group.about': '关于',
+            'setting.import': '导入数据',
+            'setting.export': '导出数据',
+            'setting.storage': '数据存储位置',
+            'setting.import.empty': '尚未创建',
 
             'toast.imported': '已导入 {n} 条记录',
             'toast.importFailed': '导入失败：{reason}',
@@ -267,15 +267,15 @@
             'selection.delete': '删除所选',
             'selection.count': '已选 {n} 项',
 
-            'settings.version': '版本',
-            'settings.storage.pick': '点击可选择其它文件夹',
-            'settings.storage.unavailable': '仅 app 内支持更换文件夹',
-            'settings.storage.reset': '已恢复默认位置',
+            'setting.version': '版本',
+            'setting.storage.pick': '点击可选择其它文件夹',
+            'setting.storage.unavailable': '仅 app 内支持更换文件夹',
+            'setting.storage.reset': '已恢复默认位置',
 
-            'settings.theme': '主题',
-            'settings.theme.light': '日间模式',
-            'settings.theme.dark': '夜间模式',
-            'settings.theme.system': '跟随系统模式'
+            'setting.theme': '主题',
+            'setting.theme.light': '日间模式',
+            'setting.theme.dark': '夜间模式',
+            'setting.theme.system': '跟随系统模式'
         }
     };
 

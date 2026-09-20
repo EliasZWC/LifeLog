@@ -4,7 +4,7 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前版本 | **v0.0.10** |
+| 当前版本 | **v0.0.11** |
 | 包名 | `com.eliaszwc.lifelog` |
 | 最低支持 | Android 8.0（API 26） |
 | 目标版本 | Android 15（API 35） |
@@ -157,7 +157,7 @@ LifeLog/
 │       │   ├── datetime.js       # 日期格式化 + 分段日期时间输入
 │       │   ├── chart.js          # 直方图（内联 SVG）
 │       │   ├── theme.js          # 主题偏好
-│       │   ├── settings.js       # 设置页
+│       │   ├── setting.js        # 设置页
 │       │   ├── update.js         # 应用内更新弹窗
 │       │   ├── page-time.js      # 时间页
 │       │   ├── page-behavior.js  # 行为页
