@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <title>LifeLog 图标草图 v7</title>
+    <style>
+        :root {
+            --bg: #EFEFED;
+            --ink: #1B1B1B;
+            --muted: #6E6E6E;
+            --line: #DCDCD8;
+            --icon-bg: #1B1B1B;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 32px 28px 64px;
+            background: var(--bg);
+            color: var(--ink);
+            font: 14px/1.6 Roboto, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+        }
+
+        h1 { margin: 0 0 4px; font-size: 20px; }
+        h2 { margin: 42px 0 14px; font-size: 15px; letter-spacing: .4px; }
+        p.note { margin: 0 0 8px; color: var(--muted); font-size: 13px; }
+        p.note b { color: var(--ink); }
+
+        .row { display: flex; flex-wrap: wrap; gap: 26px; align-items: flex-start; }
+        .cell { text-align: center; }
+        .cell .name { margin-top: 10px; font-size: 13px; font-weight: 600; }
+        .cell .sub { color: var(--muted); font-size: 12px; max-width: 220px; margin: 0 auto; }
+
+        .icon {
+            position: relative;
+            display: block;
+            background: var(--icon-bg);
+            border-radius: 22%;
+            overflow: hidden;
+        }
+
+        .icon.round { border-radius: 50%; }
+
+        .icon .ring {
+            position: absolute;
+            inset: 19.44%;
+            border-radius: 50%;
+            -webkit-mask: radial-gradient(closest-side, transparent 78.6%, #000 78.6%);
+            mask: radial-gradient(closest-side, transparent 78.6%, #000 78.6%);
+        }
+
+        .icon svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* 方位标注：12 / 1 / 2 / 3 / 7 点 */
+        .labeled { position: relative; }
+        .labeled .mark {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            font-size: 11px;
+            color: #8E8E8C;
+            letter-spacing: .5px;
+        }
+        .labeled .mark.hot { color: #E8E8E6; font-weight: 700; }
+
+        .mag { position: relative; overflow: hidden; border-radius: 14px; border: 1px solid var(--line); }
+        .mag-inner { position: absolute; transform-origin: 50% 50%; }
+
+        .divider { height: 1px; background: var(--line); margin: 36px 0 0; }
+        .sizes { display: flex; gap: 14px; align-items: flex-end; }
+        code { color: var(--ink); }
+    </style>
+</head>
+
+<body>
+    <h1>LifeLog 图标草图 v7</h1>
+    <p class="note">
+        中心圆点按 <b>3</b> 定下来，时针改到 <b>8 点方向</b>。
+        其余保持：圆弧深灰尾部截止到 <b>2 点方向</b>，<b>1 点方向</b>有一个<b>和圆环圆头一样大（半径 3.5）的圆</b>。
+    </p>
+
+    <!-- ---------------------------------------------------------------- -->
+    <h2>① 定稿（干净版）</h2>
+    <p class="note">右边那张带 12 / 1 / 2 / 3 / 8 的方位标注，只作位置核对用。</p>
+    <div class="row" id="hero"></div>
+
+    <div class="divider"></div>
+
+    <!-- ---------------------------------------------------------------- -->
+    <h2>② 1–3 点方向放大 4 倍（看尾部圆头 + 1 点那个圆点）</h2>
+    <p class="note">两者中心都落在圆环中线上，间隔 30°（= 1 个小时刻度）。</p>
+    <div class="row" id="mag"></div>
+
+    <div class="divider"></div>
+
+    <!-- ---------------------------------------------------------------- -->
+    <h2>③ 1 点那个圆点的间隔 / 大小（放大看）</h2>
+    <div class="row" id="dotopts"></div>
+
+    <div class="divider"></div>
+
+    <!-- ---------------------------------------------------------------- -->
+    <h2>④ 时针长度（都指向 8 点方向）</h2>
+    <div class="row" id="hourlen"></div>
+
+    <div class="divider"></div>
+
+    <!-- ---------------------------------------------------------------- -->
+    <h2>⑤ 小尺寸下还认不认得出（108 / 72 / 48 / 36 px）</h2>
+    <div class="row" id="small"></div>
+
+    <div class="divider"></div>
+
+    <!-- ---------------------------------------------------------------- -->
+    <h2>⑥ 圆形遮罩预览</h2>
+    <div class="row" id="round"></div>
+
+    <div class="divider"></div>
+
+    <!-- ---------------------------------------------------------------- -->
+    <h2>⑦ 暗端灰度（同时决定尾部圆头和 1 点圆点）</h2>
+    <div class="row" id="params"></div>
+
+    <script>
+        // ---------------------------------------------------------------
+        // 几何（108 × 108 视口 = Android VectorDrawable 坐标）
+        //   圆心        (54, 54)
+        //   圆弧外半径  33 ／ 线宽 7 ／ 内半径 26 ／ 中线半径 29.5
+        //   圆头/圆点   半径 3.5
+        //   分针        16 长，指向 12 点（顺时针 0°）
+        //   时针        11 长，指向 8 点方向（顺时针 240°）
+        //   两针线宽    6 ／ 中心圆 3（= 半宽，与两针相切）
+        //   圆弧        从 12 点逆时针 → 截止在 2 点方向（顺时针 60°）
+        //   1 点圆点    顺时针 30°，半径 3.5
+        // ---------------------------------------------------------------
+        var MID_R = 29.5;
+        var CAP_R = 3.5;
+
+        var LIGHT = '#FFFFFF';
+        var DARK = '#6E6E6E';
+
+        var ARC_END = 60;    // 圆弧深灰尾部截止的角度（2 点方向）
+        var DOT_ANGLE = 30;  // 1 点方向的圆点
+        var HOUR_ANGLE = 240; // 时针：8 点方向
+
+        function polar(angle, len) {
+            var rad = angle * Math.PI / 180;
+            return [54 + len * Math.sin(rad), 54 - len * Math.cos(rad)];
+        }
+
+        function num(v) { return Number(v).toFixed(2); }
+
+        // conic-gradient 的 0deg 在 12 点、角度沿顺时针递增，
+        // 所以「12 点起逆时针走到 ARC_END」= 透明段挂在 0deg 一侧
+        function arcBackground(dark, end) {
+            return 'conic-gradient(from 0deg, transparent 0deg ' + end + 'deg, ' +
+                dark + ' ' + end + 'deg, ' + LIGHT + ' 360deg)';
+        }
+
+        function dotAt(angle, radius, color, r) {
+            var p = polar(angle, radius);
+            return '<circle cx="' + num(p[0]) + '" cy="' + num(p[1]) + '" r="' + (r || CAP_R) + '" fill="' + color + '"/>';
+        }
+
+        function hands(o) {
+            var w = o.w, half = w / 2;
+            var mEnd = polar(0, o.minute);
+            var hEnd = polar(o.hourAngle, o.hour);
+
+            var s = '<g fill="none" stroke="#FFFFFF" stroke-linecap="butt" stroke-width="' + w + '">' +
+                '<path d="M54 54 L' + num(mEnd[0]) + ' ' + num(mEnd[1]) + '"/>' +
+                '<path d="M54 54 L' + num(hEnd[0]) + ' ' + num(hEnd[1]) + '"/>' +
+                '</g>';
+
+            // 针尖圆头（半径 = 半宽）
+            s += '<circle cx="' + num(mEnd[0]) + '" cy="' + num(mEnd[1]) + '" r="' + num(half) + '" fill="#FFFFFF"/>';
+            s += '<circle cx="' + num(hEnd[0]) + '" cy="' + num(hEnd[1]) + '" r="' + num(half) + '" fill="#FFFFFF"/>';
+
+            if (o.hub > 0) {
+                s += '<circle cx="54" cy="54" r="' + o.hub + '" fill="#FFFFFF"/>';
+            }
+            return s;
+        }
+
+        var BASE = { minute: 16, hour: 11, hourAngle: HOUR_ANGLE, w: 6, dark: DARK, hub: 3, arcEnd: ARC_END, dot: DOT_ANGLE, dotR: CAP_R };
+
+        function mix(extra) { return Object.assign({}, BASE, extra); }
+
+        function overlay(o) {
+            var s = dotAt(0, MID_R, LIGHT);                 // 12 点：白色圆头
+            s += dotAt(o.arcEnd, MID_R, o.dark);            // 圆弧尾部：深灰圆头
+            if (o.dot !== null) s += dotAt(o.dot, MID_R, o.dark, o.dotR); // 1 点：同尺寸深灰圆点
+            return '<svg viewBox="0 0 108 108">' + s + hands(o) + '</svg>';
+        }
+
+        function icon(o, size, round) {
+            return '<div class="icon' + (round ? ' round' : '') + '" style="width:' + size +
+                'px;height:' + size + 'px">' +
+                '<div class="ring" style="background:' + arcBackground(o.dark, o.arcEnd) + '"></div>' +
+                overlay(o) + '</div>';
+        }
+
+        // 带方位标注
+        function labeled(o, size) {
+            var marks = [[0, '12'], [30, '1'], [60, '2'], [90, '3'], [240, '8']].map(function (m) {
+                var p = polar(m[0], 41);
+                var hot = (m[0] === 30 || m[0] === 60 || m[0] === 240);
+                return '<span class="mark' + (hot ? ' hot' : '') + '" style="left:' +
+                    (p[0] / 108 * 100).toFixed(2) + '%;top:' + (p[1] / 108 * 100).toFixed(2) + '%">' +
+                    m[1] + '</span>';
+            }).join('');
+            return '<div class="labeled" style="width:' + size + 'px;height:' + size + 'px">' +
+                icon(o, size) + marks + '</div>';
+        }
+
+        // 放大镜：把 size 像素的图标放大 zoom 倍，让视口坐标 (tx, ty) 落在窗口正中
+        function magnifier(o, box, size, zoom, tx, ty) {
+            var off = (box - size) / 2;
+            var dx = -(tx / 108 * size - size / 2) * zoom;
+            var dy = -(ty / 108 * size - size / 2) * zoom;
+            return '<div class="mag" style="width:' + box + 'px;height:' + box + 'px">' +
+                '<div class="mag-inner" style="left:' + off + 'px;top:' + off + 'px;width:' + size +
+                'px;height:' + size + 'px;transform:translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) +
+                'px) scale(' + zoom + ')">' + icon(o, size) + '</div></div>';
+        }
+
+        function cell(html, name, sub) {
+            return '<div class="cell">' + html +
+                '<div class="name">' + name + '</div>' +
+                (sub ? '<div class="sub">' + sub + '</div>' : '') + '</div>';
+        }
+
+        // 1–3 点之间那块的中点：45° 方向、圆环中线上
+        var MID_1_2 = polar(45, MID_R);
+
+        // ① 定稿
+        document.getElementById('hero').innerHTML =
+            cell(icon(mix(), 320), '定稿（干净版）', '时针 8 点 · 尾巴 2 点 · 1 点一个圆点') +
+            cell(labeled(mix(), 220), '方位标注（核对用）', '12 / 1 / 2 / 3 / 8 点');
+
+        // ② 放大
+        document.getElementById('mag').innerHTML =
+            cell(magnifier(mix(), 260, 240, 4, MID_1_2[0], MID_1_2[1]), '尾部 2 点 + 圆点 1 点',
+                '两个圆一样大（半径 3.5），中心都在圆环中线上') +
+            cell(magnifier(mix({ dot: null }), 260, 240, 4, MID_1_2[0], MID_1_2[1]), '没有 1 点圆点（对照）',
+                '尾部单独收在 2 点方向');
+
+        // ③ 圆点的间隔与大小
+        document.getElementById('dotopts').innerHTML =
+            cell(magnifier(mix(), 230, 240, 4, MID_1_2[0], MID_1_2[1]), '间隔 30°（1 点，推荐）', '') +
+            cell(magnifier(mix({ dot: 20 }), 230, 240, 4, MID_1_2[0], MID_1_2[1]), '间隔 40°（更靠 12 点）', '') +
+            cell(magnifier(mix({ dot: 40 }), 230, 240, 4, MID_1_2[0], MID_1_2[1]), '间隔 20°（更靠 2 点）', '');
+
+        // ④ 时针长度
+        document.getElementById('hourlen').innerHTML = [
+            [9, '9 长', '更短'],
+            [11, '11 长（推荐）', '长短区分清楚'],
+            [13, '13 长', '接近等长']
+        ].map(function (item) {
+            return cell(icon(mix({ hour: item[0] }), 200), item[1], item[2]);
+        }).join('');
+
+        // ⑤ 小尺寸
+        var SIZES = [108, 72, 48, 36];
+        document.getElementById('small').innerHTML = [
+            ['定稿', mix()],
+            ['无 1 点圆点', mix({ dot: null })],
+            ['圆点缩小到 2.5', mix({ dotR: 2.5 })],
+            ['两针加粗到 7 + 中心圆 3.5', mix({ w: 7, hub: 3.5 })]
+        ].map(function (item) {
+            var html = '<div class="sizes">';
+            SIZES.forEach(function (size) {
+                html += '<div class="cell">' + icon(item[1], size) +
+                    '<div class="sub">' + size + '</div></div>';
+            });
+            html += '</div>';
+            return '<div class="cell">' + html + '<div class="name">' + item[0] + '</div></div>';
+        }).join('');
+
+        // ⑥ 圆形遮罩
+        var roundHtml = '<div class="sizes">';
+        [188, 148, 108, 72].forEach(function (size) {
+            roundHtml += '<div class="cell">' + icon(mix(), size, true) +
+                '<div class="sub">' + size + '</div></div>';
+        });
+        roundHtml += '<div class="cell">' + icon(mix(), 148, false) +
+            '<div class="sub">方形圆角</div></div></div>';
+        document.getElementById('round').innerHTML = '<div class="cell">' + roundHtml + '</div>';
+
+        // ⑦ 暗端灰度
+        document.getElementById('params').innerHTML = [
+            ['#8C8C8A', '偏浅 #8C8C8A', '像高光划过'],
+            ['#6E6E6E', '推荐 #6E6E6E', '暗但清楚'],
+            ['#4E4E4E', '偏深 #4E4E4E', '小尺寸可能糊进黑底']
+        ].map(function (item) {
+            return cell(icon(mix({ dark: item[0] }), 170), item[1], item[2]);
+        }).join('');
+    </script>
+</body>
+
+</html>

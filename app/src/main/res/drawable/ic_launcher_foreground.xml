@@ -1,20 +1,91 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- LifeLog 应用图标：三条由长到短的“日志”条 + 一个圆点 -->
+<!--
+  LifeLog 应用图标 · 前景层
+  造型：白 → 灰 逆时针环绕渐变的时钟（圆环 + 中心指针）
+
+  几何（108 × 108 视口，等于 Android VectorDrawable 的坐标空间）
+    圆心           (54, 54)
+    圆环外半径     33   → 外径 66（正好是自适应图标「圆形遮罩」的可见直径）
+    圆环线宽       7    → 内半径 26
+    圆环中线半径   29.5 → 两端的圆头 / 1 点的圆点都画在这条线上
+    圆头半径       3.5
+    圆弧跨度       12 点起「逆时针」300°：12 点 → 9 点 → 6 点 → 3 点 → 2 点
+    分针           16 长，指向 12 点（顺时针 0°）
+    时针           11 长，指向 8 点方向（顺时针 240°）
+    两针线宽       6    → 半宽 3
+    中心圆点       半径 3（= 半宽，与两针相切，正好填平圆心的凹角）
+
+  渐变：圆环用 <gradient type="sweep">。
+  注意 Android 的 sweep 渐变**没有起点角度参数**（GradientColor.onColorsChange()
+  里就是 `new SweepGradient(centerX, centerY, colors, offsets)`），
+  它固定从「3 点方向」起、沿顺时针走一圈，offset 0→1 对应 0°→360°。
+  换算（记 φ = 从 12 点起顺时针的角度，σ = 从 3 点起顺时针的角度 = φ - 90）：
+    - 12 点 φ=0   → σ=270  → offset 0.75   → 纯白 #FFFFFF
+    -  2 点 φ=60  → σ=330  → offset 0.9167 → 最深的灰 #6E6E6E
+    -  3 点 φ=90  → σ=0/360 → offset 0 / 1  → #7C7C7C（两端必须同色才接得上）
+  白→灰的过渡在 φ ∈ [60°, 360°] 上是线性的，所以按上面取值正好吻合；
+  σ ∈ (270°, 330°) 那一段（φ ∈ (0°, 60°)）是缺口、根本不画，随便填。
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- ① 圆环：从 3 点方向顺时针绕到 12 点的圆环扇形（缺口在 12 点～2 点之间） -->
+    <path android:pathData="M82.58,37.5 A33,33 0 1 1 54,21 L54,28 A26,26 0 1 0 76.52,41 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="sweep"
+                android:centerX="54"
+                android:centerY="54">
+                <item
+                    android:offset="0"
+                    android:color="#FF7C7C7C" />
+                <item
+                    android:offset="0.75"
+                    android:color="#FFFFFFFF" />
+                <item
+                    android:offset="0.9167"
+                    android:color="#FF6E6E6E" />
+                <item
+                    android:offset="1"
+                    android:color="#FF7C7C7C" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- ② 圆弧起点的圆头：12 点方向，纯白（半径 3.5，圆心 54,24.5） -->
     <path
-        android:fillColor="#F5F5F3"
-        android:pathData="M34,34 H74 A4,4 0 0 1 78,38 A4,4 0 0 1 74,42 H34 A4,4 0 0 1 30,38 A4,4 0 0 1 34,34 Z" />
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M50.5,24.5 a3.5,3.5 0 1 0 7,0 a3.5,3.5 0 1 0 -7,0 Z" />
+
+    <!-- ③ 圆弧尾部的圆头：2 点方向，最深的灰（圆心 79.55,39.25） -->
     <path
-        android:fillColor="#F5F5F3"
-        android:pathData="M34,50 H74 A4,4 0 0 1 78,54 A4,4 0 0 1 74,58 H34 A4,4 0 0 1 30,54 A4,4 0 0 1 34,50 Z" />
+        android:fillColor="#FF6E6E6E"
+        android:pathData="M76.05,39.25 a3.5,3.5 0 1 0 7,0 a3.5,3.5 0 1 0 -7,0 Z" />
+
+    <!-- ④ 1 点方向的独立圆点：和圆头一样大，用圆弧尾部最深的灰（圆心 68.75,28.45） -->
     <path
-        android:fillColor="#B8B8B4"
-        android:pathData="M34,66 H52 A4,4 0 0 1 56,70 A4,4 0 0 1 52,74 H34 A4,4 0 0 1 30,70 A4,4 0 0 1 34,66 Z" />
+        android:fillColor="#FF6E6E6E"
+        android:pathData="M65.25,28.45 a3.5,3.5 0 1 0 7,0 a3.5,3.5 0 1 0 -7,0 Z" />
+
+    <!--
+      ⑤ 指针（两针同粗 6，圆头）
+         分针：圆心 → 12 点方向，长 16
+         时针：圆心 → 8 点方向，长 11
+         根部用圆头会往外鼓半个线宽，但半径 3 的圆头完全落在下面那个中心圆点里，
+         所以最终轮廓 = 中心圆点 ∪ 两针，和设计稿一致。
+    -->
     <path
-        android:fillColor="#B8B8B4"
-        android:pathData="M62,70 a4,4 0 1 0 8,0 a4,4 0 1 0 -8,0 z" />
+        android:pathData="M54,54 L54,38 M54,54 L44.47,59.5"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="6" />
+
+    <!-- ⑥ 中心圆点：半径 3 = 指针半宽，与两针的边相切，填平圆心缺口且不外溢 -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M51,54 a3,3 0 1 0 6,0 a3,3 0 1 0 -6,0 Z" />
 </vector>

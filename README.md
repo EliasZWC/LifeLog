@@ -4,7 +4,7 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前版本 | **v0.0.15** |
+| 当前版本 | **v0.0.16** |
 | 包名 | `com.eliaszwc.lifelog` |
 | 最低支持 | Android 8.0（API 26） |
 | 目标版本 | Android 15（API 35） |
@@ -12,7 +12,11 @@
 
 ## 设计约定
 
-- **图标**：全部使用谷歌官方 [Material Icons](https://fonts.google.com/icons)，不引入第三方图标集。
+- **图标**：界面里全部使用谷歌官方 [Material Icons](https://fonts.google.com/icons)，不引入第三方图标集。
+- **应用图标（launcher）**：黑底 `#1B1B1B` + **白 → 灰逆时针环绕渐变**的时钟（圆环 + 中心指针），
+  资源在 `res/drawable/ic_launcher_foreground.xml`（自适应图标前景层，108 × 108 视口）。
+  造型与几何参数见该文件顶部的注释与 `CHANGELOG.md` 的 v0.0.16 条目；
+  设计过程稿（可交互预览）留在 `design/icon-sketch.html`。
 - **主题色**：黑白，但使用不同质感的灰阶表达层次，**不使用纯黑 `#000` / 纯白 `#fff`**。
   - 白天主题：以白为主（页面背景 `#EFEFED`，导航栏 / 面板 `#FCFCFB`，文字 `#1B1B1B`）
   - 夜间主题：以黑为主（页面背景 `#1E1E1E`，导航栏 `#131313`，面板 `#242424`，文字 `#ECECEA`）
