@@ -16,7 +16,7 @@
     var DEFAULT_MODE = 'system';
 
     // 与 styles.css 里的 --bg 保持一致
-    var BACKGROUND = { light: '#F4F4F2', dark: '#121212' };
+    var BACKGROUND = { light: '#EFEFED', dark: '#1E1E1E' };
 
     var mode = DEFAULT_MODE;
     var listeners = [];

@@ -3,6 +3,7 @@ package com.eliaszwc.lifelog
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageInfo
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
@@ -14,11 +15,13 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.webkit.WebViewAssetLoader
+import kotlin.math.roundToInt
 
 /**
  * LifeLog 的网页套壳容器。
@@ -58,17 +61,16 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_main)
 
-        val root = findViewById<FrameLayout>(R.id.root)
-        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
-            val bars = insets.getInsets(
-                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
-            )
-            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
-            WindowInsetsCompat.CONSUMED
-        }
-
         webView = findViewById(R.id.web_view)
         configureWebView()
+
+        // WebView 铺满整屏（包括状态栏与系统导航条区域），让遮罩、弹窗能盖住整屏；
+        // 内容要靠边多少由网页用这些尺寸自己决定。
+        val root = findViewById<FrameLayout>(R.id.root)
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            pushInsetsToWeb(insets)
+            insets
+        }
 
         // 返回键优先让网页回退历史
         onBackPressedDispatcher.addCallback(this) {
@@ -121,7 +123,54 @@ class MainActivity : AppCompatActivity() {
                 if (url.host == APP_ASSETS_HOST) return false
                 return openExternally(url.toString())
             }
+
+            override fun onPageFinished(view: WebView, url: String) {
+                // 页面脚本就绪后把版本号与内边距补发一次
+                pushVersionToWeb()
+                ViewCompat.requestApplyInsets(findViewById(R.id.root))
+            }
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // 与网页同步
+    // -----------------------------------------------------------------------
+
+    private fun evaluateInWeb(script: String) {
+        if (!::webView.isInitialized) return
+        webView.evaluateJavascript(script, null)
+    }
+
+    private fun toDp(pixels: Int): Int = (pixels / resources.displayMetrics.density).roundToInt()
+
+    /**
+     * 把系统栏与输入法尺寸按 dp 推给网页（CSS 像素即 dp）。
+     * 网页用它给内容让位；键盘高度单独给，好让表单整体上移。
+     */
+    private fun pushInsetsToWeb(insets: WindowInsetsCompat) {
+        val bars = insets.getInsets(
+            WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+        )
+        val keyboard = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+
+        evaluateInWeb(
+            "window.LifeLogShell && window.LifeLogShell.setInsets(" +
+                "${toDp(bars.top)}, ${toDp(bars.right)}, ${toDp(bars.bottom)}, " +
+                "${toDp(bars.left)}, ${toDp(keyboard)});"
+        )
+    }
+
+    /** 版本号只在 build.gradle.kts 里维护，这里读系统的值传给网页显示 */
+    private fun pushVersionToWeb() {
+        val info: PackageInfo = try {
+            packageManager.getPackageInfo(packageName, 0)
+        } catch (_: Exception) {
+            return
+        }
+
+        val name = info.versionName ?: return
+        val code = PackageInfoCompat.getLongVersionCode(info)
+        evaluateInWeb("window.LifeLogShell && window.LifeLogShell.setVersion(\"$name\", $code);")
     }
 
     /** 用系统浏览器 / 其它应用打开站外链接 */

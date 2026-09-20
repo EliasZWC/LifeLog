@@ -71,11 +71,21 @@
     }
 
     function removeBehavior(id) {
+        removeBehaviors([id]);
+    }
+
+    /** 批量删除行为；连带删掉这些行为下的时间记录 */
+    function removeBehaviors(ids) {
+        var removed = {};
+        ids.forEach(function (id) {
+            removed[id] = true;
+        });
+
         write(BEHAVIOR_KEY, getBehaviors().filter(function (item) {
-            return item.id !== id;
+            return !removed[item.id];
         }));
         write(RECORD_KEY, getRecords().filter(function (item) {
-            return item.behaviorId !== id;
+            return !removed[item.behaviorId];
         }));
     }
 
@@ -103,8 +113,16 @@
     }
 
     function removeRecord(id) {
+        removeRecords([id]);
+    }
+
+    function removeRecords(ids) {
+        var removed = {};
+        ids.forEach(function (id) {
+            removed[id] = true;
+        });
         write(RECORD_KEY, read(RECORD_KEY).filter(function (item) {
-            return item.id !== id;
+            return !removed[item.id];
         }));
     }
 
@@ -113,9 +131,11 @@
         getBehavior: getBehavior,
         addBehavior: addBehavior,
         removeBehavior: removeBehavior,
+        removeBehaviors: removeBehaviors,
         getRecords: getRecords,
         addRecord: addRecord,
         removeRecord: removeRecord,
+        removeRecords: removeRecords,
         onChange: function (listener) {
             listeners.push(listener);
         }

@@ -4,7 +4,7 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前版本 | **v0.0.5** |
+| 当前版本 | **v0.0.6** |
 | 包名 | `com.eliaszwc.lifelog` |
 | 最低支持 | Android 8.0（API 26） |
 | 目标版本 | Android 15（API 35） |
@@ -30,7 +30,17 @@
 | --- | --- |
 | `setThemeMode(mode)` | 网页切换主题后通知原生，`mode` 为 `light` / `dark` / `system` |
 
-原生会把该值落到 `SharedPreferences`，保证冷启动时先上对背景色，不用等网页接管。
+反方向（原生 → 网页）用 `evaluateJavascript` 调用 `LifeLogShell`：
+
+| 方法 | 说明 |
+| --- | --- |
+| `setInsets(top, right, bottom, left, keyboard)` | 推送系统栏与输入法尺寸（dp），网页写进 `--safe-*` / `--keyboard` CSS 变量 |
+| `setVersion(name, code)` | 推送版本名与版本号，供设置页只读显示 |
+
+**WebView 是全屏的**（包括状态栏与系统导航条区域），所以遮罩与底部弹窗能盖住整屏。
+内容要让开多少由 CSS 变量决定，不依赖 `env(safe-area-inset-*)`（WebView 里的取值不可靠，只在 `:root` 里作为兜底）。
+
+原生会把主题偏好落到 `SharedPreferences`，保证冷启动时先上对背景色，不用等网页接管。
 网页侧的偏好则存在 `localStorage`，两者由这一桥接保持同步。
 
 ## 数据模型
@@ -152,6 +162,8 @@ git push origin v0.0.2
 - [x] 页面 / 列表切换动画
 - [x] 行为页：列表 + 新增行为表单（名称 + 图标）
 - [x] 时间页：三视图（全部 / 时段 / 时点）+ 列表 + 新增记录表单
-- [ ] 卡片编辑与删除
+- [x] 卡片长按多选删除
+- [x] 全屏布局 + 键盘避让 + 自绘下拉控件
+- [ ] 卡片编辑
 - [ ] 统计页
 - [ ] 设置页：其余设置项（语言切换等）

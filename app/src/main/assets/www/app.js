@@ -18,6 +18,16 @@
 
     var currentTab = null;
 
+    function pageModule(name) {
+        if (name === 'time') {
+            return window.LifeLogTimePage;
+        }
+        if (name === 'behavior') {
+            return window.LifeLogBehaviorPage;
+        }
+        return null;
+    }
+
     function selectTab(name, options) {
         if (!pages[name]) {
             name = DEFAULT_TAB;
@@ -43,6 +53,12 @@
         Array.prototype.forEach.call(document.querySelectorAll('[data-tab]'), function (fab) {
             fab.hidden = fab.dataset.tab !== name;
         });
+
+        // 切页会退出多选，并把多选目标改成当前页的列表
+        if (window.LifeLogUI) {
+            var module = pageModule(name);
+            window.LifeLogUI.bindSelection(module ? module.selection : null);
+        }
 
         if (titleEl) {
             // 标题文案复用导航词条，切语言时也能一起更新

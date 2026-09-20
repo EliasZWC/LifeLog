@@ -4,20 +4,28 @@
    白天主题以白为主，夜间主题以黑为主。
    ========================================================================== */
 
-/* 白天主题（默认） */
+/* 白天主题（默认）：页面背景比导航栏更深 */
 :root {
     color-scheme: light dark;
 
-    --bg: #F4F4F2;
-    --surface: #FFFFFF;
-    --surface-raised: #EDEDEA;
+    /* 原生壳推过来的系统栏尺寸（会以行内样式覆写这里）；env() 只是浏览器预览时的兜底 */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --keyboard: 0px;
+
+    --bg: #EFEFED;
+    --nav-bg: #FCFCFB;
+    --surface: #FCFCFB;
+    --surface-raised: #E6E6E4;
     --on-surface: #1B1B1B;
     --on-surface-variant: #6E6E6E;
-    --outline: #E4E4E0;
+    --outline: #E1E1DE;
     --nav-active: #1B1B1B;
     --nav-inactive: #8C8C8A;
 
-    /* 悬浮按钮：反色，跟随当前主题最强的前景色 / 背景色 */
+    /* 悬浮按钮 / 主按钮：反色，跟随当前主题最强的前景色 */
     --fab-bg: var(--nav-active);
     --fab-fg: var(--bg);
 }
@@ -25,12 +33,13 @@
 /* 夜间主题：跟随系统（用户显式选了日间时不生效） */
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-        --bg: #121212;
-        --surface: #1C1C1C;
-        --surface-raised: #262626;
+        --bg: #1E1E1E;
+        --nav-bg: #131313;
+        --surface: #242424;
+        --surface-raised: #303030;
         --on-surface: #ECECEA;
         --on-surface-variant: #9A9A98;
-        --outline: #2E2E2E;
+        --outline: #333333;
         --nav-active: #F2F2F0;
         --nav-inactive: #7E7E7C;
     }
@@ -38,12 +47,13 @@
 
 /* 夜间主题：用户在设置里手动指定 */
 :root[data-theme="dark"] {
-    --bg: #121212;
-    --surface: #1C1C1C;
-    --surface-raised: #262626;
+    --bg: #1E1E1E;
+    --nav-bg: #131313;
+    --surface: #242424;
+    --surface-raised: #303030;
     --on-surface: #ECECEA;
     --on-surface-variant: #9A9A98;
-    --outline: #2E2E2E;
+    --outline: #333333;
     --nav-active: #F2F2F0;
     --nav-inactive: #7E7E7C;
 }
@@ -89,6 +99,10 @@ body {
     flex-direction: column;
     height: 100%;
     height: 100dvh;
+    /* WebView 是全屏的，这里自己让开状态栏与挖孔 */
+    padding-top: var(--safe-top);
+    padding-right: var(--safe-right);
+    padding-left: var(--safe-left);
 }
 
 #content {
@@ -153,7 +167,19 @@ body {
     color: var(--on-surface);
 }
 
-/* 下拉选择：去掉系统默认外观，只留下文字 + 右侧箭头 */
+/* 只读值，如版本号 */
+.settings-value {
+    flex: 0 1 auto;
+    min-width: 0;
+    font-size: 15px;
+    color: var(--on-surface-variant);
+    font-variant-numeric: tabular-nums;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* 自绘下拉：按钮 + 下拉菜单都走 app 自己的黑白风格 */
 .select-wrap {
     position: relative;
     display: flex;
@@ -163,38 +189,61 @@ body {
 }
 
 .form-select {
-    appearance: none;
-    -webkit-appearance: none;
+    display: block;
+    max-width: 100%;
     margin: 0;
+    padding: 8px 22px 8px 10px;
     border: 0;
-    background: transparent;
-    color: var(--on-surface-variant);
+    border-radius: 0;
+    background: none;
+    color: var(--on-surface);
     font: inherit;
     font-size: 15px;
     line-height: 24px;
     text-align: right;
-    text-align-last: right;
-    text-overflow: ellipsis;
-    padding: 8px 22px 8px 10px;
     cursor: pointer;
     outline: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 120ms ease, opacity 120ms ease;
 }
 
 .form-select:active {
-    color: var(--on-surface);
+    transform: scale(0.96);
+    opacity: 0.6;
 }
 
 .form-select:disabled {
-    opacity: 0.5;
+    color: var(--on-surface-variant);
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.form-select-label {
+    display: block;
+    max-width: 46vw;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.form-select-label.is-placeholder {
+    color: var(--on-surface-variant);
 }
 
 .select-chevron {
     position: absolute;
     right: 0;
+    display: grid;
+    place-items: center;
+    color: var(--on-surface-variant);
+    pointer-events: none;
+}
+
+.select-chevron svg {
+    display: block;
     width: 18px;
     height: 18px;
-    fill: var(--on-surface-variant);
-    pointer-events: none;
+    fill: currentColor;
 }
 
 /* --------------------------------------------------------------------------
@@ -285,6 +334,10 @@ body {
 
 .card:last-child {
     border-bottom: 0;
+}
+
+.card.is-selected {
+    background: var(--surface-raised);
 }
 
 .card-icon {
@@ -404,14 +457,15 @@ body {
 
 .sheet {
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    left: var(--safe-left);
+    right: var(--safe-right);
+    /* 键盘弹起时整体上移，避免被输入法盖住 */
+    bottom: var(--keyboard);
     z-index: 11;
-    max-height: 88%;
+    max-height: calc(100dvh - var(--keyboard) - 24px);
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 8px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+    padding: 8px 20px calc(20px + var(--safe-bottom));
     background: var(--surface);
     border-radius: 20px 20px 0 0;
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.28);
@@ -697,6 +751,41 @@ body {
 }
 
 /* --------------------------------------------------------------------------
+   卡片多选操作栏（盖在页面标题栏上滑入）
+   -------------------------------------------------------------------------- */
+
+.selection-bar {
+    position: fixed;
+    top: var(--safe-top);
+    left: var(--safe-left);
+    right: var(--safe-right);
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    height: 56px;
+    padding: 0 8px;
+    background: var(--bg);
+    transform: translateY(-100%);
+    transition: transform 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.selection-bar[hidden] {
+    display: none;
+}
+
+.selection-bar.is-open {
+    transform: translateY(0);
+}
+
+.selection-count {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--on-surface);
+}
+
+/* --------------------------------------------------------------------------
    切换动画：页面 / 列表从切换方向滑入
    -------------------------------------------------------------------------- */
 
@@ -741,7 +830,8 @@ body {
 
     .sheet,
     .menu,
-    .scrim {
+    .scrim,
+    .selection-bar {
         transition: none;
     }
 }
@@ -755,10 +845,10 @@ body {
     flex: 0 0 auto;
     display: flex;
     align-items: stretch;
-    background: var(--surface);
-    border-top: 1px solid var(--outline);
+    /* 导航栏在主背景之上还留出系统导航条的高度 */
+    background: var(--nav-bg);
     padding: 8px 4px;
-    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(8px + var(--safe-bottom));
 }
 
 .nav-item {

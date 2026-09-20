@@ -27,6 +27,8 @@
 
     var currentView = DEFAULT_VIEW;
     var groups = {};
+    var behaviorValue = '';
+    var typeValue = '';
 
     function t(key) {
         return global.LifeLogI18n ? global.LifeLogI18n.t(key) : key;
@@ -61,12 +63,12 @@
         return formatDate(a) === formatDate(b);
     }
 
-    /** 上排：年月日 */
+    /** 上排：年月日（跨天用波浪号连接） */
     function dateLine(record) {
         if (record.type !== 'period' || record.end === null || sameDay(record.start, record.end)) {
             return formatDate(record.start);
         }
-        return formatDate(record.start) + ' → ' + formatMonthDay(record.end);
+        return formatDate(record.start) + ' ~ ' + formatMonthDay(record.end);
     }
 
     /** 下排：时分 */
@@ -74,7 +76,7 @@
         if (record.type !== 'period' || record.end === null) {
             return formatClock(record.start);
         }
-        return formatClock(record.start) + ' – ' + formatClock(record.end);
+        return formatClock(record.start) + ' ~ ' + formatClock(record.end);
     }
 
     // --- 分段数字输入 -------------------------------------------------------
@@ -271,6 +273,7 @@
             var behavior = global.LifeLogStore.getBehavior(record.behaviorId);
 
             var card = global.LifeLogUI.el('li', 'card');
+            card.dataset.id = record.id;
             card.appendChild(global.LifeLogUI.icon(
                 behavior ? behavior.icon : global.LifeLogIcons.fallback,
                 'card-icon'
@@ -282,30 +285,69 @@
             time.appendChild(global.LifeLogUI.el('span', 'card-time-clock', clockLine(record)));
             card.appendChild(time);
 
+            if (global.LifeLogUI.isSelected(record.id)) {
+                card.classList.add('is-selected');
+            }
+
+            global.LifeLogUI.attachLongPress(card, function () {
+                global.LifeLogUI.startSelection(record.id);
+            });
+
+            card.addEventListener('click', function () {
+                if (global.LifeLogUI.justLongPressed()) {
+                    return;
+                }
+                if (global.LifeLogUI.isSelecting()) {
+                    global.LifeLogUI.toggleSelection(record.id);
+                }
+            });
+
             listEl.appendChild(card);
         });
     }
 
     // --- 表单 ---------------------------------------------------------------
 
-    function fillBehaviorOptions() {
-        var behaviors = global.LifeLogStore.getBehaviors();
+    /** 行为 / 类型两个下拉（自绘，统一 app 风格） */
+    function createSelects() {
+        behaviorSelect = global.LifeLogUI.createSelect(document.getElementById('time-behavior'), {
+            getOptions: function () {
+                return global.LifeLogStore.getBehaviors().map(function (behavior) {
+                    return { value: behavior.id, label: behavior.name };
+                });
+            },
+            getValue: function () {
+                return behaviorValue;
+            },
+            onChange: function (value) {
+                behaviorValue = value;
+                validate();
+            },
+            isDisabled: function () {
+                return global.LifeLogStore.getBehaviors().length === 0;
+            },
+            placeholder: function () {
+                return t('time.form.needBehavior');
+            }
+        });
 
-        behaviorSelect.innerHTML = '';
-
-        if (!behaviors.length) {
-            var none = global.LifeLogUI.el('option', null, t('time.form.needBehavior'));
-            none.value = '';
-            behaviorSelect.appendChild(none);
-            behaviorSelect.disabled = true;
-            return;
-        }
-
-        behaviorSelect.disabled = false;
-        behaviors.forEach(function (behavior) {
-            var option = global.LifeLogUI.el('option', null, behavior.name);
-            option.value = behavior.id;
-            behaviorSelect.appendChild(option);
+        typeSelect = global.LifeLogUI.createSelect(document.getElementById('time-type'), {
+            getOptions: function () {
+                return [
+                    { value: 'moment', label: t('view.moment') },
+                    { value: 'period', label: t('view.period') }
+                ];
+            },
+            getValue: function () {
+                return typeValue;
+            },
+            onChange: function (value) {
+                typeValue = value;
+                buildTimeFields();
+            },
+            placeholder: function () {
+                return t('time.form.type.none');
+            }
         });
     }
 
@@ -316,10 +358,10 @@
 
         var now = Date.now();
 
-        if (typeSelect.value === 'moment') {
+        if (typeValue === 'moment') {
             groups.moment = buildGroup(null, now);
             fieldsEl.appendChild(groups.moment.root);
-        } else if (typeSelect.value === 'period') {
+        } else if (typeValue === 'period') {
             groups.start = buildGroup(t('time.form.start'), now - 60 * 60 * 1000);
             groups.end = buildGroup(t('time.form.end'), now);
             fieldsEl.appendChild(groups.start.root);
@@ -330,15 +372,20 @@
     }
 
     function openForm() {
-        fillBehaviorOptions();
-        typeSelect.value = '';
+        var behaviors = global.LifeLogStore.getBehaviors();
+        behaviorValue = behaviors.length ? behaviors[0].id : '';
+        typeValue = '';
+
+        behaviorSelect.refresh();
+        typeSelect.refresh();
         buildTimeFields();
+
         global.LifeLogUI.openSheet(sheet);
     }
 
     function validate() {
         var hasBehaviors = global.LifeLogStore.getBehaviors().length > 0;
-        var type = typeSelect.value;
+        var type = typeValue;
         var start = null;
         var end = null;
         var hint = '';
@@ -376,12 +423,12 @@
 
     function submit() {
         var result = validate();
-        if (!result.ok || !behaviorSelect.value) {
+        if (!result.ok || !behaviorValue) {
             return;
         }
 
         global.LifeLogStore.addRecord(
-            behaviorSelect.value,
+            behaviorValue,
             result.type,
             result.start,
             result.end
@@ -403,27 +450,31 @@
         viewButton = document.getElementById('view-button');
         fab = document.getElementById('time-fab');
         sheet = document.getElementById('sheet-time');
-        behaviorSelect = document.getElementById('time-behavior');
-        typeSelect = document.getElementById('time-type');
         fieldsEl = document.getElementById('time-fields');
         hintEl = document.getElementById('time-hint');
         cancelBtn = document.getElementById('time-cancel');
         confirmBtn = document.getElementById('time-confirm');
 
+        createSelects();
+
         viewButton.addEventListener('click', openViewMenu);
         fab.addEventListener('click', openForm);
-        typeSelect.addEventListener('change', buildTimeFields);
-        behaviorSelect.addEventListener('change', validate);
         cancelBtn.addEventListener('click', function () {
             global.LifeLogUI.closeSheet();
         });
         confirmBtn.addEventListener('click', submit);
 
-        global.LifeLogStore.onChange(render);
+        global.LifeLogStore.onChange(function () {
+            render();
+            // 行为被删掉后，表单里的下拉要跟着更新
+            behaviorSelect.refresh();
+        });
         if (global.LifeLogI18n) {
             global.LifeLogI18n.onChange(function () {
                 renderViewBar();
                 render();
+                behaviorSelect.refresh();
+                typeSelect.refresh();
             });
         }
 
@@ -437,8 +488,17 @@
         setView(VIEWS.indexOf(saved) >= 0 ? saved : DEFAULT_VIEW, { animate: false });
     }
 
+    /** 交给 LifeLogUI 的多选目标 */
+    var selection = {
+        onSelectionChange: render,
+        onDelete: function (ids) {
+            global.LifeLogStore.removeRecords(ids);
+        }
+    };
+
     global.LifeLogTimePage = {
         init: init,
-        render: render
+        render: render,
+        selection: selection
     };
 })(window);

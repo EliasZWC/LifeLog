@@ -47,6 +47,12 @@
             'action.cancel': 'Cancel',
             'action.confirm': 'Confirm',
 
+            'selection.cancel': 'Cancel selection',
+            'selection.delete': 'Delete selected',
+            'selection.count': '{n} selected',
+
+            'settings.version': 'Version',
+
             'settings.theme': 'Theme',
             'settings.theme.light': 'Light',
             'settings.theme.dark': 'Dark',
@@ -87,6 +93,12 @@
 
             'action.cancel': '取消',
             'action.confirm': '确定',
+
+            'selection.cancel': '取消选择',
+            'selection.delete': '删除所选',
+            'selection.count': '已选 {n} 项',
+
+            'settings.version': '版本',
 
             'settings.theme': '主题',
             'settings.theme.light': '日间模式',

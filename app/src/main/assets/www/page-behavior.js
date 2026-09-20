@@ -108,14 +108,42 @@
 
         behaviors.forEach(function (behavior) {
             var card = global.LifeLogUI.el('li', 'card');
+            card.dataset.id = behavior.id;
             card.appendChild(global.LifeLogUI.icon(behavior.icon, 'card-icon'));
             card.appendChild(global.LifeLogUI.el('span', 'card-title', behavior.name));
+
+            if (global.LifeLogUI.isSelected(behavior.id)) {
+                card.classList.add('is-selected');
+            }
+
+            global.LifeLogUI.attachLongPress(card, function () {
+                global.LifeLogUI.startSelection(behavior.id);
+            });
+
+            card.addEventListener('click', function () {
+                if (global.LifeLogUI.justLongPressed()) {
+                    return;
+                }
+                if (global.LifeLogUI.isSelecting()) {
+                    global.LifeLogUI.toggleSelection(behavior.id);
+                }
+            });
+
             listEl.appendChild(card);
         });
     }
 
+    /** 交给 LifeLogUI 的多选目标（删除行为会连带删掉它的时间记录） */
+    var selection = {
+        onSelectionChange: render,
+        onDelete: function (ids) {
+            global.LifeLogStore.removeBehaviors(ids);
+        }
+    };
+
     global.LifeLogBehaviorPage = {
         init: init,
-        render: render
+        render: render,
+        selection: selection
     };
 })(window);

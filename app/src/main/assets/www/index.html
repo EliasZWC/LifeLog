@@ -6,7 +6,7 @@
     <meta name="viewport"
         content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#F4F4F2" />
+    <meta name="theme-color" content="#EFEFED" />
     <title>LifeLog</title>
     <link rel="stylesheet" href="styles.css" />
 
@@ -55,21 +55,15 @@
             <!-- 设置页：修改应用设置 -->
             <section class="page" id="page-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
                 <ul class="settings-list">
+                    <!-- 版本号由原生壳推送（与 build.gradle.kts 单一来源），只读 -->
                     <li class="settings-item">
-                        <label class="settings-label" for="setting-theme"
-                            data-i18n="settings.theme">Theme</label>
+                        <span class="settings-label" data-i18n="settings.version">Version</span>
+                        <span class="settings-value" id="setting-version">—</span>
+                    </li>
 
-                        <div class="select-wrap">
-                            <select class="form-select" id="setting-theme" data-setting="theme">
-                                <option value="light" data-i18n="settings.theme.light">Light</option>
-                                <option value="dark" data-i18n="settings.theme.dark">Dark</option>
-                                <option value="system" data-i18n="settings.theme.system">Follow system</option>
-                            </select>
-                            <!-- Google Material Icons: expand_more -->
-                            <svg class="select-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                                <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z" />
-                            </svg>
-                        </div>
+                    <li class="settings-item">
+                        <span class="settings-label" data-i18n="settings.theme">Theme</span>
+                        <div class="select-wrap" id="setting-theme"></div>
                     </li>
                 </ul>
             </section>
@@ -134,6 +128,28 @@
         </nav>
     </div>
 
+    <!-- 卡片多选的顶部操作栏 -->
+    <div class="selection-bar" id="selection-bar" hidden>
+        <button class="icon-button" type="button" id="selection-close" aria-label="Cancel selection"
+            data-i18n-aria-label="selection.cancel">
+            <!-- Google Material Icons: close -->
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path
+                    d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+            </svg>
+        </button>
+
+        <span class="selection-count" id="selection-count"></span>
+
+        <button class="icon-button" type="button" id="selection-delete" aria-label="Delete selected"
+            data-i18n-aria-label="selection.delete">
+            <!-- Google Material Icons: delete -->
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+            </svg>
+        </button>
+    </div>
+
     <!-- 弹窗遮罩 -->
     <div class="scrim" id="scrim" hidden></div>
 
@@ -168,27 +184,13 @@
         <h2 class="sheet-title" id="sheet-time-title" data-i18n="time.form.title">New record</h2>
 
         <div class="form-row">
-            <label class="form-label" for="time-behavior" data-i18n="time.form.behavior">Behavior</label>
-            <div class="select-wrap">
-                <select class="form-select" id="time-behavior"></select>
-                <svg class="select-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z" />
-                </svg>
-            </div>
+            <label class="form-label" data-i18n="time.form.behavior">Behavior</label>
+            <div class="select-wrap" id="time-behavior"></div>
         </div>
 
         <div class="form-row">
-            <label class="form-label" for="time-type" data-i18n="time.form.type">Type</label>
-            <div class="select-wrap">
-                <select class="form-select" id="time-type">
-                    <option value="" data-i18n="time.form.type.none">Select type</option>
-                    <option value="moment" data-i18n="view.moment">Moment</option>
-                    <option value="period" data-i18n="view.period">Period</option>
-                </select>
-                <svg class="select-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z" />
-                </svg>
-            </div>
+            <label class="form-label" data-i18n="time.form.type">Type</label>
+            <div class="select-wrap" id="time-type"></div>
         </div>
 
         <div class="form-block">
