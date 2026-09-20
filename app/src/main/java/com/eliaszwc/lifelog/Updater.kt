@@ -10,6 +10,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import androidx.core.content.FileProvider
+import androidx.core.content.pm.PackageInfoCompat
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
@@ -31,7 +32,6 @@ object Updater {
         "https://api.github.com/repos/EliasZWC/LifeLog/releases/latest"
     private const val USER_AGENT = "LifeLog-Android"
     private const val APK_DIR = "update"
-    private const val APK_NAME = "lifelog-update.apk"
 
     /** 解析出来的一个可用版本 */
     data class Release(val version: String, val assetUrl: String, val size: Long)
@@ -40,6 +40,16 @@ object Updater {
     const val ERROR_PERMISSION = "permission"
     const val ERROR_NETWORK = "network"
     const val ERROR_INSTALL = "install"
+    /** 下下来的东西不是个合法 APK（多半是错误页/半截文件） */
+    const val ERROR_INVALID = "invalid"
+    /** 包里的版本号跟发布标签对不上 —— 装下去会变成别的版本 */
+    const val ERROR_MISMATCH = "mismatch"
+    /** 包不比当前装的版本新，装下去等于没更新 */
+    const val ERROR_DOWNGRADE = "downgrade"
+    /** 字节数跟 Release 里声明的不一致，文件残缺 */
+    const val ERROR_TRUNCATED = "truncated"
+
+    private class UpdateException(val code: String) : Exception(code)
 
     // -----------------------------------------------------------------------
     // 查版本
@@ -145,50 +155,61 @@ object Updater {
     // -----------------------------------------------------------------------
 
     /**
-     * 下载 APK 到 cacheDir/update。
+     * 下载 APK 到 cacheDir/update 并校验。
      * @param onProgress 0~100，进度不可知时不会调用
-     * @param onDone 成功给文件，失败给 null
+     * @param onDone 成功给 (文件, null)；失败给 (null, 错误码)
      */
     fun download(
         context: Context,
-        url: String,
+        release: Release,
         onProgress: (Int) -> Unit,
-        onDone: (File?) -> Unit,
+        onDone: (File?, String?) -> Unit,
     ) {
         val appContext = context.applicationContext
 
         Thread {
-            val result = try {
-                fetchApk(appContext, url, onProgress)
+            var file: File? = null
+            var error: String? = null
+            try {
+                file = fetchApk(appContext, release, onProgress)
+            } catch (e: UpdateException) {
+                Log.w(TAG, "下载校验未通过：${e.code}")
+                error = e.code
             } catch (t: Throwable) {
                 Log.w(TAG, "下载更新失败", t)
-                null
+                error = ERROR_NETWORK
             }
-            postToMain { onDone(result) }
+
+            val resultFile = file
+            val resultError = error
+            postToMain { onDone(resultFile, resultError) }
         }.start()
     }
 
-    private fun fetchApk(context: Context, url: String, onProgress: (Int) -> Unit): File {
+    private fun fetchApk(context: Context, release: Release, onProgress: (Int) -> Unit): File {
         val dir = File(context.cacheDir, APK_DIR)
-        if (dir.exists()) {
-            // 清掉上一轮的残留，免得装到旧包
-            dir.listFiles()?.forEach { it.delete() }
-        } else {
-            dir.mkdirs()
-        }
+        // 整个目录先清空：绝不留下上一次的安装包
+        dir.deleteRecursively()
+        dir.mkdirs()
 
-        val target = File(dir, APK_NAME)
-        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+        // 文件名带上版本号 —— 每次更新的 content:// URI 都不一样。
+        // 固定用同一个文件名的话，安装器/系统有可能按 URI 复用上一次的包，
+        // 结果就是“提示的是新版，装下去的却是旧版”。
+        val target = File(dir, "lifelog-" + safeFileName(release.version) + ".apk")
+
+        val connection = (URL(release.assetUrl).openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000
             readTimeout = 30_000
             instanceFollowRedirects = true
+            useCaches = false
             setRequestProperty("User-Agent", USER_AGENT)
+            setRequestProperty("Cache-Control", "no-cache")
         }
 
         try {
             val code = connection.responseCode
             if (code != HttpURLConnection.HTTP_OK) {
-                throw IllegalStateException("下载失败：HTTP $code")
+                throw UpdateException(ERROR_NETWORK)
             }
 
             val total = connection.contentLength.toLong()
@@ -214,14 +235,63 @@ object Updater {
                     output.flush()
                 }
             }
-
-            if (target.length() <= 0L) {
-                throw IllegalStateException("下载到的文件是空的")
-            }
-            return target
         } finally {
             connection.disconnect()
         }
+
+        verify(context, target, release)
+        return target
+    }
+
+    private fun safeFileName(version: String): String =
+        version.replace(Regex("[^0-9A-Za-z._-]"), "_")
+
+    /**
+     * 拉起安装器前必须确认：这确实是一个比当前版本新的、与发布标签一致的 APK。
+     * 不校验的话，一旦下载到旧包（缓存 / 代理 / 历史文件），
+     * 就会变成「提示新版、装的是旧版」而且永远循环提示。
+     */
+    private fun verify(context: Context, apk: File, release: Release) {
+        val length = apk.length()
+        if (length <= 0L) throw UpdateException(ERROR_INVALID)
+        if (release.size > 0 && length != release.size) {
+            Log.w(TAG, "下载大小 ${length} ≠ Release 声明的 ${release.size}")
+            throw UpdateException(ERROR_TRUNCATED)
+        }
+
+        val archive = context.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)
+            ?: throw UpdateException(ERROR_INVALID)
+
+        val name = archive.versionName
+        if (name != release.version) {
+            Log.w(TAG, "包内 versionName=$name ≠ 发布标签 ${release.version}")
+            throw UpdateException(ERROR_MISMATCH)
+        }
+
+        val code = PackageInfoCompat.getLongVersionCode(archive)
+        val installed = installedVersionCode(context)
+        if (code <= installed) {
+            Log.w(TAG, "包内 versionCode=$code 不大于已安装的 $installed")
+            throw UpdateException(ERROR_DOWNGRADE)
+        }
+
+        Log.i(TAG, "更新包已校验：$name (code $code)，$length 字节")
+    }
+
+    /** 当前已安装版本的 versionCode */
+    fun installedVersionCode(context: Context): Long = try {
+        PackageInfoCompat.getLongVersionCode(
+            context.packageManager.getPackageInfo(context.packageName, 0)
+        )
+    } catch (t: Throwable) {
+        0L
+    }
+
+    /** 当前已安装版本的 versionName */
+    fun installedVersionName(context: Context): String = try {
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
+    } catch (t: Throwable) {
+        ""
     }
 
     // -----------------------------------------------------------------------

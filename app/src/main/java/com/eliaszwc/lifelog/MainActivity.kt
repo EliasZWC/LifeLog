@@ -603,23 +603,32 @@ class MainActivity : AppCompatActivity() {
         if (updateChecked || updateFlowActive || !pageReady) return
         updateChecked = true
 
+        val installedNow = Updater.installedVersionName(this)
+
         Updater.check(this) { release ->
             if (release == null || updateFlowActive) return@check
 
             pendingRelease = release
             updateFlowActive = true
 
-            val localVersion = try {
-                packageManager.getPackageInfo(packageName, 0).versionName ?: ""
-            } catch (_: Exception) {
-                ""
+            // 上一次也给你推过同一个版本，而 app 的版本号没变 ⇒ 上次的安装没生效。
+            // 不说清楚的话，用户只会看到同一个弹窗反复出现。
+            val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            val attemptedVersion = prefs.getString(KEY_PENDING_UPDATE, null)
+            val attemptedFrom = prefs.getString(KEY_PENDING_UPDATE_FROM, null)
+            val stalled = release.version == attemptedVersion && installedNow == attemptedFrom
+
+            if (release.version != attemptedVersion) {
+                // 已经跟当前待装版本无关了（要么装成功了，要么被更新的版本取代），清掉记录
+                prefs.edit().remove(KEY_PENDING_UPDATE).remove(KEY_PENDING_UPDATE_FROM).apply()
             }
 
             evaluateInWeb(
                 "window.LifeLogShell && window.LifeLogShell.onUpdateAvailable(" +
                     "${JSONObject.quote(release.version)}, " +
-                    "${JSONObject.quote(localVersion)}, " +
-                    "${JSONObject.quote(Updater.formatSize(release.size))});"
+                    "${JSONObject.quote(installedNow)}, " +
+                    "${JSONObject.quote(Updater.formatSize(release.size))}, " +
+                    "$stalled);"
             )
         }
     }
@@ -632,17 +641,17 @@ class MainActivity : AppCompatActivity() {
 
         Updater.download(
             this,
-            release.assetUrl,
+            release,
             onProgress = { percent ->
                 evaluateInWeb(
                     "window.LifeLogShell && window.LifeLogShell.onUpdateProgress($percent);"
                 )
             },
-            onDone = { file ->
+            onDone = { file, error ->
                 downloading = false
                 if (file == null) {
                     updateFlowActive = false
-                    notifyUpdateFailed(Updater.ERROR_NETWORK, downloaded = false)
+                    notifyUpdateFailed(error ?: Updater.ERROR_NETWORK, downloaded = false)
                     return@download
                 }
                 downloadedApk = file
@@ -657,6 +666,14 @@ class MainActivity : AppCompatActivity() {
 
         val error = Updater.install(this, apk)
         if (error == null) {
+            // 记下“正在尝试装到哪个版本”，下次进入前台就能判断到底装上没有
+            pendingRelease?.let { release ->
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                    .edit()
+                    .putString(KEY_PENDING_UPDATE, release.version)
+                    .putString(KEY_PENDING_UPDATE_FROM, Updater.installedVersionName(this))
+                    .apply()
+            }
             evaluateInWeb("window.LifeLogShell && window.LifeLogShell.onUpdateReady();")
         } else {
             notifyUpdateFailed(error, downloaded = true)
@@ -746,6 +763,9 @@ class MainActivity : AppCompatActivity() {
 
         const val PREFS_NAME = "lifelog"
         const val KEY_THEME_MODE = "theme_mode"
+        /** 上次拉起安装器时装的是哪个版本、从哪个版本升 */
+        const val KEY_PENDING_UPDATE = "pending_update_version"
+        const val KEY_PENDING_UPDATE_FROM = "pending_update_from"
 
         const val THEME_LIGHT = "light"
         const val THEME_DARK = "dark"

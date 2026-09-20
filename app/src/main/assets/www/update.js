@@ -5,7 +5,7 @@
  * 这里弹窗询问；用户确认后由原生下载 APK，进度再推回来；下载完成原生直接拉起系统安装器。
  *
  * 原生 → 网页（都挂在 LifeLogShell 上）：
- *   onUpdateAvailable(version, current, size)  发现新版本
+ *   onUpdateAvailable(version, current, size, stalled)  发现新版本
  *   onUpdateProgress(percent)                  下载进度 0~100
  *   onUpdateReady()                            下载完成，安装器已拉起
  *   onUpdateFailed(reason, downloaded)         失败；downloaded=true 表示包已下好，可直接重试安装
@@ -24,6 +24,7 @@
 
     var sheet = null;
     var textEl = null;
+    var stalledEl = null;
     var progressEl = null;
     var fillEl = null;
     var percentEl = null;
@@ -42,6 +43,7 @@
     function init() {
         sheet = document.getElementById('sheet-update');
         textEl = document.getElementById('update-text');
+        stalledEl = document.getElementById('update-stalled');
         progressEl = document.getElementById('update-progress');
         fillEl = document.getElementById('update-fill');
         percentEl = document.getElementById('update-percent');
@@ -54,16 +56,33 @@
 
         laterBtn.addEventListener('click', dismiss);
         confirmBtn.addEventListener('click', confirm);
+
+        // 点遮罩也能关掉弹窗，但生命周期的收尾得自己补上
+        var scrim = document.getElementById('scrim');
+        if (scrim) {
+            scrim.addEventListener('click', function () {
+                if (state === STATE_DOWNLOADING || sheet.hidden) {
+                    return;
+                }
+                downloaded = false;
+                notifyNativeClosed();
+            });
+        }
     }
 
     // --- 原生回调 -----------------------------------------------------------
 
-    function onAvailable(version, current, size) {
+    function onAvailable(version, current, size, stalled) {
         if (!sheet) {
             return;
         }
 
-        info = { version: String(version), current: String(current), size: String(size || '') };
+        info = {
+            version: String(version),
+            current: String(current),
+            size: String(size || ''),
+            stalled: !!stalled
+        };
         downloaded = false;
         setState(STATE_AVAILABLE);
         renderText();
@@ -133,6 +152,11 @@
 
         downloaded = false;
         global.LifeLogUI.closeSheet();
+        notifyNativeClosed();
+    }
+
+    /** 告诉原生“弹窗没了”，它才能重置「本次进入已检查过」的状态 */
+    function notifyNativeClosed() {
         if (global.LifeLogNative && typeof global.LifeLogNative.closeUpdate === 'function') {
             global.LifeLogNative.closeUpdate();
         }
@@ -161,6 +185,11 @@
             .replace('{version}', info ? info.version : '')
             .replace('{size}', info ? info.size : '')
             .replace('{current}', info ? info.current : '');
+
+        stalledEl.hidden = !(info && info.stalled);
+        if (info && info.stalled) {
+            stalledEl.textContent = t('update.stalled');
+        }
     }
 
     global.LifeLogUpdate = {

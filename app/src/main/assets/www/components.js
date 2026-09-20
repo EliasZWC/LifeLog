@@ -166,9 +166,9 @@
 
         // --- 应用内更新（实现在 update.js） ---------------------------------
 
-        onUpdateAvailable: function (version, current, size) {
+        onUpdateAvailable: function (version, current, size, stalled) {
             if (global.LifeLogUpdate) {
-                global.LifeLogUpdate.onAvailable(version, current, size);
+                global.LifeLogUpdate.onAvailable(version, current, size, stalled);
             }
         },
 
