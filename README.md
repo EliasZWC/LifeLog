@@ -4,7 +4,7 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前版本 | **v0.0.14** |
+| 当前版本 | **v0.0.15** |
 | 包名 | `com.eliaszwc.lifelog` |
 | 最低支持 | Android 8.0（API 26） |
 | 目标版本 | Android 15（API 35） |
@@ -19,8 +19,9 @@
   - 导航栏与页面背景的关系固定为「导航栏更极端」：日间导航栏比背景更白，夜间导航栏比背景更黑；
     设置项这类“栏”则取 `--surface`，与 `--bg` 拉开差异以体现分区。
   - 主题色定义集中在 `app/src/main/assets/www/styles.css` 的 `:root` 与 `@media (prefers-color-scheme: dark)` 中，加壳侧的系统栏颜色在 `res/values/colors.xml` 与 `res/values-night/colors.xml`。
-- **语言**：默认英文（`en`）。网页端 i18n 在 `app/src/main/assets/www/i18n.js`，原生端以 `res/values/strings.xml`
-  作为英文默认资源；中文（`zh`）词条已备好，等「设置」页做好后接上切换入口。
+- **语言**：默认英文（`en`），可在设置页「通用 → 语言」切换为中文（`zh`）。
+  i18n 在 `app/src/main/assets/www/i18n.js`（`data-i18n` 属性 + `LifeLogI18n.t/setLocale`，
+  选择存在 `localStorage`）；原生端以 `res/values/strings.xml` 作为英文默认资源。
 - **主题设置**：设置页可在「日间 / 夜间 / 跟随系统」间切换。网页端通过 `<html data-theme>` 覆盖系统配色，
   原生端同步窗口背景与状态栏图标颜色，保证系统与应用内设置不一致时不露错色。
 
@@ -287,6 +288,6 @@ git push origin v0.0.2
 - [x] 数据存储位置可换文件夹
 - [x] 时间页三级分组（年 / 月 / 周，层级随范围变化）+ 时间范围筛选
 - [x] 统计视图可选图类型与统计区间
+- [x] 设置页：通用（语言 / 主题）/ 数据管理 / 关于（版本 / 联系）
 - [ ] 卡片编辑
 - [ ] 统计页
-- [ ] 设置页：语言切换等其它设置项

@@ -1,14 +1,33 @@
 /**
  * LifeLog - 设置页。
  *
- * 按分区列出设置项（个性化 / 数据管理 / 关于）：
+ * 按分区列出设置项（通用 / 数据管理 / 关于）：
  * - 每项都是统一的「左名称 / 右当前值」行，点整行才弹出选项（LifeLogUI.createRowPicker）
  * - 导入 CSV 用一个隐藏的 <input type="file">，原生 WebChromeClient 会接管选文件
  */
 (function (global) {
     'use strict';
 
+    /** 联系邮箱（设置页「关于 → 联系」） */
+    var CONTACT_EMAIL = 'eliaschang@163.com';
+
     var HANDLERS = {
+        language: {
+            mount: 'setting-language',
+            value: 'setting-language-value',
+            getOptions: function () {
+                return [
+                    { value: 'en', label: t('setting.language.en') },
+                    { value: 'zh', label: t('setting.language.zh') }
+                ];
+            },
+            getValue: function () {
+                return global.LifeLogI18n.getLocale();
+            },
+            setValue: function (value) {
+                global.LifeLogI18n.setLocale(value);
+            }
+        },
         theme: {
             mount: 'setting-theme',
             value: 'setting-theme-value',
@@ -94,8 +113,31 @@
             });
         }
 
+        var contactRow = document.getElementById('setting-contact');
+        var contactValue = document.getElementById('setting-contact-value');
+        if (contactValue) {
+            contactValue.textContent = CONTACT_EMAIL;
+            contactValue.title = CONTACT_EMAIL;
+        }
+        if (contactRow) {
+            contactRow.addEventListener('click', function () {
+                openMail(CONTACT_EMAIL);
+            });
+        }
+
         refreshVersion();
         refreshStoragePath();
+    }
+
+    /** 点「联系」时用系统邮件应用发信 */
+    function openMail(address) {
+        var url = 'mailto:' + address;
+
+        if (global.LifeLogNative && typeof global.LifeLogNative.openExternal === 'function') {
+            global.LifeLogNative.openExternal(url);
+            return;
+        }
+        global.location.href = url;
     }
 
     function pickStorageFolder() {

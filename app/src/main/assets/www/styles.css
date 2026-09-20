@@ -1076,6 +1076,8 @@ body {
     display: block;
     width: 100%;
     height: auto;
+    /* stroke 在 SVG 里是可继承的：根上先掐掉，免得子元素被意外描边 */
+    stroke: none;
 }
 
 .chart-bar {
@@ -1110,6 +1112,7 @@ body {
 
 .chart-tick {
     fill: var(--on-surface-variant);
+    stroke: none;
     font-size: 10px;
     font-variant-numeric: tabular-nums;
 }

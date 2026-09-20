@@ -231,6 +231,7 @@ class MainActivity : AppCompatActivity() {
                 onExportCsv = { csv -> runOnUiThread { handleExportCsv(csv) } },
                 onPickStorageFolder = { runOnUiThread { openStoragePicker() } },
                 onResetStorageFolder = { runOnUiThread { resetStorageLocation() } },
+                onOpenExternal = { url -> runOnUiThread { openExternally(url) } },
                 onDownloadUpdate = { runOnUiThread { startUpdateDownload() } },
                 onInstallUpdate = { runOnUiThread { installDownloaded() } },
                 onCloseUpdate = { runOnUiThread { closeUpdateFlow() } },

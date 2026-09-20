@@ -130,7 +130,11 @@
             });
 
         var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('class', 'chart chart-' + type);
+        // ⚠️ 根的 class 只能管到「这是一张图」——不能把 chart-bar / chart-line 也写上去。
+        // stroke / stroke-width 在 SVG 里是**可继承**的，根上带了就会渗到所有子元素，
+        // 连刻度文字都被描边，看上去又粗又糊。
+        svg.setAttribute('class', 'chart');
+        svg.setAttribute('data-chart-type', type);
         svg.setAttribute('viewBox', '0 0 ' + WIDTH + ' ' + HEIGHT);
         svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
         svg.setAttribute('role', 'img');

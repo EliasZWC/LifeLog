@@ -16,6 +16,7 @@ class WebAppBridge(
     private val onExportCsv: (String) -> Unit,
     private val onPickStorageFolder: () -> Unit,
     private val onResetStorageFolder: () -> Unit,
+    private val onOpenExternal: (String) -> Unit,
     private val onDownloadUpdate: () -> Unit,
     private val onInstallUpdate: () -> Unit,
     private val onCloseUpdate: () -> Unit,
@@ -48,6 +49,12 @@ class WebAppBridge(
     @JavascriptInterface
     fun resetStorageFolder() {
         onResetStorageFolder()
+    }
+
+    /** 用系统应用打开外部链接（如设置页「联系」的 mailto:） */
+    @JavascriptInterface
+    fun openExternal(url: String) {
+        onOpenExternal(url)
     }
 
     /** 设置页「导出数据」：拉起系统「另存为」，把 CSV 写到用户选的位置 */

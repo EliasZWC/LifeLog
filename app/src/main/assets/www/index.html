@@ -60,9 +60,15 @@
             <!-- 设置页：按分区列出应用设置 -->
             <section class="page" id="page-setting" role="tabpanel" aria-labelledby="tab-setting" hidden>
                 <section class="setting-group">
-                    <h2 class="setting-group-title"
-                        data-i18n="setting.group.personalization">Personalization</h2>
+                    <h2 class="setting-group-title" data-i18n="setting.group.general">General</h2>
                     <ul class="setting-list">
+                        <li class="setting-item">
+                            <button class="setting-action" type="button" id="setting-language"
+                                aria-haspopup="menu" aria-expanded="false">
+                                <span class="setting-label" data-i18n="setting.language">Language</span>
+                                <span class="setting-value" id="setting-language-value">—</span>
+                            </button>
+                        </li>
                         <li class="setting-item">
                             <button class="setting-action" type="button" id="setting-theme"
                                 aria-haspopup="menu" aria-expanded="false">
@@ -116,6 +122,12 @@
                         <li class="setting-item">
                             <span class="setting-label" data-i18n="setting.version">Version</span>
                             <span class="setting-value" id="setting-version">—</span>
+                        </li>
+                        <li class="setting-item">
+                            <button class="setting-action" type="button" id="setting-contact">
+                                <span class="setting-label" data-i18n="setting.contact">Contact</span>
+                                <span class="setting-value" id="setting-contact-value"></span>
+                            </button>
                         </li>
                     </ul>
                 </section>
