@@ -495,51 +495,50 @@ body {
 
 .form-actions {
     display: flex;
-    justify-content: flex-end;
-    gap: 8px;
+    align-items: center;
+    /* Cancel 靠左，Confirm 靠右 */
+    justify-content: space-between;
+    gap: 12px;
     padding-top: 18px;
 }
 
+/* 纯文字按钮：没有底/边框，按下时缩小并淡出 */
 .btn {
-    min-width: 88px;
-    padding: 10px 18px;
+    padding: 10px 8px;
     border: 0;
-    border-radius: 20px;
-    background: transparent;
-    color: var(--on-surface-variant);
+    border-radius: 0;
+    background: none;
+    color: var(--nav-inactive);
     font: inherit;
     font-size: 15px;
-    font-weight: 500;
+    font-weight: 600;
+    letter-spacing: 0.3px;
     cursor: pointer;
     outline: none;
-    transition: background-color 160ms ease, opacity 160ms ease;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 120ms cubic-bezier(0.2, 0, 0, 1),
+        opacity 120ms ease,
+        color 160ms ease;
 }
 
 .btn:active {
-    background: var(--surface-raised);
+    transform: scale(0.94);
+    opacity: 0.55;
 }
 
 .btn-primary {
-    background: var(--fab-bg);
-    color: var(--fab-fg);
-}
-
-.btn-primary:active {
-    background: var(--fab-bg);
-    opacity: 0.85;
+    color: var(--nav-active);
 }
 
 .btn:disabled {
-    opacity: 0.35;
     cursor: default;
+    pointer-events: none;
 }
 
-.btn:disabled:active {
-    background: transparent;
-}
-
-.btn-primary:disabled:active {
-    background: var(--fab-bg);
+/* 不可用时 Confirm 退成与 Cancel 同级的灰 */
+.btn-primary:disabled {
+    color: var(--nav-inactive);
+    opacity: 0.5;
 }
 
 /* --------------------------------------------------------------------------
