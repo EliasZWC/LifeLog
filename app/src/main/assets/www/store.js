@@ -26,13 +26,36 @@
         }
     }
 
+    /** 从 CSV 载入期间不要反过来再写一遍文件 */
+    var suppressPersist = false;
+
     function write(key, value) {
         try {
             global.localStorage.setItem(key, JSON.stringify(value));
         } catch (e) {
             /* 隐私模式 / 配额用尽，忽略 */
         }
+        if (!suppressPersist) {
+            persistCsv();
+        }
         notify();
+    }
+
+    /**
+     * 把全部时间记录镜像到手机 LifeLog 目录下的 records.csv —— 这个文件就是数据库。
+     * 没有原生桥时（浏览器预览）自动跳过。
+     */
+    function persistCsv() {
+        if (!global.LifeLogNative || typeof global.LifeLogNative.saveRecordsCsv !== 'function') {
+            return;
+        }
+        try {
+            global.LifeLogNative.saveRecordsCsv(
+                global.LifeLogCsv.stringify(getRecords(), getBehaviors())
+            );
+        } catch (e) {
+            /* 忽略 */
+        }
     }
 
     function notify() {
@@ -72,6 +95,26 @@
 
     function removeBehavior(id) {
         removeBehaviors([id]);
+    }
+
+    function updateBehavior(id, name, icon) {
+        var updated = null;
+        var list = getBehaviors().map(function (item) {
+            if (item.id !== id) {
+                return item;
+            }
+            updated = {
+                id: item.id,
+                name: String(name || '').trim() || item.name,
+                icon: icon || item.icon
+            };
+            return updated;
+        });
+
+        if (updated) {
+            write(BEHAVIOR_KEY, list);
+        }
+        return updated;
     }
 
     /** 批量删除行为；连带删掉这些行为下的时间记录 */
@@ -126,16 +169,90 @@
         }));
     }
 
+    // --- CSV ---------------------------------------------------------------
+
+    /**
+     * 启动时用 CSV 的内容覆盖本地缓存（CSV 是数据库，本地只当缓存）。
+     * @returns {boolean} 文件不存在或内容非法时返回 false，此时保留本地缓存
+     */
+    function applyStoredCsv(csv) {
+        if (!csv || !String(csv).trim()) {
+            return false;
+        }
+        return replaceFromCsv(csv).ok;
+    }
+
+    /** 设置页「导入 CSV」：用选中的文件替换全部时间记录 */
+    function importCsvText(text) {
+        return replaceFromCsv(text);
+    }
+
+    /** 当前数据的 CSV 文本（浏览器预览 / 调试用） */
+    function exportCsv() {
+        return global.LifeLogCsv.stringify(getRecords(), getBehaviors());
+    }
+
+    function replaceFromCsv(text) {
+        var parsed = global.LifeLogCsv.parse(text);
+        if (!parsed.ok) {
+            return { ok: false, error: parsed.error };
+        }
+
+        suppressPersist = true;
+        try {
+            var behaviors = getBehaviors();
+            var byName = {};
+            behaviors.forEach(function (behavior) {
+                byName[behavior.name] = behavior;
+            });
+
+            // CSV 里出现但本地没有的行为，自动建一个（图标用通用占位）
+            parsed.behaviorNames.forEach(function (name) {
+                if (!byName[name]) {
+                    var created = { id: newId(), name: name, icon: global.LifeLogIcons.fallback };
+                    behaviors.push(created);
+                    byName[name] = created;
+                }
+            });
+
+            var records = parsed.records.map(function (row) {
+                return {
+                    id: row.id || newId(),
+                    behaviorId: byName[row.behavior].id,
+                    type: row.type,
+                    start: row.start,
+                    end: row.end
+                };
+            });
+
+            global.localStorage.setItem(BEHAVIOR_KEY, JSON.stringify(behaviors));
+            global.localStorage.setItem(RECORD_KEY, JSON.stringify(records));
+        } catch (e) {
+            suppressPersist = false;
+            return { ok: false, error: 'storage' };
+        }
+        suppressPersist = false;
+
+        persistCsv();
+        notify();
+
+        return { ok: true, count: parsed.records.length };
+    }
+
     global.LifeLogStore = {
         getBehaviors: getBehaviors,
         getBehavior: getBehavior,
         addBehavior: addBehavior,
+        updateBehavior: updateBehavior,
         removeBehavior: removeBehavior,
         removeBehaviors: removeBehaviors,
         getRecords: getRecords,
         addRecord: addRecord,
         removeRecord: removeRecord,
         removeRecords: removeRecords,
+        applyStoredCsv: applyStoredCsv,
+        importCsvText: importCsvText,
+        exportCsv: exportCsv,
         onChange: function (listener) {
             listeners.push(listener);
         }

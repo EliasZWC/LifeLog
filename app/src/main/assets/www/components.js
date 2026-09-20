@@ -42,6 +42,34 @@
         return global.LifeLogI18n ? global.LifeLogI18n.t(key) : key;
     }
 
+    // --- 轻提示 -------------------------------------------------------------
+
+    var toastEl = null;
+    var toastTimer = null;
+
+    function toast(message) {
+        if (!message) {
+            return;
+        }
+
+        if (!toastEl) {
+            toastEl = el('div', 'toast');
+            document.body.appendChild(toastEl);
+        }
+
+        toastEl.textContent = message;
+        toastEl.classList.remove('is-open');
+        void toastEl.offsetWidth; // 重排一次，让连续提示也能重播动画
+        toastEl.classList.add('is-open');
+
+        if (toastTimer) {
+            global.clearTimeout(toastTimer);
+        }
+        toastTimer = global.setTimeout(function () {
+            toastEl.classList.remove('is-open');
+        }, 2200);
+    }
+
     // --- 原生壳通信 ---------------------------------------------------------
 
     /**
@@ -51,6 +79,9 @@
      */
     var shell = {
         version: null,
+        storagePath: '',
+        storageError: '',
+
         setInsets: function (top, right, bottom, left, keyboard) {
             var style = document.documentElement.style;
             style.setProperty('--safe-top', top + 'px');
@@ -59,16 +90,53 @@
             style.setProperty('--safe-left', left + 'px');
             style.setProperty('--keyboard', keyboard + 'px');
         },
+
         setVersion: function (name, code) {
             shell.version = { name: String(name), code: code };
             if (global.LifeLogSettings && global.LifeLogSettings.refreshVersion) {
                 global.LifeLogSettings.refreshVersion();
             }
         },
+
         getVersion: function () {
             return shell.version;
+        },
+
+        /** 原生读完 LifeLog/records.csv 后把内容与路径推过来 */
+        onStorageReady: function (csv, path) {
+            shell.storagePath = path || '';
+            refreshStorageUi();
+            if (global.LifeLogStore && global.LifeLogStore.applyStoredCsv) {
+                global.LifeLogStore.applyStoredCsv(csv);
+            }
+        },
+
+        /** 落盘结果 */
+        onCsvSaved: function (ok, detail) {
+            if (ok) {
+                shell.storagePath = detail || shell.storagePath;
+                shell.storageError = '';
+            } else {
+                shell.storageError = detail || 'error';
+                toast(t('toast.saveFailed') + ': ' + shell.storageError);
+            }
+            refreshStorageUi();
+        },
+
+        getStoragePath: function () {
+            return shell.storagePath;
+        },
+
+        getStorageError: function () {
+            return shell.storageError;
         }
     };
+
+    function refreshStorageUi() {
+        if (global.LifeLogSettings && global.LifeLogSettings.refreshStoragePath) {
+            global.LifeLogSettings.refreshStoragePath();
+        }
+    }
 
     global.LifeLogShell = shell;
 
@@ -491,6 +559,7 @@
         createSelect: createSelect,
         attachLongPress: attachLongPress,
         justLongPressed: justLongPressed,
+        toast: toast,
         openSheet: openSheet,
         closeSheet: closeSheet,
         isSheetOpen: function () {

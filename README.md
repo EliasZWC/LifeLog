@@ -4,7 +4,7 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前版本 | **v0.0.6** |
+| 当前版本 | **v0.0.7** |
 | 包名 | `com.eliaszwc.lifelog` |
 | 最低支持 | Android 8.0（API 26） |
 | 目标版本 | Android 15（API 35） |
@@ -36,6 +36,8 @@
 | --- | --- |
 | `setInsets(top, right, bottom, left, keyboard)` | 推送系统栏与输入法尺寸（dp），网页写进 `--safe-*` / `--keyboard` CSS 变量 |
 | `setVersion(name, code)` | 推送版本名与版本号，供设置页只读显示 |
+| `onStorageReady(csv, path)` | 推送 `LifeLog/records.csv` 的内容与路径（文件不存在时内容为空串） |
+| `onCsvSaved(ok, detail)` | CSV 落盘结果 |
 
 **WebView 是全屏的**（包括状态栏与系统导航条区域），所以遮罩与底部弹窗能盖住整屏。
 内容要让开多少由 CSS 变量决定，不依赖 `env(safe-area-inset-*)`（WebView 里的取值不可靠，只在 `:root` 里作为兜底）。
@@ -45,17 +47,26 @@
 
 ## 数据模型
 
-数据和偏好目前都存在 WebView 的 `localStorage` 里（键名见 `store.js`）：
+**时间记录以 CSV 形式存放在手机的 LifeLog 目录下作为数据库**，应用启动时从该文件载入，
+之后任何改动都会同步写回；`localStorage` 只是一份加快启动的缓存。
+
+落盘位置：`Documents/LifeLog/records.csv`（API 29+ 走 MediaStore，无需任何权限，文件管理器可见；
+部分定制系统限制 MediaStore 时会退回应用专属目录，实际路径会显示在设置页）。
+
+CSV 表头固定为 `id,behavior,type,start,end`：
+
+- `behavior` 写的是行为**名称**而不是 id，便于人读与迁移
+- `start` / `end` 为本地时间 `YYYY-MM-DD HH:mm`，时点的 `end` 留空
+- 行尾 CRLF，Excel 可直接打开
 
 ```js
 Behavior = { id, name, icon }                                  // icon 为 icons.js 里的图标名
 Record   = { id, behaviorId, type, start, end }                // type: 'period' | 'moment'
-                                                               // start/end 为 epoch 毫秒，moment 的 end 为 null
 ```
 
 - **行为是时间记录的前提**：先在行为页建立行为，才能在时间页新增记录。
-- 时段（`period`）同时有开始和结束；时点（`moment`）只有 `start`。
-- 后续若要换成原生 SQLite，只需保持 `store.js` 对外的方法签名不变，页面代码不用改。
+- 删除行为会连带删除它名下的全部时间记录。
+- 时间记录的增删改都会重写整个 CSV（个人量级足够快）。
 
 ## 目录结构
 
@@ -69,17 +80,24 @@ LifeLog/
 │   └── src/main/
 │       ├── AndroidManifest.xml
 │       ├── java/com/eliaszwc/lifelog/MainActivity.kt   # WebView 容器
+│       ├── java/com/eliaszwc/lifelog/
+│       │   ├── MainActivity.kt   # WebView 容器、系统栏、文件选择器
+│       │   ├── WebAppBridge.kt   # 暴露给网页的 JS 接口
+│       │   ├── CsvStore.kt       # CSV 落盘到 LifeLog 目录
+│       │   └── CrashLog.kt       # 崩溃堆栈落盘并在下次启动显示
 │       ├── assets/www/           # 网页前端
-│       │   ├── index.html        # 页面结构（含两个表单弹窗）
+│       │   ├── index.html        # 页面结构（含表单弹窗、详情页）
 │       │   ├── styles.css        # 主题变量 + 全部样式
 │       │   ├── i18n.js           # 中英文词条
 │       │   ├── icons.js          # 谷歌官方行为图标库
+│       │   ├── csv.js            # CSV 序列化 / 解析
 │       │   ├── store.js          # 数据层（行为 / 时间记录）
-│       │   ├── components.js     # 弹窗 / 下拉菜单 / 进入动画
+│       │   ├── components.js     # 弹窗 / 下拉 / 多选 / 轻提示 / 壳通信
 │       │   ├── theme.js          # 主题偏好
-│       │   ├── settings.js       # 设置页绑定
+│       │   ├── settings.js       # 设置页
 │       │   ├── page-time.js      # 时间页
 │       │   ├── page-behavior.js  # 行为页
+│       │   ├── page-behavior-detail.js  # 行为详情页
 │       │   └── app.js            # 外壳：导航 / 标题 / 启动
 │       └── res/                  # 主题、配色、启动图标
 ├── build.gradle.kts
@@ -164,8 +182,12 @@ git push origin v0.0.2
 - [x] 页面 / 列表切换动画
 - [x] 行为页：列表 + 新增行为表单（名称 + 图标）
 - [x] 时间页：三视图（全部 / 时段 / 时点）+ 列表 + 新增记录表单
-- [x] 卡片长按多选删除
+- [x] 卡片长按多选删除（时间页）
 - [x] 全屏布局 + 键盘避让 + 自绘下拉控件
+- [x] 行为详情页（重命名 / 输名删除 / 记录视图）
+- [x] 时间记录以 CSV 落盘到 LifeLog 目录 + CSV 导入
+- [x] 设置页分区
+- [ ] 行为详情页的统计视图
 - [ ] 卡片编辑
 - [ ] 统计页
-- [ ] 设置页：其余设置项（语言切换等）
+- [ ] 设置页：语言切换等其它设置项

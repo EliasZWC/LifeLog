@@ -72,11 +72,41 @@
         });
     }
 
+    /** 正在编辑的行为 id；为空表示新增 */
+    var editingId = null;
+
     function openForm() {
+        editingId = null;
         nameInput.value = '';
         selectIcon(global.LifeLogIcons.names()[0]);
+        applyTitle();
         validate();
         global.LifeLogUI.openSheet(sheet);
+    }
+
+    /** 详情页选「重命名」时调这里，预填现有名称与图标 */
+    function openEdit(id) {
+        var behavior = global.LifeLogStore.getBehavior(id);
+        if (!behavior) {
+            return;
+        }
+
+        editingId = id;
+        nameInput.value = behavior.name;
+        selectIcon(behavior.icon);
+        applyTitle();
+        validate();
+        global.LifeLogUI.openSheet(sheet);
+    }
+
+    function applyTitle() {
+        var title = sheet.querySelector('.sheet-title');
+        if (!title) {
+            return;
+        }
+        var key = editingId ? 'behavior.edit.title' : 'behavior.form.title';
+        title.setAttribute('data-i18n', key);
+        title.textContent = t(key);
     }
 
     function validate() {
@@ -89,8 +119,24 @@
         if (!validate()) {
             return;
         }
-        global.LifeLogStore.addBehavior(nameInput.value, selectedIcon);
+
+        if (editingId) {
+            global.LifeLogStore.updateBehavior(editingId, nameInput.value, selectedIcon);
+            global.LifeLogBehaviorDetail.refresh();
+        } else {
+            global.LifeLogStore.addBehavior(nameInput.value, selectedIcon);
+        }
+
         global.LifeLogUI.closeSheet();
+    }
+
+    /** 表示「点进去还有内容」的右对齐箭头 */
+    function chevron() {
+        var span = global.LifeLogUI.el('span', 'card-chevron');
+        span.setAttribute('aria-hidden', 'true');
+        span.innerHTML = '<svg viewBox="0 0 24 24" focusable="false">' +
+            '<path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>';
+        return span;
     }
 
     function render() {
@@ -111,39 +157,19 @@
             card.dataset.id = behavior.id;
             card.appendChild(global.LifeLogUI.icon(behavior.icon, 'card-icon'));
             card.appendChild(global.LifeLogUI.el('span', 'card-title', behavior.name));
-
-            if (global.LifeLogUI.isSelected(behavior.id)) {
-                card.classList.add('is-selected');
-            }
-
-            global.LifeLogUI.attachLongPress(card, function () {
-                global.LifeLogUI.startSelection(behavior.id);
-            });
+            card.appendChild(chevron());
 
             card.addEventListener('click', function () {
-                if (global.LifeLogUI.justLongPressed()) {
-                    return;
-                }
-                if (global.LifeLogUI.isSelecting()) {
-                    global.LifeLogUI.toggleSelection(behavior.id);
-                }
+                global.LifeLogBehaviorDetail.open(behavior.id);
             });
 
             listEl.appendChild(card);
         });
     }
 
-    /** 交给 LifeLogUI 的多选目标（删除行为会连带删掉它的时间记录） */
-    var selection = {
-        onSelectionChange: render,
-        onDelete: function (ids) {
-            global.LifeLogStore.removeBehaviors(ids);
-        }
-    };
-
     global.LifeLogBehaviorPage = {
         init: init,
         render: render,
-        selection: selection
+        openEdit: openEdit
     };
 })(window);

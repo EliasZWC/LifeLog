@@ -19,13 +19,8 @@
     var currentTab = null;
 
     function pageModule(name) {
-        if (name === 'time') {
-            return window.LifeLogTimePage;
-        }
-        if (name === 'behavior') {
-            return window.LifeLogBehaviorPage;
-        }
-        return null;
+        // 只有时间页还保留长按多选（行为页改为进详情页删除）
+        return name === 'time' ? window.LifeLogTimePage : null;
     }
 
     function selectTab(name, options) {
@@ -96,6 +91,9 @@
     }
     if (window.LifeLogBehaviorPage) {
         window.LifeLogBehaviorPage.init();
+    }
+    if (window.LifeLogBehaviorDetail) {
+        window.LifeLogBehaviorDetail.init();
     }
     if (window.LifeLogTimePage) {
         window.LifeLogTimePage.init();

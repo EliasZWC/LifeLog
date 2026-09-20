@@ -499,6 +499,9 @@
     global.LifeLogTimePage = {
         init: init,
         render: render,
-        selection: selection
+        selection: selection,
+        // 行为详情页复用同一套时间格式化
+        dateLine: dateLine,
+        clockLine: clockLine
     };
 })(window);

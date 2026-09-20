@@ -52,20 +52,52 @@
                 <ul class="card-list" id="behavior-list"></ul>
             </section>
 
-            <!-- 设置页：修改应用设置 -->
+            <!-- 设置页：按分区列出应用设置 -->
             <section class="page" id="page-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
-                <ul class="settings-list">
-                    <!-- 版本号由原生壳推送（与 build.gradle.kts 单一来源），只读 -->
-                    <li class="settings-item">
-                        <span class="settings-label" data-i18n="settings.version">Version</span>
-                        <span class="settings-value" id="setting-version">—</span>
-                    </li>
+                <section class="settings-group">
+                    <h2 class="settings-group-title"
+                        data-i18n="settings.group.personalization">Personalization</h2>
+                    <ul class="settings-list">
+                        <li class="settings-item">
+                            <span class="settings-label" data-i18n="settings.theme">Theme</span>
+                            <div class="select-wrap" id="setting-theme"></div>
+                        </li>
+                    </ul>
+                </section>
 
-                    <li class="settings-item">
-                        <span class="settings-label" data-i18n="settings.theme">Theme</span>
-                        <div class="select-wrap" id="setting-theme"></div>
-                    </li>
-                </ul>
+                <section class="settings-group">
+                    <h2 class="settings-group-title" data-i18n="settings.group.data">Data</h2>
+                    <ul class="settings-list">
+                        <li class="settings-item">
+                            <button class="settings-action" type="button" id="setting-import">
+                                <span class="settings-label" data-i18n="settings.import">Import CSV</span>
+                                <span class="icon" aria-hidden="true">
+                                    <!-- Google Material Icons: file_upload -->
+                                    <svg viewBox="0 0 24 24" focusable="false">
+                                        <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z" />
+                                    </svg>
+                                </span>
+                            </button>
+                        </li>
+                        <li class="settings-item settings-item-column">
+                            <span class="settings-label" data-i18n="settings.import.hint">Database file</span>
+                            <span class="settings-caption" id="setting-storage-path">—</span>
+                        </li>
+                    </ul>
+                    <!-- 由原生 WebChromeClient 接管，弹出系统文件选择器 -->
+                    <input class="file-input" type="file" id="setting-import-file"
+                        accept=".csv,text/csv,text/comma-separated-values" />
+                </section>
+
+                <section class="settings-group">
+                    <h2 class="settings-group-title" data-i18n="settings.group.about">About</h2>
+                    <ul class="settings-list">
+                        <li class="settings-item">
+                            <span class="settings-label" data-i18n="settings.version">Version</span>
+                            <span class="settings-value" id="setting-version">—</span>
+                        </li>
+                    </ul>
+                </section>
             </section>
 
             <!-- 悬浮按钮放在 #content 下（不在可滚动页面里），这样页面的进入动画不会影响它们的定位 -->
@@ -105,10 +137,10 @@
             <button class="nav-item" type="button" role="tab" id="tab-behavior" aria-controls="page-behavior"
                 aria-selected="false" data-page="behavior">
                 <span class="nav-icon" aria-hidden="true">
-                    <!-- Google Material Icons: task_alt -->
+                    <!-- Google Material Icons: touch_app -->
                     <svg viewBox="0 0 24 24" focusable="false">
                         <path
-                            d="M22,5.18L10.59,16.6l-4.24-4.24l1.41-1.41l2.83,2.83l10-10L22,5.18z M19.79,10.22C19.92,10.79,20,11.39,20,12 c0,4.42-3.58,8-8,8s-8-3.58-8-8c0-4.42,3.58-8,8-8c1.58,0,3.04,0.46,4.28,1.25l1.44-1.44C16.1,2.67,14.13,2,12,2C6.48,2,2,6.48,2,12 c0,5.52,4.48,10,10,10s10-4.48,10-10c0-1.19-0.22-2.33-0.6-3.39L19.79,10.22z" />
+                            d="M9,11.24V7.5C9,6.12,10.12,5,11.5,5S14,6.12,14,7.5v3.74c1.21-0.81,2-2.18,2-3.74C16,5.01,13.99,3,11.5,3S7,5.01,7,7.5 C7,9.06,7.79,10.43,9,11.24z M18.84,15.87l-4.54-2.26c-0.17-0.07-0.35-0.11-0.54-0.11H13v-6C13,6.67,12.33,6,11.5,6 S10,6.67,10,7.5v10.74c-3.6-0.76-3.54-0.75-3.67-0.75c-0.31,0-0.59,0.13-0.79,0.33l-0.79,0.8l4.94,4.94 C9.96,23.83,10.34,24,10.75,24h6.79c0.75,0,1.33-0.55,1.44-1.28l0.75-5.27c0.01-0.07,0.02-0.14,0.02-0.2 C19.75,16.63,19.37,16.09,18.84,15.87z" />
                     </svg>
                 </span>
                 <span class="nav-label" data-i18n="nav.behavior">Behavior</span>
@@ -149,6 +181,68 @@
             </svg>
         </button>
     </div>
+
+    <!-- 行为详情页：全屏覆盖在 app 之上（自带标题栏，所以盖住底部导航） -->
+    <section class="detail" id="behavior-detail" role="dialog" aria-modal="true"
+        aria-labelledby="detail-title" hidden>
+        <header class="detail-header">
+            <button class="icon-button" type="button" id="detail-back" aria-label="Back"
+                data-i18n-aria-label="behavior.detail.back">
+                <!-- Google Material Icons: arrow_back -->
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+                </svg>
+            </button>
+
+            <h1 class="page-title" id="detail-title"></h1>
+
+            <button class="icon-button" type="button" id="detail-menu" aria-haspopup="menu"
+                aria-expanded="false" aria-label="More options" data-i18n-aria-label="behavior.menu.open">
+                <!-- Google Material Icons: more_vert -->
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path
+                        d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                </svg>
+            </button>
+        </header>
+
+        <div class="view-bar">
+            <span class="view-current" id="detail-view-current"></span>
+            <button class="icon-button" type="button" id="detail-view-button" aria-haspopup="menu"
+                aria-expanded="false" aria-label="Switch view" data-i18n-aria-label="view.switch">
+                <!-- Google Material Icons: view_list -->
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path
+                        d="M3,14h4v-4H3V14z M3,19h4v-4H3V19z M3,9h4V5H3V9z M8,14h13v-4H8V14z M8,19h13v-4H8V19z M8,5v4h13V5H8z" />
+                </svg>
+            </button>
+        </div>
+
+        <div class="detail-body">
+            <ul class="card-list" id="detail-list"></ul>
+        </div>
+    </section>
+
+    <!-- 删除行为确认：必须输入行为名称（类似 GitHub 删仓库） -->
+    <section class="sheet" id="sheet-delete-behavior" role="dialog" aria-modal="true"
+        aria-labelledby="sheet-delete-title" hidden>
+        <h2 class="sheet-title" id="sheet-delete-title" data-i18n="behavior.delete.title">
+            Delete behavior</h2>
+        <p class="sheet-text" id="delete-tip"></p>
+
+        <div class="form-row">
+            <input class="form-input form-input-left" id="delete-confirm-input" type="text"
+                autocomplete="off" data-i18n-placeholder="behavior.delete.hint"
+                placeholder="Behavior name" />
+        </div>
+
+        <div class="form-actions">
+            <button class="btn" type="button" id="delete-cancel"
+                data-i18n="action.cancel">Cancel</button>
+            <button class="btn btn-danger" type="button" id="delete-confirm" disabled
+                data-i18n="behavior.delete.confirm">Delete</button>
+        </div>
+    </section>
 
     <!-- 弹窗遮罩 -->
     <div class="scrim" id="scrim" hidden></div>
@@ -208,10 +302,12 @@
 
     <script src="i18n.js"></script>
     <script src="icons.js"></script>
+    <script src="csv.js"></script>
     <script src="store.js"></script>
     <script src="components.js"></script>
     <script src="theme.js"></script>
     <script src="page-behavior.js"></script>
+    <script src="page-behavior-detail.js"></script>
     <script src="page-time.js"></script>
     <script src="settings.js"></script>
     <script src="app.js"></script>
