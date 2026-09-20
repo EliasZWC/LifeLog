@@ -90,7 +90,8 @@ jobs:
         run: |
           APK="app/build/outputs/apk/release/app-release.apk"
           BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          "$BUILD_TOOLS/apksigner" verify --print-certs "$APK" | head -6
+          # 不加管道，否则 exit code 会被 head 吞掉
+          "$BUILD_TOOLS/apksigner" verify --print-certs "$APK"
 
       - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v3
