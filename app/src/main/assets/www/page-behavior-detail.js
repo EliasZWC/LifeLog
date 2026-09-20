@@ -15,8 +15,7 @@
     var titleEl = null;
     var backBtn = null;
     var menuBtn = null;
-    var viewLabel = null;
-    var viewButton = null;
+    var viewNav = null;
     var listEl = null;
 
     var deleteSheet = null;
@@ -28,6 +27,11 @@
     var currentView = DEFAULT_VIEW;
     var isOpen = false;
 
+    var DAY_MS = 24 * 60 * 60 * 1000;
+
+    /** 统计视图的选项：图类型 + 统计区间；每次打开详情页重置 */
+    var stats = { chartType: 'bar', range: null };
+
     function t(key) {
         return global.LifeLogI18n ? global.LifeLogI18n.t(key) : key;
     }
@@ -37,8 +41,7 @@
         titleEl = document.getElementById('detail-title');
         backBtn = document.getElementById('detail-back');
         menuBtn = document.getElementById('detail-menu');
-        viewLabel = document.getElementById('detail-view-current');
-        viewButton = document.getElementById('detail-view-button');
+        viewNav = document.getElementById('detail-view-nav');
         listEl = document.getElementById('detail-list');
 
         deleteSheet = document.getElementById('sheet-delete-behavior');
@@ -50,7 +53,7 @@
             close();
         });
         menuBtn.addEventListener('click', openActions);
-        viewButton.addEventListener('click', openViewMenu);
+        viewNav.addEventListener('click', onViewNavClick);
 
         document.getElementById('delete-cancel').addEventListener('click', function () {
             global.LifeLogUI.closeSheet();
@@ -86,6 +89,7 @@
 
         currentId = id;
         currentView = DEFAULT_VIEW;
+        stats = { chartType: 'bar', range: null };
         isOpen = true;
 
         root.hidden = false;
@@ -135,8 +139,29 @@
         }
 
         titleEl.textContent = behavior.name;
-        viewLabel.textContent = t('behavior.detail.' + currentView);
+        renderViewNav();
         renderList(behavior);
+    }
+
+    /** 顶栏下方的内嵌视图导航栏（记录 / 统计），点哪一项就切到哪一项 */
+    function renderViewNav() {
+        Array.prototype.forEach.call(viewNav.children, function (button) {
+            var active = button.dataset.view === currentView;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+    }
+
+    function onViewNavClick(event) {
+        var target = event.target;
+        var button = target && target.closest ? target.closest('.seg-nav-item') : null;
+        if (!button || button.dataset.view === currentView) {
+            return;
+        }
+
+        currentView = button.dataset.view;
+        refresh();
+        global.LifeLogUI.animateEnter(listEl, currentView === 'stats' ? 1 : -1);
     }
 
     function renderList(behavior) {
@@ -181,8 +206,8 @@
 
     // --- 统计视图 -----------------------------------------------------------
     //
-    // 布局：上面一个直方图（纵坐标 = 时长累计，横坐标 = 天数），下面统计信息文本。
-    // 图与「按天累计」都走 LifeLogChart（内联 SVG 手绘，不引第三方图表库）。
+    // 布局：选项栏（图类型 / 开始 / 结束）→ 图 → 统计信息文本。
+    // 图与「按天归集」都走 LifeLogChart（内联 SVG 手绘，横轴刻度永远是日）。
     // 只有「时刻」记录的行为没有时长可言，此时退化为按天记次数。
 
     /** 时长格式化：不足 1 小时只显示分钟，正好整点不显示 0 分钟 */
@@ -200,15 +225,48 @@
         return hours + t('unit.hour') + ' ' + rest + t('unit.minute');
     }
 
+    /** 统计区间的默认值：最近 30 天，但不早于第一条记录 */
+    function defaultRange(records) {
+        var bounds = global.LifeLogChart.rangeOf(records.map(function (record) {
+            return record.start;
+        }));
+        var today = global.LifeLogDateTime.startOfDay(Date.now());
+        var end = Math.max(bounds.end, today);
+        var earliest = Math.min(bounds.start, end);
+        return { start: Math.max(earliest, end - 29 * DAY_MS), end: end };
+    }
+
+    /** 改了一头之后保证 start ≤ end（顺序不对就直接对调） */
+    function normalizeRange(range, key, value) {
+        var next = { start: range.start, end: range.end };
+        next[key] = value;
+        if (next.end < next.start) {
+            var swap = next.start;
+            next.start = next.end;
+            next.end = swap;
+        }
+        return next;
+    }
+
     function renderStats(behavior) {
-        var records = global.LifeLogStore.getRecords().filter(function (record) {
+        var all = global.LifeLogStore.getRecords().filter(function (record) {
             return record.behaviorId === behavior.id;
         });
 
-        if (!records.length) {
+        if (!all.length) {
             listEl.appendChild(global.LifeLogUI.emptyState(t('behavior.detail.statsEmpty')));
             return;
         }
+
+        if (!stats.range) {
+            stats.range = defaultRange(all);
+        }
+
+        var range = stats.range;
+        var records = all.filter(function (record) {
+            var day = global.LifeLogDateTime.startOfDay(record.start);
+            return day >= range.start && day <= range.end;
+        });
 
         var totalMs = 0;
         records.forEach(function (record) {
@@ -233,9 +291,28 @@
             }
         });
 
-        var daily = global.LifeLogChart.dailyPoints(times, values);
+        var points = global.LifeLogChart.bucketByDay(times, values, range);
+        var days = points.length;
 
         var wrap = global.LifeLogUI.el('li', 'stats');
+
+        var toolbar = global.LifeLogStats.build({
+            getChartType: function () {
+                return stats.chartType;
+            },
+            getRange: function () {
+                return stats.range;
+            },
+            onChange: function (key, value) {
+                if (key === 'chartType') {
+                    stats.chartType = value;
+                } else {
+                    stats.range = normalizeRange(stats.range, key, value);
+                }
+                refresh();
+            }
+        });
+        wrap.appendChild(toolbar.root);
 
         var chartBlock = global.LifeLogUI.el('div', 'stats-chart');
         chartBlock.appendChild(global.LifeLogUI.el(
@@ -243,15 +320,18 @@
             'stats-chart-title',
             t(useDuration ? 'behavior.detail.chartDuration' : 'behavior.detail.chartCount')
         ));
-        chartBlock.appendChild(global.LifeLogChart.build(daily.points));
+        chartBlock.appendChild(global.LifeLogChart.build(points, { type: stats.chartType }));
         wrap.appendChild(chartBlock);
 
         var list = global.LifeLogUI.el('dl', 'stats-list');
         [
             [t('behavior.detail.total'), formatDuration(totalMs)],
             [t('behavior.detail.count'), String(records.length)],
-            [t('behavior.detail.perTime'), formatDuration(totalMs / records.length)],
-            [t('behavior.detail.perDay'), formatDuration(totalMs / daily.days)]
+            [
+                t('behavior.detail.perTime'),
+                formatDuration(records.length ? totalMs / records.length : 0)
+            ],
+            [t('behavior.detail.perDay'), formatDuration(days ? totalMs / days : 0)]
         ].forEach(function (row) {
             list.appendChild(global.LifeLogUI.el('dt', 'stats-key', row[0]));
             list.appendChild(global.LifeLogUI.el('dd', 'stats-value', row[1]));
@@ -259,29 +339,6 @@
         wrap.appendChild(list);
 
         listEl.appendChild(wrap);
-    }
-
-    // --- 视图栏 -------------------------------------------------------------
-
-    function openViewMenu() {
-        var items = VIEWS.map(function (view) {
-            return {
-                value: view,
-                label: t('behavior.detail.' + view),
-                selected: view === currentView
-            };
-        });
-
-        viewButton.setAttribute('aria-expanded', 'true');
-        global.LifeLogUI.openMenu(viewButton, items, function (value) {
-            viewButton.setAttribute('aria-expanded', 'false');
-            if (value === currentView) {
-                return;
-            }
-            currentView = value;
-            refresh();
-            global.LifeLogUI.animateEnter(listEl, value === 'stats' ? 1 : -1);
-        });
     }
 
     // --- 菜单 ---------------------------------------------------------------

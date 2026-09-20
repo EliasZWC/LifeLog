@@ -7,9 +7,12 @@
 (function (global) {
     'use strict';
 
-    var VIEWS = ['all', 'period', 'moment'];
+    var VIEWS = ['all', 'year', 'month', 'week'];
     var DEFAULT_VIEW = 'all';
     var VIEW_STORAGE_KEY = 'lifelog.timeView';
+    /** 视图 = 看最近多少天；all 表示不限制 */
+    var VIEW_DAYS = { all: 0, year: 365, month: 30, week: 7 };
+    var DAY_MS = 24 * 60 * 60 * 1000;
 
     var listEl = null;
     var viewLabel = null;
@@ -94,7 +97,7 @@
     }
 
     function renderViewBar() {
-        viewLabel.textContent = t('view.' + currentView);
+        viewLabel.textContent = t('time.range.' + currentView);
         viewButton.setAttribute('aria-expanded', 'false');
     }
 
@@ -102,7 +105,7 @@
         var items = VIEWS.map(function (view) {
             return {
                 value: view,
-                label: t('view.' + view),
+                label: t('time.range.' + view),
                 selected: view === currentView
             };
         });
@@ -113,14 +116,184 @@
     }
 
     // --- 列表 ---------------------------------------------------------------
+    //
+    // 记录按「年 → 月 → 周」三级分组，每一级都能展开 / 折叠。
+    // 周按「月内第几周」算（1–7 号为第 1 周…），这样周总是完整地落在某个月里，
+    // 不会出现一个周横跨两个月、挂在哪边都不对的情况。
+
+    /** 已折叠的分组 key；只在本次会话里记着 */
+    var collapsed = {};
+
+    function groupCount(node) {
+        return t('time.group.count').replace('{n}', String(node.count));
+    }
+
+    function buildTree(records) {
+        var years = [];
+        var yearIndex = {};
+
+        records.forEach(function (record) {
+            var date = new Date(record.start);
+            var year = date.getFullYear();
+            var month = date.getMonth() + 1;
+            var week = Math.floor((date.getDate() - 1) / 7) + 1;
+
+            var yearKey = 'y' + year;
+            if (!yearIndex[yearKey]) {
+                yearIndex[yearKey] = {
+                    key: yearKey,
+                    label: t('time.group.year').replace('{y}', String(year)),
+                    count: 0,
+                    months: [],
+                    monthIndex: {}
+                };
+                years.push(yearIndex[yearKey]);
+            }
+            var yearNode = yearIndex[yearKey];
+            yearNode.count += 1;
+
+            var monthKey = yearKey + 'm' + month;
+            if (!yearNode.monthIndex[monthKey]) {
+                yearNode.monthIndex[monthKey] = {
+                    key: monthKey,
+                    label: t('time.group.month')
+                        .replace('{y}', String(year))
+                        .replace('{m}', String(month)),
+                    count: 0,
+                    weeks: [],
+                    weekIndex: {}
+                };
+                yearNode.months.push(yearNode.monthIndex[monthKey]);
+            }
+            var monthNode = yearNode.monthIndex[monthKey];
+            monthNode.count += 1;
+
+            var weekKey = monthKey + 'w' + week;
+            if (!monthNode.weekIndex[weekKey]) {
+                monthNode.weekIndex[weekKey] = {
+                    key: weekKey,
+                    label: t('time.group.week')
+                        .replace('{n}', String(week))
+                        .replace('{range}', weekRangeLabel(year, month, week)),
+                    count: 0,
+                    records: []
+                };
+                monthNode.weeks.push(monthNode.weekIndex[weekKey]);
+            }
+            var weekNode = monthNode.weekIndex[weekKey];
+            weekNode.count += 1;
+            weekNode.records.push(record);
+        });
+
+        return years;
+    }
+
+    /** 「09-01 ~ 09-07」这种月内的日期范围 */
+    function weekRangeLabel(year, month, week) {
+        var pad = global.LifeLogDateTime.pad;
+        var daysInMonth = new Date(year, month, 0).getDate();
+        var from = (week - 1) * 7 + 1;
+        var to = Math.min(week * 7, daysInMonth);
+        return pad(month, 2) + '-' + pad(from, 2) + ' ~ ' + pad(month, 2) + '-' + pad(to, 2);
+    }
+
+    function section(node, kind, depth, buildBody) {
+        var li = global.LifeLogUI.el('li', 'group group-' + kind);
+        var opened = !collapsed[node.key];
+
+        var head = global.LifeLogUI.el('button', 'group-head');
+        head.type = 'button';
+        head.style.paddingLeft = (20 + depth * 12) + 'px';
+        head.setAttribute('aria-expanded', opened ? 'true' : 'false');
+        head.appendChild(global.LifeLogUI.el('span', 'group-chevron'))
+            .innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+            '<path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/></svg>';
+        head.appendChild(global.LifeLogUI.el('span', 'group-title', node.label));
+        head.appendChild(global.LifeLogUI.el('span', 'group-count', groupCount(node)));
+        li.appendChild(head);
+
+        var body = global.LifeLogUI.el('ul', 'group-body');
+        body.hidden = !opened;
+        if (!opened) {
+            li.classList.add('is-collapsed');
+        }
+        buildBody(body);
+        li.appendChild(body);
+
+        // 就地折叠，不重绘整个列表，避免滚动位置跳动
+        head.addEventListener('click', function () {
+            var willClose = !body.hidden;
+            body.hidden = willClose;
+            li.classList.toggle('is-collapsed', willClose);
+            head.setAttribute('aria-expanded', willClose ? 'false' : 'true');
+            if (willClose) {
+                collapsed[node.key] = true;
+            } else {
+                delete collapsed[node.key];
+            }
+        });
+
+        return li;
+    }
+
+    /** 单条记录卡片（与行为详情页里的列表长一样） */
+    function recordCard(record) {
+        var behavior = global.LifeLogStore.getBehavior(record.behaviorId);
+
+        var card = global.LifeLogUI.el('li', 'card');
+        card.dataset.id = record.id;
+        card.appendChild(global.LifeLogUI.icon(
+            behavior ? behavior.icon : global.LifeLogIcons.fallback,
+            'card-icon'
+        ));
+        card.appendChild(global.LifeLogUI.el('span', 'card-title', behavior ? behavior.name : '—'));
+
+        var time = global.LifeLogUI.el('span', 'card-time');
+        time.appendChild(global.LifeLogUI.el('span', 'card-time-date', dateLine(record)));
+        time.appendChild(global.LifeLogUI.el('span', 'card-time-clock', clockLine(record)));
+        card.appendChild(time);
+
+        if (global.LifeLogUI.isSelected(record.id)) {
+            card.classList.add('is-selected');
+        }
+
+        global.LifeLogUI.attachLongPress(card, function () {
+            global.LifeLogUI.startSelection(record.id);
+        });
+
+        card.addEventListener('click', function () {
+            if (global.LifeLogUI.justLongPressed()) {
+                return;
+            }
+            if (global.LifeLogUI.isSelecting()) {
+                global.LifeLogUI.toggleSelection(record.id);
+                return;
+            }
+            // 普通点击 = 修改这条记录
+            openForm(record);
+        });
+
+        return card;
+    }
+
+    /** 当前视图的起始时间；all 返回 null 表示不限制 */
+    function rangeStart() {
+        var days = VIEW_DAYS[currentView] || 0;
+        if (!days) {
+            return null;
+        }
+        var today = global.LifeLogDateTime.startOfDay(Date.now());
+        return today - (days - 1) * DAY_MS;
+    }
 
     function render() {
         if (!listEl) {
             return;
         }
 
+        var start = rangeStart();
         var records = global.LifeLogStore.getRecords().filter(function (record) {
-            return currentView === 'all' || record.type === currentView;
+            return start === null || record.start >= start;
         });
 
         listEl.innerHTML = '';
@@ -130,43 +303,20 @@
             return;
         }
 
-        records.forEach(function (record) {
-            var behavior = global.LifeLogStore.getBehavior(record.behaviorId);
-
-            var card = global.LifeLogUI.el('li', 'card');
-            card.dataset.id = record.id;
-            card.appendChild(global.LifeLogUI.icon(
-                behavior ? behavior.icon : global.LifeLogIcons.fallback,
-                'card-icon'
-            ));
-            card.appendChild(global.LifeLogUI.el('span', 'card-title', behavior ? behavior.name : '—'));
-
-            var time = global.LifeLogUI.el('span', 'card-time');
-            time.appendChild(global.LifeLogUI.el('span', 'card-time-date', dateLine(record)));
-            time.appendChild(global.LifeLogUI.el('span', 'card-time-clock', clockLine(record)));
-            card.appendChild(time);
-
-            if (global.LifeLogUI.isSelected(record.id)) {
-                card.classList.add('is-selected');
-            }
-
-            global.LifeLogUI.attachLongPress(card, function () {
-                global.LifeLogUI.startSelection(record.id);
-            });
-
-            card.addEventListener('click', function () {
-                if (global.LifeLogUI.justLongPressed()) {
-                    return;
-                }
-                if (global.LifeLogUI.isSelecting()) {
-                    global.LifeLogUI.toggleSelection(record.id);
-                    return;
-                }
-                // 普通点击 = 修改这条记录
-                openForm(record);
-            });
-
-            listEl.appendChild(card);
+        buildTree(records).forEach(function (yearNode) {
+            listEl.appendChild(section(yearNode, 'year', 0, function (yearBody) {
+                yearNode.months.forEach(function (monthNode) {
+                    yearBody.appendChild(section(monthNode, 'month', 1, function (monthBody) {
+                        monthNode.weeks.forEach(function (weekNode) {
+                            monthBody.appendChild(section(weekNode, 'week', 2, function (weekBody) {
+                                weekNode.records.forEach(function (record) {
+                                    weekBody.appendChild(recordCard(record));
+                                });
+                            }));
+                        });
+                    }));
+                });
+            }));
         });
     }
 

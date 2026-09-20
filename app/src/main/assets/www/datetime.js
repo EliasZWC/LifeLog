@@ -30,6 +30,12 @@
         return pad(date.getHours(), 2) + ':' + pad(date.getMinutes(), 2);
     }
 
+    /** 取某个时间戳所在自然日的零点（全 app 统一的“一天”口径） */
+    function startOfDay(timestamp) {
+        var date = new Date(timestamp);
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    }
+
     // --- 分段输入 -----------------------------------------------------------
 
     /** 焦点跳到同一张弹窗里的上/下一个分段输入框 */
@@ -167,14 +173,66 @@
         return date.getTime();
     }
 
+    /**
+     * 只要 [YYYY]-[MM]-[DD] 的分段输入（统计范围用）。
+     * @returns {{root: HTMLElement, inputs: object}}
+     */
+    function buildDateGroup(labelText, initial, onChange) {
+        var group = global.LifeLogUI.el('div', 'datetime-group');
+        var inputs = {};
+
+        if (labelText) {
+            group.appendChild(global.LifeLogUI.el('span', 'datetime-label', labelText));
+        }
+
+        var row = global.LifeLogUI.el('div', 'datetime-row');
+        row.appendChild(segmentInput(YEAR_DIGITS, 'YYYY', 'year', inputs, onChange));
+        appendSeparator(row, '-');
+        row.appendChild(segmentInput(CLOCK_DIGITS, 'MM', 'month', inputs, onChange));
+        appendSeparator(row, '-');
+        row.appendChild(segmentInput(CLOCK_DIGITS, 'DD', 'day', inputs, onChange));
+        group.appendChild(row);
+
+        var date = new Date(initial);
+        inputs.year.value = pad(date.getFullYear(), YEAR_DIGITS);
+        inputs.month.value = pad(date.getMonth() + 1, CLOCK_DIGITS);
+        inputs.day.value = pad(date.getDate(), CLOCK_DIGITS);
+
+        return { root: group, inputs: inputs };
+    }
+
+    /** 只读到「日」，返回当天零点的时间戳；不完整或非法返回 null */
+    function toDateTimestamp(values) {
+        if (!values || !values.year || !values.month || !values.day) {
+            return null;
+        }
+        if (values.year.length !== YEAR_DIGITS ||
+            values.month.length !== CLOCK_DIGITS ||
+            values.day.length !== CLOCK_DIGITS) {
+            return null;
+        }
+
+        var year = Number(values.year);
+        var month = Number(values.month);
+        var day = Number(values.day);
+        if (month < 1 || month > 12 || day < 1 || day > 31) {
+            return null;
+        }
+
+        return startOfDay(new Date(year, month - 1, day, 0, 0, 0, 0).getTime());
+    }
+
     global.LifeLogDateTime = {
         YEAR_DIGITS: YEAR_DIGITS,
         CLOCK_DIGITS: CLOCK_DIGITS,
         pad: pad,
         formatDate: formatDate,
         formatClock: formatClock,
+        startOfDay: startOfDay,
         buildGroup: buildGroup,
+        buildDateGroup: buildDateGroup,
         readGroup: readGroup,
-        toTimestamp: toTimestamp
+        toTimestamp: toTimestamp,
+        toDateTimestamp: toDateTimestamp
     };
 })(window);

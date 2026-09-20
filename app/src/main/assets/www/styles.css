@@ -1040,8 +1040,8 @@ body {
     overscroll-behavior: contain;
 }
 
-/* 详情页的视图栏是固定的一行，不需要吸顶 */
-.detail .view-bar {
+/* 详情页的内嵌视图导航栏就贴在标题栏下面，不吸顶 */
+.detail .seg-nav {
     position: static;
 }
 
@@ -1082,6 +1082,19 @@ body {
     fill: var(--on-surface);
 }
 
+/* 折线图：只连有记录的天，中间断开 */
+.chart-line {
+    fill: none;
+    stroke: var(--on-surface);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+.chart-dot {
+    fill: var(--on-surface);
+}
+
 .chart-axis {
     stroke: var(--on-surface);
     stroke-opacity: 0.45;
@@ -1111,6 +1124,11 @@ body {
     border-radius: 16px;
 }
 
+/* 统计视图的选项栏：复用设置页的「左名称 / 右值」行 */
+.stats .setting-list {
+    margin: 0;
+}
+
 .stats-key,
 .stats-value {
     margin: 0;
@@ -1132,6 +1150,132 @@ body {
 .stats-key:nth-last-of-type(1),
 .stats-value:nth-last-of-type(1) {
     border-bottom: 0;
+}
+
+/* --------------------------------------------------------------------------
+   时间页的三级分组（年 → 月 → 周）
+   每一级都可展开 / 折叠；层级靠标题的缩进体现，卡片本体的对齐不变
+   -------------------------------------------------------------------------- */
+
+.group {
+    list-style: none;
+}
+
+.group-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 20px;
+    border: 0;
+    background: none;
+    color: var(--on-surface-variant);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.group-head:active {
+    background: var(--surface-raised);
+}
+
+.group-chevron {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    transition: transform 160ms ease;
+}
+
+.group-chevron svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+}
+
+.group.is-collapsed > .group-head .group-chevron {
+    transform: rotate(-90deg);
+}
+
+.group-year > .group-head {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+
+.group-month > .group-head {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--on-surface);
+}
+
+.group-week > .group-head {
+    font-size: 13px;
+}
+
+.group-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.group-count {
+    flex: 0 0 auto;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.7;
+}
+
+.group-body {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.group-body[hidden] {
+    display: none;
+}
+
+/* --------------------------------------------------------------------------
+   详情页顶栏下方的内嵌视图导航栏
+   -------------------------------------------------------------------------- */
+
+.seg-nav {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: stretch;
+    gap: 24px;
+    height: 44px;
+    padding: 0 20px;
+    background: var(--bg);
+}
+
+.seg-nav-item {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--nav-inactive);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 160ms ease, opacity 160ms ease;
+}
+
+.seg-nav-item.is-active {
+    color: var(--nav-active);
+}
+
+.seg-nav-item:active {
+    opacity: 0.55;
 }
 
 /* --------------------------------------------------------------------------

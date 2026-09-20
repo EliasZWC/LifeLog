@@ -107,6 +107,9 @@
     if (window.LifeLogSettingPage) {
         window.LifeLogSettingPage.init();
     }
+    if (window.LifeLogDatePicker) {
+        window.LifeLogDatePicker.init();
+    }
     if (window.LifeLogUpdate) {
         window.LifeLogUpdate.init();
     }

@@ -247,17 +247,13 @@
             </button>
         </header>
 
-        <div class="view-bar">
-            <span class="view-current" id="detail-view-current"></span>
-            <button class="icon-button" type="button" id="detail-view-button" aria-haspopup="menu"
-                aria-expanded="false" aria-label="Switch view" data-i18n-aria-label="view.switch">
-                <!-- Google Material Icons: view_list -->
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path
-                        d="M3,14h4v-4H3V14z M3,19h4v-4H3V19z M3,9h4V5H3V9z M8,14h13v-4H8V14z M8,19h13v-4H8V19z M8,5v4h13V5H8z" />
-                </svg>
-            </button>
-        </div>
+        <nav class="seg-nav" id="detail-view-nav" aria-label="Switch view"
+            data-i18n-aria-label="view.switch">
+            <button class="seg-nav-item" type="button" data-view="records" aria-selected="true"
+                data-i18n="view.records">Records</button>
+            <button class="seg-nav-item" type="button" data-view="stats" aria-selected="false"
+                data-i18n="view.stats">Stats</button>
+        </nav>
 
         <div class="detail-body">
             <ul class="card-list" id="detail-list"></ul>
@@ -288,17 +284,13 @@
             </button>
         </header>
 
-        <div class="view-bar">
-            <span class="view-current" id="metric-detail-view-current"></span>
-            <button class="icon-button" type="button" id="metric-detail-view-button" aria-haspopup="menu"
-                aria-expanded="false" aria-label="Switch view" data-i18n-aria-label="view.switch">
-                <!-- Google Material Icons: view_list -->
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path
-                        d="M3,14h4v-4H3V14z M3,19h4v-4H3V19z M3,9h4V5H3V9z M8,14h13v-4H8V14z M8,19h13v-4H8V19z M8,5v4h13V5H8z" />
-                </svg>
-            </button>
-        </div>
+        <nav class="seg-nav" id="metric-detail-view-nav" aria-label="Switch view"
+            data-i18n-aria-label="view.switch">
+            <button class="seg-nav-item" type="button" data-view="records" aria-selected="true"
+                data-i18n="view.records">Records</button>
+            <button class="seg-nav-item" type="button" data-view="stats" aria-selected="false"
+                data-i18n="view.stats">Stats</button>
+        </nav>
 
         <div class="detail-body">
             <ul class="card-list" id="metric-detail-list"></ul>
@@ -484,6 +476,23 @@
         </div>
     </section>
 
+    <!-- 日期选择：统计视图的起止日期用它 -->
+    <section class="sheet" id="sheet-date" role="dialog" aria-modal="true"
+        aria-labelledby="sheet-date-title" hidden>
+        <h2 class="sheet-title" id="sheet-date-title"></h2>
+
+        <div class="form-block">
+            <div class="time-fields" id="date-fields"></div>
+            <p class="form-hint" id="date-hint" hidden></p>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn" type="button" id="date-cancel" data-i18n="action.cancel">Cancel</button>
+            <button class="btn btn-primary" type="button" id="date-confirm"
+                data-i18n="action.confirm">Confirm</button>
+        </div>
+    </section>
+
     <script src="i18n.js"></script>
     <script src="icons.js"></script>
     <script src="csv.js"></script>
@@ -492,6 +501,8 @@
     <script src="components.js"></script>
     <script src="datetime.js"></script>
     <script src="chart.js"></script>
+    <script src="datepicker.js"></script>
+    <script src="stats.js"></script>
     <script src="theme.js"></script>
     <script src="page-behavior.js"></script>
     <script src="page-behavior-detail.js"></script>
