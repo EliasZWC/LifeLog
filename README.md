@@ -4,7 +4,7 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前版本 | **v0.0.11** |
+| 当前版本 | **v0.0.12** |
 | 包名 | `com.eliaszwc.lifelog` |
 | 最低支持 | Android 8.0（API 26） |
 | 目标版本 | Android 15（API 35） |
@@ -87,8 +87,9 @@
 
 「提示的是新版、装下去的却是旧版」是这类应用内更新最典型的坑，所以做了三层防护：
 
-1. **安装包按版本命名**：`cacheDir/update/lifelog-<version>.apk`，每次更新的
-   `content://` URI 都不同 —— 固定文件名会让安装器/系统有机会按 URI 复用上一次的包。
+1. **安装包按版本命名**：`cacheDir/update/<version>/lifelog.apk`，每次更新的
+   `content://` URI 都不同 —— 固定路径会让安装器（部分定制 ROM 尤其明显）
+   按 URI 复用上一次扫描/暂存过的那份包，表现就是“提示的是新版、装下去的却是旧版”。
    下载前还会把整个 `update/` 目录删掉。
 2. **拉起安装器前校验包内容**：用 `PackageManager.getPackageArchiveInfo()` 解析，
    逐项检查字节数与 Release 声明一致、`versionName` 与发布标签一致、

@@ -187,15 +187,18 @@ object Updater {
     }
 
     private fun fetchApk(context: Context, release: Release, onProgress: (Int) -> Unit): File {
-        val dir = File(context.cacheDir, APK_DIR)
+        val root = File(context.cacheDir, APK_DIR)
         // 整个目录先清空：绝不留下上一次的安装包
-        dir.deleteRecursively()
+        root.deleteRecursively()
+
+        // 目录名 + 文件名都带上版本号 —— 每次更新的 content:// URI 都不一样。
+        // 用固定路径的话，安装器（部分定制 ROM 尤其明显）会按 URI 复用上一次
+        // 扫描/暂存过的那份包，于是“提示的是新版，装下去的却是旧版”，
+        // 而且因为版本没变，下次进 app 又提示同一个新版，无限循环。
+        val dir = File(root, safeFileName(release.version))
         dir.mkdirs()
 
-        // 文件名带上版本号 —— 每次更新的 content:// URI 都不一样。
-        // 固定用同一个文件名的话，安装器/系统有可能按 URI 复用上一次的包，
-        // 结果就是“提示的是新版，装下去的却是旧版”。
-        val target = File(dir, "lifelog-" + safeFileName(release.version) + ".apk")
+        val target = File(dir, "lifelog.apk")
 
         val connection = (URL(release.assetUrl).openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000
