@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 白天主题：以白为主，但不使用纯白 -->
+<resources>
+    <color name="app_background">#F4F4F2</color>
+    <color name="app_surface">#FFFFFF</color>
+    <color name="ic_launcher_background">#1B1B1B</color>
+</resources>

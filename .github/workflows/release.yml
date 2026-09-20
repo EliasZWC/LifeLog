@@ -1,0 +1,93 @@
+name: Release
+
+# 发布流程：推送形如 v0.0.1 的标签时自动构建 APK 并创建 GitHub Release。
+#
+# 发布前的准备：
+#   1. 在 app/build.gradle.kts 中把 appVersionCode +1、appVersionName 改为新版本号；
+#   2. 提交；把 CHANGELOG.md 一并更新；
+#   3. git tag v0.0.2 && git push origin v0.0.2
+#
+# 可选（推荐）：配置发布签名，否则 APK 会使用 debug 密钥签名。
+#   仓库 Settings -> Secrets and variables -> Actions 中添加：
+#     KEYSTORE_BASE64   : keystore 文件的 base64 内容（base64 -w0 release.jks）
+#     KEYSTORE_PASSWORD : keystore 密码
+#     KEY_ALIAS         : 密钥别名
+#     KEY_PASSWORD      : 密钥密码
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: 构建并发布 APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 配置 Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 配置 Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: 校验标签与 versionName 一致
+        run: |
+          set -euo pipefail
+          VERSION_NAME=$(grep -oP 'val appVersionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          VERSION_CODE=$(grep -oP 'val appVersionCode\s*=\s*\K[0-9]+' app/build.gradle.kts)
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          echo "标签版本: $TAG_VERSION / versionName: $VERSION_NAME (code $VERSION_CODE)"
+          if [ "$VERSION_NAME" != "$TAG_VERSION" ]; then
+            echo "::error::标签 $GITHUB_REF_NAME 与 app/build.gradle.kts 中的 versionName $VERSION_NAME 不一致，请先修改版本号再发布。"
+            exit 1
+          fi
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+
+      - name: 准备发布签名（可选）
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "${KEYSTORE_BASE64:-}" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            echo "✅ 使用发布密钥签名"
+          else
+            echo "::warning::未配置 KEYSTORE_BASE64，本次 APK 将使用 debug 密钥签名（不推荐用于正式分发）。"
+          fi
+
+      - name: 构建 Release APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: gradle --no-daemon --stacktrace assembleRelease
+
+      - name: 收集产物
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk "dist/LifeLog-v${VERSION_NAME}.apk"
+          ls -lh dist
+
+      - name: 创建 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: LifeLog v${{ env.VERSION_NAME }}
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: dist/LifeLog-v${{ env.VERSION_NAME }}.apk

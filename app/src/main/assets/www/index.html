@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F4F2" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121212" />
+    <title>LifeLog</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <div id="app">
+        <main id="content">
+            <!-- 日志页：暂时留空 -->
+            <section class="page" id="page-log" role="tabpanel" aria-labelledby="tab-log"></section>
+
+            <!-- 统计页：暂时留空 -->
+            <section class="page" id="page-stats" role="tabpanel" aria-labelledby="tab-stats" hidden></section>
+        </main>
+
+        <nav class="bottom-nav" role="tablist" aria-label="主导航">
+            <button class="nav-item" type="button" role="tab" id="tab-log" aria-controls="page-log"
+                aria-selected="true" data-page="log">
+                <span class="nav-icon" aria-hidden="true">
+                    <!-- Google Material Icons: edit_note -->
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path
+                            d="M3,10h11v2H3V10z M3,8h11V6H3V8z M3,16h7v-2H3V16z M18.01,12.87l0.71-0.71c0.39-0.39,1.02-0.39,1.41,0l0.71,0.71 c0.39,0.39,0.39,1.02,0,1.41l-0.71,0.71L18.01,12.87z M17.3,13.58l-5.3,5.3V21h2.12l5.3-5.3L17.3,13.58z" />
+                    </svg>
+                </span>
+                <span class="nav-label">日志</span>
+            </button>
+
+            <button class="nav-item" type="button" role="tab" id="tab-stats" aria-controls="page-stats"
+                aria-selected="false" data-page="stats">
+                <span class="nav-icon" aria-hidden="true">
+                    <!-- Google Material Icons: bar_chart -->
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <rect x="4" y="9" width="4" height="11" />
+                        <rect x="16" y="13" width="4" height="7" />
+                        <rect x="10" y="4" width="4" height="16" />
+                    </svg>
+                </span>
+                <span class="nav-label">统计</span>
+            </button>
+        </nav>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

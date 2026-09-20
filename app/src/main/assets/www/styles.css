@@ -1,0 +1,165 @@
+/* ==========================================================================
+   LifeLog - 基础样式
+   主题色：黑白，但使用不同质感的灰阶，避免纯黑 #000 / 纯白 #fff。
+   白天主题以白为主，夜间主题以黑为主。
+   ========================================================================== */
+
+:root {
+    color-scheme: light dark;
+
+    /* 白天主题 */
+    --bg: #F4F4F2;
+    --surface: #FFFFFF;
+    --surface-raised: #EDEDEA;
+    --on-surface: #1B1B1B;
+    --on-surface-variant: #6E6E6E;
+    --outline: #E4E4E0;
+    --nav-indicator: #E9E9E5;
+    --nav-active: #1B1B1B;
+    --nav-inactive: #8C8C8A;
+
+    --nav-height: 60px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        /* 夜间主题 */
+        --bg: #121212;
+        --surface: #1C1C1C;
+        --surface-raised: #262626;
+        --on-surface: #ECECEA;
+        --on-surface-variant: #9A9A98;
+        --outline: #2E2E2E;
+        --nav-indicator: #2B2B2B;
+        --nav-active: #F2F2F0;
+        --nav-inactive: #7E7E7C;
+    }
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--on-surface);
+    font-family: Roboto, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+    overflow: hidden;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    height: 100dvh;
+}
+
+#content {
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+}
+
+/* --------------------------------------------------------------------------
+   页面容器
+   -------------------------------------------------------------------------- */
+
+.page {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+.page[hidden] {
+    display: none;
+}
+
+/* --------------------------------------------------------------------------
+   底部导航栏
+   -------------------------------------------------------------------------- */
+
+.bottom-nav {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: stretch;
+    background: var(--surface);
+    border-top: 1px solid var(--outline);
+    padding: 6px 8px;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+}
+
+.nav-item {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-height: 48px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--nav-inactive);
+    font: inherit;
+    cursor: pointer;
+    outline: none;
+    transition: color 160ms ease;
+}
+
+.nav-item.is-active {
+    color: var(--nav-active);
+}
+
+/* Material 3 风格的胶囊指示器 */
+.nav-icon {
+    display: grid;
+    place-items: center;
+    width: 60px;
+    height: 30px;
+    border-radius: 15px;
+    background: transparent;
+    transition: background-color 180ms ease, transform 120ms ease;
+}
+
+.nav-item.is-active .nav-icon {
+    background: var(--nav-indicator);
+}
+
+.nav-item:active .nav-icon {
+    transform: scale(0.92);
+}
+
+.nav-icon svg {
+    display: block;
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+}
+
+.nav-label {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16px;
+    letter-spacing: 0.3px;
+}
+
+.nav-item:focus-visible .nav-icon {
+    box-shadow: 0 0 0 2px var(--on-surface-variant);
+}
