@@ -6,7 +6,7 @@
 
 /* --------------------------------------------------------------------------
    内置字体：更纱等宽黑体（Sarasa Mono SC）的子集版。
-   完整的 Regular / SemiBold 各 24 MB，这里只保留
+   完整的 Regular / Bold 各 24 MB，这里只保留
    「拉丁 + 常用标点 + 全角 + GB2312 全集 + 网页实际用到的字符」，转 WOFF2 后各 1.5 MB。
    用户输入生僻字时浏览器会自动回退到下一个兜底字体，不会出现方块。
    授权 SIL OFL 1.1（见 fonts/LICENSE-Sarasa-OFL.txt）；因为做了子集化，
@@ -23,7 +23,8 @@
 
 @font-face {
     font-family: "Livolog Mono";
-    src: url("fonts/livolog-mono-semibold.woff2") format("woff2");
+    /* 用 Bold 而不是 SemiBold：SemiBold 在 15px 的黑白界面上几乎看不出「粗」 */
+    src: url("fonts/livolog-mono-bold.woff2") format("woff2");
     font-weight: 600 700;
     font-style: normal;
     font-display: swap;
