@@ -50,6 +50,10 @@
     --outline: #E1E1DE;
     --nav-active: #1B1B1B;
     --nav-inactive: #8C8C8A;
+    /* 滚动条滑块：用前景色扣一个低透明度的灰，这样在两个主题、
+       各种底色（页面 / 卡片 / 弹窗）上都成立，不会冒出突兀的一杠 */
+    --scroll-thumb: rgba(27, 27, 27, 0.22);
+    --scroll-thumb-active: rgba(27, 27, 27, 0.45);
     /* 破坏性操作（删除等）专用：整站黑白，只有这里破例用红 */
     --danger: #B3261E;
 
@@ -70,6 +74,8 @@
         --outline: #333333;
         --nav-active: #F2F2F0;
         --nav-inactive: #7E7E7C;
+        --scroll-thumb: rgba(236, 236, 234, 0.24);
+        --scroll-thumb-active: rgba(236, 236, 234, 0.48);
         --danger: #F2B8B5;
     }
 }
@@ -85,6 +91,8 @@
     --outline: #333333;
     --nav-active: #F2F2F0;
     --nav-inactive: #7E7E7C;
+    --scroll-thumb: rgba(236, 236, 234, 0.24);
+    --scroll-thumb-active: rgba(236, 236, 234, 0.48);
     --danger: #F2B8B5;
 }
 
@@ -541,6 +549,33 @@ body {
     color: var(--on-surface);
     text-align: center;
     text-transform: uppercase;
+}
+
+/* --------------------------------------------------------------------------
+   滚动条：跟着整体黑白风格 —— 没有轨道底色、没有箭头，只有一条细的圆头滑块。
+   滑块颜色 = 前景色低透明度（日间深、夜间浅），所以页面 / 卡片 / 弹窗上都合适。
+   注：::-webkit-scrollbar 只在 Chromium 内核生效，而 WebView 就是 Chromium。
+   一旦自定义它，滚动条就从「浮动淡出」变成「常驻占位」，会占掉 6px 宽度。
+   -------------------------------------------------------------------------- */
+*::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+    background: transparent;
+}
+
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--scroll-thumb);
+    border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:active {
+    background: var(--scroll-thumb-active);
 }
 
 /* --------------------------------------------------------------------------
