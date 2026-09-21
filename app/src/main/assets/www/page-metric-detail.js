@@ -370,7 +370,11 @@
         chartBlock.appendChild(global.LivologUI.el(
             'span', 'stats-chart-title', t('metric.detail.chartDaily')
         ));
-        chartBlock.appendChild(global.LivologChart.build(points, { type: stats.chartType }));
+        chartBlock.appendChild(global.LivologChart.build(points, {
+            type: stats.chartType,
+            // 点某一天时气泡里显示的是那天的取值（和列表里的写法一致）
+            format: formatValue
+        }));
         wrap.appendChild(chartBlock);
 
         var latest = ordered.length ? ordered[ordered.length - 1].value : null;

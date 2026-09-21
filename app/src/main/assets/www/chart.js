@@ -38,7 +38,8 @@
 
     /**
      * @param {Array<{day: number, value: number, has: boolean}>} points 按时间升序，每个点代表一天
-     * @param {{type?: 'bar'|'line'}} [options]
+     * @param {{type?: 'bar'|'line', format?: (value: number) => string}} [options]
+     *        format 决定「点某一天时气泡里显示的文案」（默认取整数值）
      * @returns {SVGElement}
      */
     function build(points, options) {
@@ -106,8 +107,8 @@
                 var height = Math.max(2, ((point.value - min) / span) * plotH);
                 var x = PAD_LEFT + index * slot + (slot - barW) / 2;
                 parts.push(
-                    '<rect class="chart-bar" x="' + x.toFixed(1) + '" y="' +
-                    (baseY - height).toFixed(1) + '" width="' + barW.toFixed(1) +
+                    '<rect class="chart-bar" data-index="' + index + '" x="' + x.toFixed(1) +
+                    '" y="' + (baseY - height).toFixed(1) + '" width="' + barW.toFixed(1) +
                     '" height="' + height.toFixed(1) + '" rx="2" />'
                 );
             });
@@ -129,6 +130,27 @@
                 );
             });
 
+        // 每天一整列透明命中区：点一下就能看到那天的具体数值
+        var tips = list.map(function (point, index) {
+            return {
+                has: point.has,
+                day: point.day,
+                value: point.value,
+                cx: centerX(index),
+                top: type === 'line'
+                    ? toY(point.value)
+                    : baseY - Math.max(2, ((point.value - min) / span) * plotH)
+            };
+        });
+
+        list.forEach(function (point, index) {
+            parts.push(
+                '<rect class="chart-hit" data-index="' + index + '" x="' +
+                (PAD_LEFT + index * slot).toFixed(1) + '" y="' + PAD_TOP + '" width="' +
+                slot.toFixed(1) + '" height="' + plotH + '" />'
+            );
+        });
+
         var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         // ⚠️ 根的 class 只能管到「这是一张图」——不能把 chart-bar / chart-line 也写上去。
         // stroke / stroke-width 在 SVG 里是**可继承**的，根上带了就会渗到所有子元素，
@@ -140,7 +162,86 @@
         svg.setAttribute('role', 'img');
         svg.innerHTML = parts.join('');
 
+        attachTips(svg, tips, {
+            type: type,
+            baseY: baseY,
+            format: options && options.format
+        });
+
         return svg;
+    }
+
+    /**
+     * 点某一天就在那个点上方/下方浮一个数值气泡（再点一次收起）。
+     * 气泡画在 SVG 里（viewBox 坐标），所以跟着图一起缩放。
+     */
+    function attachTips(svg, tips, config) {
+        var layer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        layer.setAttribute('class', 'chart-tip');
+        layer.setAttribute('hidden', 'true');
+        svg.appendChild(layer);
+
+        var current = -1;
+
+        function clear() {
+            layer.setAttribute('hidden', 'true');
+            layer.innerHTML = '';
+        }
+
+        function show(index) {
+            var tip = tips[index];
+            var text = config.format
+                ? String(config.format(tip.value))
+                : String(Math.round(tip.value * 100) / 100);
+            var boxW = text.length * 6.2 + 16;
+            var boxH = 19;
+            var boxX = Math.min(
+                Math.max(tip.cx - boxW / 2, PAD_LEFT),
+                WIDTH - PAD_RIGHT - boxW
+            );
+            // 优先浮在柱顶 / 折线点上方；上面没地方就压到它下面
+            var boxY = tip.top - boxH - 7;
+            if (boxY < 2) {
+                boxY = tip.top + 7;
+            }
+
+            var inner =
+                '<rect x="' + boxX.toFixed(1) + '" y="' + boxY.toFixed(1) +
+                '" width="' + boxW.toFixed(1) + '" height="' + boxH +
+                '" rx="6" />' +
+                '<text x="' + (boxX + boxW / 2).toFixed(1) + '" y="' +
+                (boxY + 13).toFixed(1) + '" text-anchor="middle">' + text + '</text>';
+
+            if (config.type === 'line') {
+                inner = '<line class="chart-guide" x1="' + tip.cx.toFixed(1) +
+                    '" y1="' + PAD_TOP + '" x2="' + tip.cx.toFixed(1) +
+                    '" y2="' + config.baseY + '" />' + inner;
+            }
+
+            layer.innerHTML = inner;
+            layer.removeAttribute('hidden');
+        }
+
+        svg.addEventListener('click', function (event) {
+            var hit = event.target.closest ? event.target.closest('.chart-hit') : null;
+            if (!hit) {
+                return;
+            }
+
+            var index = Number(hit.getAttribute('data-index'));
+            if (!tips[index] || !tips[index].has) {
+                return;   // 那天没有记录，不弹气泡
+            }
+
+            if (current === index) {
+                current = -1;
+                clear();
+                return;
+            }
+
+            current = index;
+            show(index);
+        });
     }
 
     /**
@@ -174,8 +275,8 @@
         // 点不多时把每个点都标出来，便于看清孤立的那几次记录
         if (points.length <= 40) {
             points.forEach(function (item) {
-                parts.push('<circle class="chart-dot" cx="' + x(item.index) +
-                    '" cy="' + y(item.value) + '" r="2.4" />');
+                parts.push('<circle class="chart-dot" data-index="' + item.index +
+                    '" cx="' + x(item.index) + '" cy="' + y(item.value) + '" r="2.4" />');
             });
         }
 

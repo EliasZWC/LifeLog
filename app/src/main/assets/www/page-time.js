@@ -274,11 +274,10 @@
         });
     }
 
-    /** 日期标记：只做标识，比分区标题更轻（格式与卡片上的日期一致，如 09-15） */
+    /** 日期标记：YYYY-MM-DD, 周几（如 2026-09-19, Sat） */
     function dayMark(day) {
-        var date = new Date(day);
-        var text = global.LivologDateTime.pad(date.getMonth() + 1, 2) + '-' +
-            global.LivologDateTime.pad(date.getDate(), 2);
+        var text = global.LivologDateTime.formatDate(day) + ', ' +
+            t('weekday.' + new Date(day).getDay());
         return global.LivologUI.el('li', 'day-mark', text);
     }
 
@@ -396,6 +395,8 @@
             },
             onChange: function (value) {
                 behaviorValue = value;
+                // 换行为时把它习惯的记录类型带过来（用户仍可手改）
+                applyPreferredType();
                 validate();
             },
             isDisabled: function () {
@@ -426,6 +427,56 @@
                 return t('time.form.type.none');
             }
         });
+    }
+
+    /**
+     * 这个行为「偏向」的记录类型：记过的次数多的那种；一样多就用最近一次。
+     * 从没记过就不猜，返回空串。
+     */
+    function preferredType(behaviorId) {
+        if (!behaviorId) {
+            return '';
+        }
+
+        // getRecords() 已经是按时间倒序，所以第一条就是这个行为最近一次的类型
+        var count = {};
+        var latest = '';
+        global.LivologStore.getRecords().forEach(function (record) {
+            if (record.behaviorId !== behaviorId || !record.type) {
+                return;
+            }
+            if (!latest) {
+                latest = record.type;
+            }
+            count[record.type] = (count[record.type] || 0) + 1;
+        });
+
+        var best = latest;
+        Object.keys(count).forEach(function (type) {
+            if (count[type] > count[best]) {
+                best = type;
+            }
+        });
+        return best;
+    }
+
+    /**
+     * 按当前行为的习惯预选记录类型（只在「新增」时用）。
+     * 自动填完照样能手动改，所以这里不做任何锁定。
+     */
+    function applyPreferredType() {
+        if (editingId) {
+            return;
+        }
+
+        var preferred = preferredType(behaviorValue);
+        if (!preferred || preferred === typeValue) {
+            return;
+        }
+
+        typeValue = preferred;
+        buildTimeFields(currentSeed());
+        typeSelect.refresh();
     }
 
     /** 当前表单里已填的起止时间（读不出来就是 null） */
@@ -493,7 +544,8 @@
             typeValue = record.type;
         } else {
             behaviorValue = behaviors.length ? behaviors[0].id : '';
-            typeValue = '';
+            // 新增：先按「第一个行为偏向的类型」预选，用户随时可改
+            typeValue = preferredType(behaviorValue);
         }
 
         sheetTitle.textContent = t(editingId ? 'time.form.editTitle' : 'time.form.title');

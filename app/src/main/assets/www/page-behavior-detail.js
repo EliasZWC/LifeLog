@@ -352,7 +352,17 @@
             'stats-chart-title',
             t(useDuration ? 'behavior.detail.chartDuration' : 'behavior.detail.chartCount')
         ));
-        chartBlock.appendChild(global.LivologChart.build(points, { type: stats.chartType }));
+        chartBlock.appendChild(global.LivologChart.build(points, {
+            type: stats.chartType,
+            // 点某一天时气泡里显示的是可读的时长 / 次数
+            format: useDuration
+                ? function (minutes) {
+                    return formatDuration(minutes * 60000);
+                }
+                : function (times) {
+                    return String(Math.round(times));
+                }
+        }));
         wrap.appendChild(chartBlock);
 
         var list = global.LivologUI.el('dl', 'stats-list');

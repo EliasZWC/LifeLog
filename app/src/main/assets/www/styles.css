@@ -1230,6 +1230,42 @@ body {
     font-variant-numeric: tabular-nums;
 }
 
+/*
+   点击某天弹出的数值气泡：每天一整列透明命中区，气泡用反色（与轻提示一致）。
+   气泡整体画在 SVG 里，所以跟着图一起缩放。
+*/
+.chart-hit {
+    fill: none;
+    pointer-events: all;
+}
+
+.chart-tip {
+    pointer-events: none;
+}
+
+.chart-tip[hidden] {
+    display: none;
+}
+
+.chart-tip rect {
+    fill: var(--on-surface);
+}
+
+.chart-tip text {
+    fill: var(--bg);
+    stroke: none;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.chart-guide {
+    stroke: var(--on-surface);
+    stroke-opacity: 0.35;
+    stroke-width: 1;
+    stroke-dasharray: 2 3;
+}
+
 .stats-list {
     display: grid;
     grid-template-columns: 1fr auto;

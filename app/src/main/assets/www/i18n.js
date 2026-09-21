@@ -37,6 +37,15 @@
             'time.level.month': 'Month',
             'time.level.week': 'Week',
 
+            // 日期标记里的周几（getDay() 的 0~6，0 = 周日）
+            'weekday.0': 'Sun',
+            'weekday.1': 'Mon',
+            'weekday.2': 'Tue',
+            'weekday.3': 'Wed',
+            'weekday.4': 'Thu',
+            'weekday.5': 'Fri',
+            'weekday.6': 'Sat',
+
             'date.invalid': 'Date is incomplete',
 
             'stats.chartType': 'Chart',
@@ -201,6 +210,14 @@
             'time.level.year': '年',
             'time.level.month': '月',
             'time.level.week': '周',
+
+            'weekday.0': '周日',
+            'weekday.1': '周一',
+            'weekday.2': '周二',
+            'weekday.3': '周三',
+            'weekday.4': '周四',
+            'weekday.5': '周五',
+            'weekday.6': '周六',
 
             'date.invalid': '日期未填写完整',
 
