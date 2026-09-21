@@ -20,6 +20,7 @@ class WebAppBridge(
     private val onDownloadUpdate: () -> Unit,
     private val onInstallUpdate: () -> Unit,
     private val onCloseUpdate: () -> Unit,
+    private val onFinishSplash: () -> Unit,
 ) {
 
     @JavascriptInterface
@@ -79,5 +80,11 @@ class WebAppBridge(
     @JavascriptInterface
     fun closeUpdate() {
         onCloseUpdate()
+    }
+
+    /** 网页的启动动画演完了：原生可以把窗口底色与系统栏图标切回正常主题 */
+    @JavascriptInterface
+    fun finishSplash() {
+        onFinishSplash()
     }
 }

@@ -441,6 +441,19 @@ body {
     color: var(--on-surface);
 }
 
+/*
+   卡片之间的日期分隔：同一天只出现一次，换天才插一条。
+   比「年 / 月 / 周」分区标题更轻——分区标题是深色粗体，这个只用浅色。
+*/
+.day-mark {
+    padding: 14px 20px 7px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    color: var(--on-surface-variant);
+    font-variant-numeric: tabular-nums;
+}
+
 .empty-state {
     padding: 48px 20px;
     text-align: center;
@@ -1535,10 +1548,12 @@ body {
 
 /* --------------------------------------------------------------------------
    启动动画（splash）
-   与 launcher 图标同一套几何（108 视口）：圆环用 conic-gradient + clip-path
+   ⚠️ 这一屏**不跟随日间 / 夜间主题**：底色固定为与桌面图标相同的品牌黑
+      （#1B1B1B），要突出的是 Livolog 本身，而不是一块图标（所以也不画图标底块）。
+   几何与 launcher 图标同一套（108 视口）：圆环用 conic-gradient + clip-path
    模拟 Android 的 sweep 渐变，指针用一个 <g> 整体旋转。
    播放与收尾全在 CSS 里（animation ... forwards 停在 visibility: hidden），
-   app.js 只是过一会儿把它从文档树里摘掉，动画本身不依赖 JS。
+   app.js 只负责「播完通知原生 + 把元素摘掉」。
    -------------------------------------------------------------------------- */
 
 .splash {
@@ -1549,19 +1564,19 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 22px;
-    background: var(--bg);
-    animation: splash-cover 1400ms cubic-bezier(0.2, 0, 0, 1) forwards;
+    gap: 26px;
+    background: #1B1B1B;
+    animation: splash-cover 2200ms cubic-bezier(0.2, 0, 0, 1) forwards;
 }
 
 .splash[hidden] {
     display: none;
 }
 
-/* 前 3/4 保持不透明，最后淡出 */
+/* 前 4/5 保持不透明，最后淡出 */
 @keyframes splash-cover {
     0%,
-    76% {
+    82% {
         opacity: 1;
         visibility: visible;
     }
@@ -1572,26 +1587,23 @@ body {
     }
 }
 
-/* 与 launcher 图标一样：黑底 + 白灰圆环；圆角用 Android 遮罩常见的 22% */
+/* 108 视口里圆环外径只有 44，放大 1.5 倍才像一张启动页 */
 .splash-logo {
     position: relative;
     width: 108px;
     height: 108px;
-    border-radius: 22%;
-    background: #1B1B1B;
-    overflow: hidden;
     animation: splash-logo-in 520ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 @keyframes splash-logo-in {
     from {
         opacity: 0;
-        transform: scale(0.88);
+        transform: scale(1.32);
     }
 
     to {
         opacity: 1;
-        transform: scale(1);
+        transform: scale(1.5);
     }
 }
 
@@ -1636,7 +1648,8 @@ body {
     font-weight: 700;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--on-surface);
+    /* 黑底固定亮色，不跟随主题 */
+    color: #ECECEA;
     animation: splash-name-in 620ms 160ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 

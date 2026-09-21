@@ -23,6 +23,7 @@ import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.pm.PackageInfoCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -63,6 +64,13 @@ class MainActivity : AppCompatActivity() {
 
     /** 页面加载完成前不往网页里注入脚本 */
     private var pageReady = false
+
+    /**
+     * 网页的启动动画还在演（或还没结束）时为 true。
+     * 这段时间窗口底色与系统栏图标一律按「品牌黑」处理，等网页通知再切回主题色，
+     * 否则白天主题下会在黑色启动页上面看到一排深色状态栏图标。
+     */
+    private var splashActive = true
 
     /** 网页里 <input type="file"> 点开后，等系统选择器返回时要用 */
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
@@ -147,7 +155,15 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
+        // 接管系统启动页：主题里指定的纯黑底 + 全透明图标会在第一帧后自动退场，
+        // 紧接着交给网页里的启动动画。必须在 super.onCreate 之前调用。
+        installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        // 网页一直没就绪的话不能无限黑屏，兜一个上限
+        window.decorView.postDelayed({
+            if (splashActive) finishSplash()
+        }, SPLASH_TIMEOUT_MS)
 
         CrashLog.install(this)
 
@@ -236,6 +252,7 @@ class MainActivity : AppCompatActivity() {
                 onDownloadUpdate = { runOnUiThread { startUpdateDownload() } },
                 onInstallUpdate = { runOnUiThread { installDownloaded() } },
                 onCloseUpdate = { runOnUiThread { closeUpdateFlow() } },
+                onFinishSplash = { runOnUiThread { finishSplash() } },
             ),
             JS_BRIDGE_NAME,
         )
@@ -743,6 +760,12 @@ class MainActivity : AppCompatActivity() {
 
     /** 把当前主题落到窗口背景与状态栏／导航栏图标颜色上 */
     private fun applyTheme() {
+        // 启动动画还在演：先维持品牌黑，免得黑色启动页上出现浅色底 + 深色图标
+        if (splashActive) {
+            applySplashAppearance()
+            return
+        }
+
         val dark = isDarkAppearance()
         try {
             window.setBackgroundDrawableResource(
@@ -756,6 +779,26 @@ class MainActivity : AppCompatActivity() {
             // 纯外观问题，绝不能因此崩溃
             Log.w(TAG, "应用主题失败", t)
         }
+    }
+
+    /** 启动动画期间的外观：与桌面图标一样的品牌黑 + 浅色系统栏图标 */
+    private fun applySplashAppearance() {
+        try {
+            window.setBackgroundDrawableResource(R.color.ic_launcher_background)
+            WindowInsetsControllerCompat(window, window.decorView).apply {
+                isAppearanceLightStatusBars = false
+                isAppearanceLightNavigationBars = false
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "应用启动页外观失败", t)
+        }
+    }
+
+    /** 网页的启动动画演完了，把外观切回正常主题 */
+    private fun finishSplash() {
+        if (!splashActive) return
+        splashActive = false
+        applyTheme()
     }
 
     private fun setThemeMode(mode: String) {
@@ -790,6 +833,9 @@ class MainActivity : AppCompatActivity() {
         const val WEB_ENTRY_URL = "https://appassets.androidplatform.net/assets/www/index.html"
 
         const val JS_BRIDGE_NAME = "LivologNative"
+
+        /** 网页一直没通知启动动画结束时的兜底时长（网页那边约 2.2s） */
+        const val SPLASH_TIMEOUT_MS = 4000L
 
         const val PREFS_NAME = "livolog"
         /** v0.0.16 及之前用的偏好文件名，只用于一次性迁移 */

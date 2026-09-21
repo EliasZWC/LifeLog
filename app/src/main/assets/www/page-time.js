@@ -257,6 +257,31 @@
         return li;
     }
 
+    /**
+     * 按天排列记录：换一天就在前面插一条日期标记。
+     * 顶部已经有「年 / 月 / 周」分区了，这里只做同一分区内部的天与天的分隔。
+     */
+    function appendRecords(container, records) {
+        var lastDay = null;
+
+        records.forEach(function (record) {
+            var day = global.LivologDateTime.startOfDay(record.start);
+            if (day !== lastDay) {
+                lastDay = day;
+                container.appendChild(dayMark(day));
+            }
+            container.appendChild(recordCard(record));
+        });
+    }
+
+    /** 日期标记：只做标识，比分区标题更轻（格式与卡片上的日期一致，如 09-15） */
+    function dayMark(day) {
+        var date = new Date(day);
+        var text = global.LivologDateTime.pad(date.getMonth() + 1, 2) + '-' +
+            global.LivologDateTime.pad(date.getDate(), 2);
+        return global.LivologUI.el('li', 'day-mark', text);
+    }
+
     /** 单条记录卡片（与行为详情页里的列表长一样） */
     function recordCard(record) {
         var behavior = global.LivologStore.getBehavior(record.behaviorId);
@@ -329,9 +354,7 @@
 
         // 范围内已经固定了的层级不重复显示：最近一周就直接列记录
         if (!nodes) {
-            records.forEach(function (record) {
-                listEl.appendChild(recordCard(record));
-            });
+            appendRecords(listEl, records);
             return;
         }
 
@@ -348,9 +371,7 @@
 
         return section(node, kind, depth, function (body) {
             if (!childKind) {
-                node.records.forEach(function (record) {
-                    body.appendChild(recordCard(record));
-                });
+                appendRecords(body, node.records);
                 return;
             }
 

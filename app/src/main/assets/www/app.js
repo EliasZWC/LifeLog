@@ -132,13 +132,33 @@
     // 首屏不播切换动画
     selectTab(initial, { animate: false });
 
-    // 启动动画由 CSS 自己播完（约 1.4s，见 styles.css 的 .splash），
-    // 这里只负责过一会儿把它从文档树里摘掉，别留着挡住无障碍树。
+    // 启动动画由 CSS 自己播完（见 styles.css 的 .splash）：
+    // 1) 播完通知原生，把窗口底色与系统栏图标切回正常主题；
+    // 2) 把元素从文档树里摘掉，别留着挡住无障碍树。
     var splash = document.getElementById('splash');
     if (splash) {
-        window.setTimeout(function () {
+        var closeSplash = function () {
+            if (splash.hidden) {
+                return;
+            }
             splash.hidden = true;
-        }, 1500);
+            try {
+                if (window.LivologNative && typeof window.LivologNative.finishSplash === 'function') {
+                    window.LivologNative.finishSplash();
+                }
+            } catch (e) {
+                /* 浏览器预览环境，忽略 */
+            }
+        };
+
+        splash.addEventListener('animationend', function (event) {
+            if (event.target === splash) {
+                closeSplash();
+            }
+        });
+
+        // 兜底：万一动画事件没来（比如用户系统里把动画整个关掉了）
+        window.setTimeout(closeSplash, 3000);
     }
 
     // 禁止双指缩放 / 长按放大镜造成的页面抖动
