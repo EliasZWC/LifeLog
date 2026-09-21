@@ -59,7 +59,7 @@
             );
         }));
 
-        // 起止时间合成一个选项：标题一行，开始 / 结束在下一行，分别贴左、贴右
+        // 起止时间合成一个选项：左边「Range」垂直居中，右边开始 / 结束上下两行、都贴右
         var rangeItem = global.LivologUI.el('li', 'setting-item stats-range');
         rangeItem.appendChild(global.LivologUI.el('span', 'setting-label', t('stats.range')));
 

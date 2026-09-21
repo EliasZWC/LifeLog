@@ -45,6 +45,14 @@
         if (global.LivologI18n) {
             global.LivologI18n.onChange(render);
         }
+
+        // 长按卡片拖动排序；新顺序写回数据层，时间页新建记录时那个行为下拉也跟着变
+        global.LivologUI.attachSortable(listEl, {
+            onDrop: function (ids) {
+                global.LivologStore.reorderBehaviors(ids);
+            }
+        });
+
         render();
     }
 

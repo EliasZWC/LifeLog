@@ -424,6 +424,166 @@
         return Date.now() - longPressAt < 400;
     }
 
+    // --- 长按拖动排序 -------------------------------------------------------
+
+    var SORT_HOLD_MS = 350;
+    /** 长按期间手指/鼠标移动超过这个距离就当成滚动，不算长按 */
+    var SORT_MOVE_TOLERANCE = 8;
+
+    /**
+     * 让列表里的卡片可以长按后拖动排序。
+     * 拖动过程中就地重排（相邻卡片直接换位，不做位移补间），松手时把新顺序回调出去，
+     * 由调用方写回数据层。
+     *
+     * @param {HTMLElement} list 列表容器（只处理它的直接子元素）
+     * @param {object} config
+     *   itemSelector?: string 默认 '.card'
+     *   onDrop: (ids: Array<string>) => void
+     */
+    function attachSortable(list, config) {
+        var itemSelector = config.itemSelector || '.card';
+        var holdTimer = null;
+        var dragEl = null;
+        var pointerId = null;
+        var startY = 0;
+        var draggedAt = 0;
+
+        function cards() {
+            return Array.prototype.filter.call(list.children, function (child) {
+                return child.matches && child.matches(itemSelector);
+            });
+        }
+
+        function stopHold() {
+            if (holdTimer) {
+                global.clearTimeout(holdTimer);
+                holdTimer = null;
+            }
+        }
+
+        /** 拖动期间不让页面跟着滚：touch-action 在触摸开始后就改不动了，只能拦 touchmove */
+        function preventScroll(event) {
+            event.preventDefault();
+        }
+
+        /** 把被拖的卡片插到手指所在的位置 */
+        function moveTo(y) {
+            var siblings = cards();
+            var target = null;
+
+            siblings.forEach(function (card) {
+                if (card === dragEl || target) {
+                    return;
+                }
+                var box = card.getBoundingClientRect();
+                if (y < box.top + box.height / 2) {
+                    target = card;
+                }
+            });
+
+            if (target) {
+                if (target.previousElementSibling !== dragEl) {
+                    list.insertBefore(dragEl, target);
+                }
+            } else if (siblings.length && siblings[siblings.length - 1] !== dragEl) {
+                list.appendChild(dragEl);
+            }
+        }
+
+        function startDrag(event) {
+            var card = event.target.closest ? event.target.closest(itemSelector) : null;
+            if (!card || !list.contains(card)) {
+                return;
+            }
+
+            dragEl = card;
+            pointerId = event.pointerId;
+            card.classList.add('is-dragging');
+            list.classList.add('is-sorting');
+            document.addEventListener('touchmove', preventScroll, { passive: false });
+        }
+
+        function stopDrag(commit) {
+            document.removeEventListener('touchmove', preventScroll);
+            document.removeEventListener('pointermove', onMove);
+            document.removeEventListener('pointerup', onUp);
+            document.removeEventListener('pointercancel', onUp);
+            list.classList.remove('is-sorting');
+            stopHold();
+
+            var dragged = dragEl;
+            dragEl = null;
+            pointerId = null;
+
+            if (!dragged) {
+                return;
+            }
+
+            dragged.classList.remove('is-dragging');
+            draggedAt = Date.now();
+
+            if (commit !== false && config.onDrop) {
+                config.onDrop(cards().map(function (card) {
+                    return card.dataset.id;
+                }));
+            }
+        }
+
+        function onMove(event) {
+            if (dragEl && (pointerId === null || event.pointerId === pointerId)) {
+                moveTo(event.clientY);
+            }
+        }
+
+        function onUp() {
+            if (dragEl) {
+                stopDrag(true);
+            }
+        }
+
+        list.addEventListener('pointerdown', function (event) {
+            if (dragEl || holdTimer) {
+                return;
+            }
+            if (event.button !== undefined && event.button !== 0) {
+                return;
+            }
+            if (!event.target.closest || !event.target.closest(itemSelector)) {
+                return;
+            }
+
+            startY = event.clientY;
+            var seed = event;
+            holdTimer = global.setTimeout(function () {
+                holdTimer = null;
+                startDrag(seed);
+                if (dragEl) {
+                    document.addEventListener('pointermove', onMove);
+                    document.addEventListener('pointerup', onUp);
+                    document.addEventListener('pointercancel', onUp);
+                }
+            }, SORT_HOLD_MS);
+        });
+
+        // 还没到长按时间就开始移动 = 用户在滚动列表
+        list.addEventListener('pointermove', function (event) {
+            if (holdTimer && Math.abs(event.clientY - startY) > SORT_MOVE_TOLERANCE) {
+                stopHold();
+            }
+        });
+
+        list.addEventListener('pointerup', stopHold);
+        list.addEventListener('pointercancel', stopHold);
+
+        // 拖完紧跟的那次 click 不能触发卡片的正常点击（否则会点进详情页）
+        list.addEventListener('click', function (event) {
+            if (Date.now() - draggedAt < 400) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        }, true);
+    }
+
     // --- 进入动画 -----------------------------------------------------------
 
     /** direction < 0 从左侧进入，否则从右侧进入 */
@@ -724,6 +884,7 @@
         createIconPicker: createIconPicker,
         attachLongPress: attachLongPress,
         justLongPressed: justLongPressed,
+        attachSortable: attachSortable,
         toast: toast,
         openSheet: openSheet,
         closeSheet: closeSheet,

@@ -391,6 +391,23 @@ body {
     background: var(--surface-raised);
 }
 
+/*
+   长按拖动排序：被拖的那张抬起来，整列表禁止选中文字。
+   拖动过程中卡片是「就地换位」的（不做位移补间），看着就是它跟着手指走。
+*/
+.card.is-dragging {
+    position: relative;
+    z-index: 2;
+    background: var(--surface-raised);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+}
+
+.card-list.is-sorting {
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grabbing;
+}
+
 .card-icon {
     display: grid;
     place-items: center;
@@ -1227,20 +1244,15 @@ body {
 }
 
 /*
-   起止时间合成一行选项：标题一行，开始/结束在同一行里分列两边。
-   开始时间与标题左对齐，结束时间与标题右对齐。
+   起止时间合成一行选项：左边「Range」垂直居中，右边开始 / 结束上下两行、都贴右。
+   两端各自可点，开始时间在上、结束时间在下。
 */
-.stats-range {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 4px;
-}
-
 .stats-range-values {
+    flex: 0 0 auto;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
 }
 
 .stats-range-time {
@@ -1252,18 +1264,11 @@ body {
     font-weight: 400;
     color: var(--on-surface-variant);
     font-variant-numeric: tabular-nums;
+    text-align: right;
     cursor: pointer;
     outline: none;
     -webkit-tap-highlight-color: transparent;
     transition: opacity 120ms ease;
-}
-
-.stats-range-time:first-child {
-    text-align: left;
-}
-
-.stats-range-time:last-child {
-    text-align: right;
 }
 
 .stats-range-time:active {
@@ -1272,12 +1277,13 @@ body {
 
 /*
    统计信息全是不可改的内容，所以不套卡片 / 列表，直接排在页面背景上：
+   左右各留 20px，和上面选项栏里的文字（.setting-item 的 padding）对齐；
    左边名称「深色 + 粗体」，右边数值「浅色 + 正常字重」。
 */
 .stats-key,
 .stats-value {
     margin: 0;
-    padding: 6px 0;
+    padding: 6px 20px;
     font-size: 15px;
 }
 

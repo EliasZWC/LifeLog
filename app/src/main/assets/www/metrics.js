@@ -130,6 +130,22 @@
         }));
     }
 
+    /** 按给定的 id 顺序重排跟踪项（跟踪页长按拖动排序用） */
+    function reorderMetrics(ids) {
+        var rank = {};
+        (ids || []).forEach(function (id, index) {
+            rank[id] = index;
+        });
+
+        var list = getMetrics();
+        list.sort(function (a, b) {
+            var ra = rank[a.id] === undefined ? ids.length : rank[a.id];
+            var rb = rank[b.id] === undefined ? ids.length : rank[b.id];
+            return ra - rb;
+        });
+        write(METRIC_KEY, list);
+    }
+
     // --- 跟踪记录 -----------------------------------------------------------
 
     /** 按记录时间倒序，新的在前；传 metricId 只取该跟踪项的 */
@@ -323,6 +339,7 @@
         addMetric: addMetric,
         updateMetric: updateMetric,
         removeMetrics: removeMetrics,
+        reorderMetrics: reorderMetrics,
         getRecords: getRecords,
         addRecord: addRecord,
         updateRecord: updateRecord,

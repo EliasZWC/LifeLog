@@ -132,6 +132,26 @@
         }));
     }
 
+    /**
+     * 按给定的 id 顺序重排行为（行为页长按拖动排序用）。
+     * 数组顺序就是全部地方看到的顺序 —— 包括时间页新建记录时那个行为下拉。
+     */
+    function reorderBehaviors(ids) {
+        var rank = {};
+        (ids || []).forEach(function (id, index) {
+            rank[id] = index;
+        });
+
+        var list = getBehaviors();
+        // 不在 ids 里的（理论上不该有）全部排到后面，顺序保持原样
+        list.sort(function (a, b) {
+            var ra = rank[a.id] === undefined ? ids.length : rank[a.id];
+            var rb = rank[b.id] === undefined ? ids.length : rank[b.id];
+            return ra - rb;
+        });
+        write(BEHAVIOR_KEY, list);
+    }
+
     // --- 时间记录 -----------------------------------------------------------
 
     /** 按开始时间倒序，新的在前 */
@@ -268,6 +288,7 @@
         updateBehavior: updateBehavior,
         removeBehavior: removeBehavior,
         removeBehaviors: removeBehaviors,
+        reorderBehaviors: reorderBehaviors,
         getRecords: getRecords,
         addRecord: addRecord,
         updateRecord: updateRecord,

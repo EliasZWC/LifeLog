@@ -58,6 +58,13 @@
                 render();
             });
         }
+        // 长按卡片拖动排序（与行为页一致）
+        global.LivologUI.attachSortable(listEl, {
+            onDrop: function (ids) {
+                global.LivologMetrics.reorderMetrics(ids);
+            }
+        });
+
         render();
     }
 
