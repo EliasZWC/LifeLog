@@ -180,6 +180,8 @@ body {
     padding: 0;
     background: var(--surface);
     border-radius: 16px;
+    /* 与记录卡片一致：加一条上边缘，和上面的分区标题分得开 */
+    border-top: 1px solid var(--outline);
     overflow: hidden;
 }
 
@@ -380,11 +382,9 @@ body {
     gap: 14px;
     min-height: 60px;
     padding: 12px 20px;
-    border-bottom: 1px solid var(--outline);
-}
-
-.card:last-child {
-    border-bottom: 0;
+    /* 每张卡片都画上边缘：卡片本身没有底色，没有这条线就和上面的标题分不开。
+       用上边缘而不是下边缘，这样列表头部（标题）下面也有一条界。 */
+    border-top: 1px solid var(--outline);
 }
 
 .card.is-selected {
