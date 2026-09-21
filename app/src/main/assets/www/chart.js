@@ -183,7 +183,72 @@
     }
 
     /**
-     * 把事件按天归到给定区间里。
+     * 把「时段」拆到每一天再归到给定区间里。
+     * 跨天的记录（比如 23:00 → 次日 07:00）会按实际跨过的时长分摊，
+     * 而不是整段都算在开始那天；时点记录（end 为空）整份归到当天。
+     *
+     * @param {Array<{start: number, end?: number|null, value: number}>} items
+     * @param {{start: number, end: number}} range 起止时间戳（两端都含当天）
+     * @returns {Array<{day: number, value: number, has: boolean}>}
+     */
+    function bucketSpans(items, range) {
+        var start = startOfDay(range.start);
+        var end = startOfDay(range.end);
+        if (end < start) {
+            var swap = start;
+            start = end;
+            end = swap;
+        }
+
+        var days = Math.round((end - start) / DAY_MS) + 1;
+        var points = [];
+        for (var i = 0; i < days; i += 1) {
+            points.push({ day: start + i * DAY_MS, value: 0, has: false });
+        }
+
+        function add(dayMs, amount) {
+            var slot = Math.round((dayMs - start) / DAY_MS);
+            if (slot < 0 || slot >= days) {
+                return;
+            }
+            points[slot].value += amount;
+            // 碰到过的天都算「有数据」，哪怕只分到十几分钟
+            points[slot].has = true;
+        }
+
+        (items || []).forEach(function (item) {
+            var from = Number(item.start);
+            if (!isFinite(from)) {
+                return;
+            }
+
+            var amount = Number(item.value) || 0;
+            var to = (item.end === null || item.end === undefined) ? from : Number(item.end);
+            if (!isFinite(to) || to < from) {
+                to = from;
+            }
+
+            // 时点：整份归到当天
+            if (to === from) {
+                add(startOfDay(from), amount);
+                return;
+            }
+
+            var total = to - from;
+            var cursor = from;
+            while (cursor < to) {
+                var dayStart = startOfDay(cursor);
+                var sliceEnd = Math.min(to, dayStart + DAY_MS);
+                add(dayStart, amount * ((sliceEnd - cursor) / total));
+                cursor = sliceEnd;
+            }
+        });
+
+        return points;
+    }
+
+    /**
+     * 把事件按天归到给定区间里（时点用，整份记在当天）。
      * @param {Array<number>} times 事件时间戳
      * @param {Array<number>} values 与 times 一一对应的取值
      * @param {{start: number, end: number}} range 起止时间戳（两端都含当天）
@@ -235,6 +300,7 @@
     global.LivologChart = {
         build: build,
         bucketByDay: bucketByDay,
+        bucketSpans: bucketSpans,
         rangeOf: rangeOf,
         startOfDay: startOfDay,
         dateLabel: dateLabel

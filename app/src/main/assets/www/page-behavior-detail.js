@@ -287,9 +287,13 @@
         }
 
         var range = stats.range;
+        // 跨天的记录（23:00 → 次日 07:00）只要和区间有重叠就算进来：
+        // 只开始那天落在区间里也算，第二天那一段也会被算上。
+        var rangeEnd = range.end + DAY_MS;
         var records = all.filter(function (record) {
-            var day = global.LivologDateTime.startOfDay(record.start);
-            return day >= range.start && day <= range.end;
+            var start = record.start;
+            var end = record.type === 'period' && record.end !== null ? record.end : start;
+            return end >= range.start && start < rangeEnd;
         });
 
         var totalMs = 0;
@@ -302,20 +306,24 @@
         // 有「时段」记录才画时长；否则退化为按天记次数
         var useDuration = totalMs > 0;
 
-        var times = [];
-        var values = [];
-        records.forEach(function (record) {
-            times.push(record.start);
+        var spans = records.map(function (record) {
             if (!useDuration) {
-                values.push(1);
-            } else if (record.type === 'period' && record.end !== null) {
-                values.push(Math.max(0, record.end - record.start) / 60000);
-            } else {
-                values.push(0);
+                return { start: record.start, end: null, value: 1 };
             }
+            if (record.type === 'period' && record.end !== null) {
+                return {
+                    start: record.start,
+                    end: record.end,
+                    value: Math.max(0, record.end - record.start) / 60000
+                };
+            }
+            // 时长模式下时点不占时长，但那一天要算作有数据
+            return { start: record.start, end: null, value: 0 };
         });
 
-        var points = global.LivologChart.bucketByDay(times, values, range);
+        // ⚠️ 必须用 bucketSpans：跨天的时段要按实际跨过的时长分摊到每一天，
+        // 用 bucketByDay 会把 23:00 → 07:00 整段算在开始那天。
+        var points = global.LivologChart.bucketSpans(spans, range);
         var days = points.length;
 
         var wrap = global.LivologUI.el('li', 'stats');
