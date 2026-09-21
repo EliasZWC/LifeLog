@@ -410,6 +410,8 @@ body {
     flex: 1 1 auto;
     min-width: 0;
     font-size: 15px;
+    /* 卡片左侧正文用粗体，和右边的时间（浅色）拉开层次 */
+    font-weight: 700;
     color: var(--on-surface);
     overflow: hidden;
     text-overflow: ellipsis;
