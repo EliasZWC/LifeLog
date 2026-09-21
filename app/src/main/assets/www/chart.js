@@ -7,7 +7,7 @@
  * 两种图：
  *   - 直方图 bar ：纵轴从 0 起，适合「每天累计了多少」
  *   - 折线图 line：纵轴按数据的最小/最大取值铺开，适合看走势（比如体重）；
- *     没有记录的那几天是断开的，不会把「没数据」画成 0
+ *     没记录的那几天直接跨过去（连到上一个数据点），不会把「没数据」画成 0、也不断开
  */
 (function (global) {
     'use strict';
@@ -143,42 +143,41 @@
         return svg;
     }
 
-    /** 折线：只连「有记录」的相邻天，中间没数据的断开 */
+    /**
+     * 折线：把「有记录」的天按顺序连成一条线。
+     * 中间没有记录的天不画点、也不断线，直接跨过去连到上一个数据点。
+     */
     function buildLine(list, toY, centerX) {
         var parts = [];
-        var run = [];
-        var total = 0;
-        list.forEach(function (point) {
-            if (point.has) total += 1;
-        });
-        // 点不多时把每个点都标出来，便于看清孤立的那几次记录
-        var showDots = total <= 40;
-
-        function flush() {
-            if (run.length >= 2) {
-                parts.push('<polyline class="chart-line" points="' +
-                    run.map(function (item) {
-                        return centerX(item.index).toFixed(1) + ',' + toY(item.value).toFixed(1);
-                    }).join(' ') + '" />');
-            }
-            if (run.length === 1 || showDots) {
-                run.forEach(function (item) {
-                    parts.push('<circle class="chart-dot" cx="' +
-                        centerX(item.index).toFixed(1) + '" cy="' + toY(item.value).toFixed(1) +
-                        '" r="2.4" />');
-                });
-            }
-            run = [];
-        }
-
+        var points = [];
         list.forEach(function (point, index) {
             if (point.has) {
-                run.push({ index: index, value: point.value });
-            } else {
-                flush();
+                points.push({ index: index, value: point.value });
             }
         });
-        flush();
+
+        function x(index) {
+            return centerX(index).toFixed(1);
+        }
+
+        function y(value) {
+            return toY(value).toFixed(1);
+        }
+
+        if (points.length >= 2) {
+            parts.push('<polyline class="chart-line" points="' +
+                points.map(function (item) {
+                    return x(item.index) + ',' + y(item.value);
+                }).join(' ') + '" />');
+        }
+
+        // 点不多时把每个点都标出来，便于看清孤立的那几次记录
+        if (points.length <= 40) {
+            points.forEach(function (item) {
+                parts.push('<circle class="chart-dot" cx="' + x(item.index) +
+                    '" cy="' + y(item.value) + '" r="2.4" />');
+            });
+        }
 
         return parts;
     }

@@ -5,6 +5,7 @@
  *
  * 区别在**记录视图**：跟踪记录不属于时间记录，加不进时间页，
  * 所以这一页自带一个悬浮按钮作为**唯一**入口，表单也只有「记录时间 + 记录值」。
+ * 记录卡片与时间页一样支持长按多选删除。
  */
 (function (global) {
     'use strict';
@@ -133,6 +134,10 @@
         currentId = id;
         currentView = DEFAULT_VIEW;
         stats = { chartType: 'bar', range: null };
+
+        // 这一页自己当多选目标（长按卡片 → 顶部操作栏 → 删除）
+        global.LivologUI.bindSelection(selection);
+
         isOpen = true;
 
         root.hidden = false;
@@ -153,6 +158,10 @@
         isOpen = false;
         currentId = null;
 
+        // 关掉详情页后，多选目标回到当前标签页的列表
+        if (global.Livolog) {
+            global.Livolog.syncSelection();
+        }
         global.LivologUI.closeSheet();
         root.classList.remove('is-open');
         recordFab.hidden = true;
@@ -225,6 +234,7 @@
 
         records.forEach(function (record) {
             var card = global.LivologUI.el('li', 'card');
+            card.dataset.id = record.id;
             card.appendChild(global.LivologUI.icon(metric.icon, 'card-icon'));
             card.appendChild(global.LivologUI.el('span', 'card-title', formatValue(record.value)));
 
@@ -237,8 +247,23 @@
             ));
             card.appendChild(time);
 
-            // 点卡片即可修改这条记录
+            if (global.LivologUI.isSelected(record.id)) {
+                card.classList.add('is-selected');
+            }
+
+            global.LivologUI.attachLongPress(card, function () {
+                global.LivologUI.startSelection(record.id);
+            });
+
             card.addEventListener('click', function () {
+                if (global.LivologUI.justLongPressed()) {
+                    return;
+                }
+                if (global.LivologUI.isSelecting()) {
+                    global.LivologUI.toggleSelection(record.id);
+                    return;
+                }
+                // 普通点击 = 修改这条记录
                 openRecordForm(record);
             });
 
@@ -257,7 +282,7 @@
 
     // --- 统计视图 -----------------------------------------------------------
     //
-    // 布局：选项栏（图类型 / 开始 / 结束）→ 图 → 统计信息文本。
+    // 布局：选项栏（图类型 / 时间范围）→ 图 → 统计信息文本。
     // 纵坐标 = 每天的取值合计，横轴刻度永远是日。
 
     /** 统计区间的默认值：最近 30 天，但不早于第一条记录 */
@@ -491,11 +516,20 @@
         close();
     }
 
+    /** 交给 LivologUI 的多选目标：选中态变了就重画列表，删掉的是跟踪记录 */
+    var selection = {
+        onSelectionChange: refresh,
+        onDelete: function (ids) {
+            global.LivologMetrics.removeRecords(ids);
+        }
+    };
+
     global.LivologMetricDetail = {
         init: init,
         open: open,
         close: close,
         refresh: refresh,
+        selection: selection,
         isOpen: function () {
             return isOpen;
         }

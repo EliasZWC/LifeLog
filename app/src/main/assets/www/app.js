@@ -23,6 +23,18 @@
         return name === 'time' ? window.LivologTimePage : null;
     }
 
+    /**
+     * 把多选目标绑回某个标签页的列表：切页时、以及关掉详情页时都要做一次。
+     * 切页时 currentTab 还没更新，所以要把目标页传进来。
+     */
+    function syncSelection(name) {
+        if (!window.LivologUI) {
+            return;
+        }
+        var module = pageModule(name || currentTab);
+        window.LivologUI.bindSelection(module ? module.selection : null);
+    }
+
     function selectTab(name, options) {
         if (!pages[name]) {
             name = DEFAULT_TAB;
@@ -50,10 +62,7 @@
         });
 
         // 切页会退出多选，并把多选目标改成当前页的列表
-        if (window.LivologUI) {
-            var module = pageModule(name);
-            window.LivologUI.bindSelection(module ? module.selection : null);
-        }
+        syncSelection(name);
 
         if (titleEl) {
             // 标题文案复用导航词条，切语言时也能一起更新
@@ -131,6 +140,7 @@
     // 暴露给后续功能扩展使用
     window.Livolog = {
         selectTab: selectTab,
+        syncSelection: syncSelection,
         TAB_ORDER: TAB_ORDER
     };
 })();

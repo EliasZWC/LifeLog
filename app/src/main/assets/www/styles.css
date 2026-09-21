@@ -485,6 +485,15 @@ body {
     fill: currentColor;
 }
 
+/*
+   详情页是全屏覆盖，没有底部导航栏，所以里面的 FAB 单靠 bottom: 18px 会贴到屏幕底。
+   补回一条导航栏的高度（.bottom-nav 的 8 + 48 + 8 = 64），
+   这样它和页面里的 FAB（导航栏之上 18px）在同一高度。
+*/
+.detail .fab {
+    bottom: calc(64px + 18px);
+}
+
 /* --------------------------------------------------------------------------
    弹窗（底部表单）
    -------------------------------------------------------------------------- */
@@ -889,7 +898,8 @@ body {
     top: var(--safe-top);
     left: var(--safe-left);
     right: var(--safe-right);
-    z-index: 5;
+    /* 比全屏详情页（z-index 6）高一层，才能盖住它的标题栏；但要低于弹窗（10+） */
+    z-index: 7;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1155,7 +1165,7 @@ body {
     fill: var(--on-surface);
 }
 
-/* 折线图：只连有记录的天，中间断开 */
+/* 折线图：跨过没有记录的天，直接连上一个数据点 */
 .chart-line {
     fill: none;
     stroke: var(--on-surface);
@@ -1193,9 +1203,7 @@ body {
     grid-template-columns: 1fr auto;
     gap: 0;
     margin: 0;
-    padding: 0 16px;
-    background: var(--surface);
-    border-radius: 16px;
+    padding: 0;
 }
 
 /* 统计视图的选项栏：复用设置页的「左名称 / 右值」行 */
@@ -1203,27 +1211,71 @@ body {
     margin: 0;
 }
 
+/*
+   起止时间合成一行选项：标题一行，开始/结束在同一行里分列两边。
+   开始时间与标题左对齐，结束时间与标题右对齐。
+*/
+.stats-range {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+}
+
+.stats-range-values {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.stats-range-time {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--on-surface-variant);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 120ms ease;
+}
+
+.stats-range-time:first-child {
+    text-align: left;
+}
+
+.stats-range-time:last-child {
+    text-align: right;
+}
+
+.stats-range-time:active {
+    opacity: 0.55;
+}
+
+/*
+   统计信息全是不可改的内容，所以不套卡片 / 列表，直接排在页面背景上：
+   左边名称「深色 + 粗体」，右边数值「浅色 + 正常字重」。
+*/
 .stats-key,
 .stats-value {
     margin: 0;
-    padding: 13px 0;
+    padding: 6px 0;
     font-size: 15px;
-    border-bottom: 1px solid var(--outline);
 }
 
 .stats-key {
+    font-weight: 700;
     color: var(--on-surface);
 }
 
 .stats-value {
+    font-weight: 400;
     color: var(--on-surface-variant);
     font-variant-numeric: tabular-nums;
     text-align: right;
-}
-
-.stats-key:nth-last-of-type(1),
-.stats-value:nth-last-of-type(1) {
-    border-bottom: 0;
 }
 
 /* --------------------------------------------------------------------------

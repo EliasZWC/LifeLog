@@ -42,8 +42,7 @@
             'stats.chartType': 'Chart',
             'stats.chartType.bar': 'Bars',
             'stats.chartType.line': 'Line',
-            'stats.rangeStart': 'From',
-            'stats.rangeEnd': 'To',
+            'stats.range': 'Range',
             'stats.pickStart': 'Start date',
             'stats.pickEnd': 'End date',
 
@@ -131,7 +130,7 @@
             'setting.contact': 'Contact',
             'setting.import': 'Import data',
             'setting.export': 'Export data',
-            'setting.storage': 'Storage location',
+            'setting.storage': 'Location',
             'setting.import.empty': 'Not created yet',
 
             'toast.imported': 'Imported {n} records',
@@ -208,8 +207,7 @@
             'stats.chartType': '图类型',
             'stats.chartType.bar': '直方图',
             'stats.chartType.line': '折线图',
-            'stats.rangeStart': '开始',
-            'stats.rangeEnd': '结束',
+            'stats.range': '时间范围',
             'stats.pickStart': '选择开始日期',
             'stats.pickEnd': '选择结束日期',
 

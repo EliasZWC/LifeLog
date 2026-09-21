@@ -281,6 +281,9 @@
             openMenu(button, items, function (next) {
                 button.setAttribute('aria-expanded', 'false');
                 config.onChange(next);
+                // 选完必须自己刷一次按钮文字，否则上面还挂着旧值
+                // （onChange 里多半只是改数据 / 重画表单，不会回头照顾这个按钮）
+                refresh();
             });
         });
 

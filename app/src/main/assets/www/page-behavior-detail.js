@@ -90,6 +90,10 @@
         currentId = id;
         currentView = DEFAULT_VIEW;
         stats = { chartType: 'bar', range: null };
+
+        // 这一页自己当多选目标（长按卡片 → 顶部操作栏 → 删除）
+        global.LivologUI.bindSelection(selection);
+
         isOpen = true;
 
         root.hidden = false;
@@ -110,6 +114,10 @@
         isOpen = false;
         currentId = null;
 
+        // 关掉详情页后，多选目标回到当前标签页的列表
+        if (global.Livolog) {
+            global.Livolog.syncSelection();
+        }
         global.LivologUI.closeSheet();
         root.classList.remove('is-open');
 
@@ -183,6 +191,7 @@
 
         records.forEach(function (record) {
             var card = global.LivologUI.el('li', 'card');
+            card.dataset.id = record.id;
             card.appendChild(global.LivologUI.icon(behavior.icon, 'card-icon'));
             card.appendChild(global.LivologUI.el('span', 'card-title', behavior.name));
 
@@ -195,8 +204,23 @@
             ));
             card.appendChild(time);
 
-            // 与时间页一致：点卡片即可修改这条记录
+            if (global.LivologUI.isSelected(record.id)) {
+                card.classList.add('is-selected');
+            }
+
+            global.LivologUI.attachLongPress(card, function () {
+                global.LivologUI.startSelection(record.id);
+            });
+
             card.addEventListener('click', function () {
+                if (global.LivologUI.justLongPressed()) {
+                    return;
+                }
+                if (global.LivologUI.isSelecting()) {
+                    global.LivologUI.toggleSelection(record.id);
+                    return;
+                }
+                // 与时间页一致：普通点击即可修改这条记录
                 global.LivologTimePage.openForm(record);
             });
 
@@ -206,7 +230,7 @@
 
     // --- 统计视图 -----------------------------------------------------------
     //
-    // 布局：选项栏（图类型 / 开始 / 结束）→ 图 → 统计信息文本。
+    // 布局：选项栏（图类型 / 时间范围）→ 图 → 统计信息文本。
     // 图与「按天归集」都走 LivologChart（内联 SVG 手绘，横轴刻度永远是日）。
     // 只有「时刻」记录的行为没有时长可言，此时退化为按天记次数。
 
@@ -391,11 +415,20 @@
         close();
     }
 
+    /** 交给 LivologUI 的多选目标：选中态变了就重画列表，删掉的是时间记录 */
+    var selection = {
+        onSelectionChange: refresh,
+        onDelete: function (ids) {
+            global.LivologStore.removeRecords(ids);
+        }
+    };
+
     global.LivologBehaviorDetail = {
         init: init,
         open: open,
         close: close,
         refresh: refresh,
+        selection: selection,
         isOpen: function () {
             return isOpen;
         }
