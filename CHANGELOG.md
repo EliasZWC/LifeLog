@@ -3,6 +3,23 @@
 本项目的所有重要变更都会记录在此文件中。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)，Git 标签格式为 `vX.Y.Z`。
 
+## [v0.0.20] - 2026-09-21
+
+### 变更
+
+- **滚动条改为全局隐藏**。v0.0.19 把它做成了 6px 的圆头滑块，代价是滚动条从
+  「滚动时浮动淡出」变成「常驻且占 6px 宽」的经典滚动条，反而不如原生应用的观感。
+  这一版直接不画：
+
+  ```css
+  * { scrollbar-width: none; }
+  *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+  ```
+
+  滚动照常工作，内容宽度也不再被挤掉 6px（实测 `clientWidth` = `innerWidth`，
+  右边缘像素已全部是页面底色）。上一版为滑块加的 `--scroll-thumb` / `--scroll-thumb-active`
+  两个颜色令牌也一并从三处主题块里删除。
+
 ## [v0.0.19] - 2026-09-21
 
 ### 变更
