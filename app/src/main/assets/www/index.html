@@ -40,6 +40,28 @@
 </head>
 
 <body>
+    <!--
+      启动动画（splash）：冷启动时盖在最上层，指针从 8 点方向扫回设计位置，
+      整个 overlay 随后自己淡出（约 1.4s），不需要 JS 参与。
+      几何与 res/drawable/ic_launcher_foreground.xml 完全一致（外径 44 / 视口 108）。
+    -->
+    <div class="splash" id="splash" aria-hidden="true">
+        <div class="splash-logo">
+            <div class="splash-ring"></div>
+            <svg class="splash-parts" viewBox="0 0 108 108" aria-hidden="true" focusable="false">
+                <path fill="#FFFFFF" d="M51.67,34.33 a2.33,2.33 0 1 0 4.67,0 a2.33,2.33 0 1 0 -4.67,0 Z" />
+                <path fill="#6E6E6E" d="M68.7,44.17 a2.33,2.33 0 1 0 4.67,0 a2.33,2.33 0 1 0 -4.67,0 Z" />
+                <path fill="#6E6E6E" d="M61.5,36.97 a2.33,2.33 0 1 0 4.67,0 a2.33,2.33 0 1 0 -4.67,0 Z" />
+                <g class="splash-hands">
+                    <path d="M54,54 L54,43.33 M54,54 L47.65,57.67" stroke="#FFFFFF" stroke-width="4"
+                        stroke-linecap="round" fill="none" />
+                    <path fill="#FFFFFF" d="M52,54 a2,2 0 1 0 4,0 a2,2 0 1 0 -4,0 Z" />
+                </g>
+            </svg>
+        </div>
+        <span class="splash-name">Livolog</span>
+    </div>
+
     <div id="app">
         <header class="page-header">
             <h1 class="page-title" id="page-title" data-i18n="nav.time">Time</h1>

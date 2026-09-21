@@ -132,6 +132,15 @@
     // 首屏不播切换动画
     selectTab(initial, { animate: false });
 
+    // 启动动画由 CSS 自己播完（约 1.4s，见 styles.css 的 .splash），
+    // 这里只负责过一会儿把它从文档树里摘掉，别留着挡住无障碍树。
+    var splash = document.getElementById('splash');
+    if (splash) {
+        window.setTimeout(function () {
+            splash.hidden = true;
+        }, 1500);
+    }
+
     // 禁止双指缩放 / 长按放大镜造成的页面抖动
     document.addEventListener('gesturestart', function (event) {
         event.preventDefault();

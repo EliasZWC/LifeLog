@@ -3,6 +3,20 @@
 本项目的所有重要变更都会记录在此文件中。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)，Git 标签格式为 `vX.Y.Z`。
 
+## [v0.1.2] - 2026-09-21
+
+### 新增
+
+- **带 logo 的启动动画（splash）**。冷启动时先盖一层全屏遮罩：中间是**与 launcher 图标完全相同**的
+  黑底圆角图标（圆环用 `conic-gradient` + `clip-path` 复刻 Android 的 sweep 渐变，几何与
+  `ic_launcher_foreground.xml` 同一串数字），指针从 8 点方向逆着扫一圈回到设计位置（分针落在 12 点），
+  下方浮现 `LIVOLOG` 字样，约 1.4s 后整页自己淡出。
+
+  - 全过程由 CSS 动画完成（`forwards` 停在 `visibility: hidden`），**动画不依赖 JS**；
+    `app.js` 只是在 1.5s 后把元素 `hidden` 掉，别留着挡无障碍树。
+  - 背景与文字色走主题变量，日间 / 夜间都成立；`prefers-reduced-motion` 下不动指针、
+    遮罩时长缩到 600ms。
+
 ## [v0.1.1] - 2026-09-21
 
 ### 变更

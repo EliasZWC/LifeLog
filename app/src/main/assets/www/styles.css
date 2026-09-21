@@ -1532,3 +1532,135 @@ body {
 .nav-item.is-active .nav-label {
     font-weight: 600;
 }
+
+/* --------------------------------------------------------------------------
+   启动动画（splash）
+   与 launcher 图标同一套几何（108 视口）：圆环用 conic-gradient + clip-path
+   模拟 Android 的 sweep 渐变，指针用一个 <g> 整体旋转。
+   播放与收尾全在 CSS 里（animation ... forwards 停在 visibility: hidden），
+   app.js 只是过一会儿把它从文档树里摘掉，动画本身不依赖 JS。
+   -------------------------------------------------------------------------- */
+
+.splash {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    background: var(--bg);
+    animation: splash-cover 1400ms cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
+.splash[hidden] {
+    display: none;
+}
+
+/* 前 3/4 保持不透明，最后淡出 */
+@keyframes splash-cover {
+    0%,
+    76% {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    100% {
+        opacity: 0;
+        visibility: hidden;
+    }
+}
+
+/* 与 launcher 图标一样：黑底 + 白灰圆环；圆角用 Android 遮罩常见的 22% */
+.splash-logo {
+    position: relative;
+    width: 108px;
+    height: 108px;
+    border-radius: 22%;
+    background: #1B1B1B;
+    overflow: hidden;
+    animation: splash-logo-in 520ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@keyframes splash-logo-in {
+    from {
+        opacity: 0;
+        transform: scale(0.88);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.splash-ring {
+    position: absolute;
+    inset: 0;
+    /* 和 XML 里的 sweep 渐变对齐：固定从 3 点方向起顺时针，
+       12 点（270°）= 纯白、2 点（330°）= 最深的灰，0/360° = 接缝灰 */
+    background: conic-gradient(from 90deg,
+            #7C7C7C 0deg, #FFFFFF 270deg, #6E6E6E 330deg, #7C7C7C 360deg);
+    /* 圆环本身是「圆环扇形」，靠 clip-path 切出来；万一年纪很大的 WebView
+       不支持 clip-path: path()，退化成 conic-gradient 的圆盘也比方块好看 */
+    border-radius: 50%;
+    clip-path: path("M73.05,43 A22,22 0 1 1 54,32 L54,36.67 A17.33,17.33 0 1 0 69.01,45.33 Z");
+}
+
+.splash-parts {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* 指针从 8 点方向逆着扫一圈回到设计位置（分针落在 12 点），带一点回弹 */
+.splash-hands {
+    transform-origin: 54px 54px;
+    animation: splash-hands-in 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes splash-hands-in {
+    from {
+        transform: rotate(-200deg);
+    }
+
+    to {
+        transform: rotate(0deg);
+    }
+}
+
+.splash-name {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--on-surface);
+    animation: splash-name-in 620ms 160ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@keyframes splash-name-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .splash {
+        animation: splash-cover 600ms linear forwards;
+    }
+
+    .splash-logo,
+    .splash-hands,
+    .splash-name {
+        animation: none;
+    }
+}
