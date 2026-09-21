@@ -138,6 +138,7 @@
     function buildTree(records, levels) {
         var years = [];
         var yearIndex = {};
+        var pad = global.LivologDateTime.pad;
 
         records.forEach(function (record) {
             var date = new Date(record.start);
@@ -165,7 +166,7 @@
                     key: monthKey,
                     label: t('time.group.month')
                         .replace('{y}', String(year))
-                        .replace('{m}', String(month)),
+                        .replace('{m}', pad(month, 2)),
                     count: 0,
                     weeks: [],
                     weekIndex: {}
@@ -180,8 +181,9 @@
                 monthNode.weekIndex[weekKey] = {
                     key: weekKey,
                     label: t('time.group.week')
-                        .replace('{n}', String(week))
-                        .replace('{range}', weekRangeLabel(year, month, week)),
+                        .replace('{y}', String(year))
+                        .replace('{m}', pad(month, 2))
+                        .replace('{n}', String(week)),
                     count: 0,
                     records: []
                 };
@@ -213,15 +215,6 @@
         }
 
         return null;
-    }
-
-    /** 「09-01 ~ 09-07」这种月内的日期范围 */
-    function weekRangeLabel(year, month, week) {
-        var pad = global.LivologDateTime.pad;
-        var daysInMonth = new Date(year, month, 0).getDate();
-        var from = (week - 1) * 7 + 1;
-        var to = Math.min(week * 7, daysInMonth);
-        return pad(month, 2) + '-' + pad(from, 2) + ' ~ ' + pad(month, 2) + '-' + pad(to, 2);
     }
 
     function section(node, kind, depth, buildBody) {
