@@ -547,9 +547,13 @@
         editingId = null;
         global.LivologUI.closeSheet();
 
-        // 当前视图看不到这条记录时切过去，保证有反馈
-        if (currentView !== 'all' && currentView !== result.type) {
-            setView(result.type);
+        // 只有新记录落在当前范围之外（比如在「最近一周」里补一条上个月的）才切回「全部」，
+        // 保证有反馈；在范围内的记录不要动视图。
+        // ⚠️ 这里以前拿 result.type 去比对，而视图早就改成范围了（all/year/month/week），
+        //    比对必然不相等 → setView('moment') → 落到默认值，于是「最近一周」被重置成「全部」。
+        var start = rangeStart();
+        if (start !== null && result.start < start) {
+            setView('all');
         }
     }
 
