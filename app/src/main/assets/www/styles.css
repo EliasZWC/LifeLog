@@ -157,10 +157,12 @@ body {
 .page-title {
     margin: 0;
     font-size: 17px;
-    font-weight: 600;
+    /* 标题统一：深色 + 全大写 + 粗体（中文没有大小写，uppercase 对中文无效，不影响） */
+    font-weight: 700;
     line-height: 24px;
-    letter-spacing: 0.2px;
+    letter-spacing: 0.5px;
     color: var(--on-surface);
+    text-transform: uppercase;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -206,6 +208,8 @@ body {
     /* 名称必须贴左；整行可点的行是 <button>，浏览器默认 text-align:center 会把名字挤到中间 */
     text-align: left;
     font-size: 15px;
+    /* 与表单一致：栏目名 = 深色 + 粗体，值 = 浅色 + 正常字重 */
+    font-weight: 700;
     color: var(--on-surface);
 }
 
@@ -240,9 +244,11 @@ body {
     border: 0;
     border-radius: 0;
     background: none;
-    color: var(--on-surface);
+    /* 下拉也是「值」：浅色 + 正常字重 */
+    color: var(--on-surface-variant);
     font: inherit;
     font-size: 15px;
+    font-weight: 400;
     line-height: 24px;
     text-align: right;
     cursor: pointer;
@@ -272,6 +278,7 @@ body {
 
 .form-select-label.is-placeholder {
     color: var(--on-surface-variant);
+    opacity: 0.6;
 }
 
 .select-chevron {
@@ -528,12 +535,22 @@ body {
 .sheet-title {
     margin: 12px 0 8px;
     font-size: 16px;
-    font-weight: 600;
+    /* 表单标题：深色 + 全大写 + 粗体，居中 */
+    font-weight: 700;
+    letter-spacing: 0.5px;
     color: var(--on-surface);
+    text-align: center;
+    text-transform: uppercase;
 }
 
 /* --------------------------------------------------------------------------
    表单
+   排版规则（全站统一）：
+     1. 标题（.sheet-title / .page-title）：深色 + 全大写 + 粗体
+     2. 栏目名（.form-label）：深色 + 粗体，保持正常大小写
+     3. 值（.form-input / .form-select / .seg）：浅色 + 正常字重，保持正常大小写
+     4. 底部按钮（.btn）：全大写
+   中文不受 text-transform: uppercase 影响，所以只对英文界面生效。
    -------------------------------------------------------------------------- */
 
 .form-row {
@@ -554,12 +571,14 @@ body {
     display: block;
     margin-bottom: 10px;
     font-size: 13px;
-    color: var(--on-surface-variant);
+    font-weight: 700;
+    color: var(--on-surface);
 }
 
 .form-label {
     flex: 0 0 auto;
     font-size: 15px;
+    font-weight: 700;
     color: var(--on-surface);
 }
 
@@ -569,15 +588,18 @@ body {
     padding: 8px 0;
     border: 0;
     background: transparent;
-    color: var(--on-surface);
+    color: var(--on-surface-variant);
     font: inherit;
     font-size: 15px;
+    font-weight: 400;
     text-align: right;
     outline: none;
 }
 
+/* 值是浅色的，占位符再淡一点才不会和已填的值混淆 */
 .form-input::placeholder {
     color: var(--on-surface-variant);
+    opacity: 0.6;
 }
 
 .form-hint {
@@ -609,8 +631,10 @@ body {
     color: var(--nav-inactive);
     font: inherit;
     font-size: 15px;
-    font-weight: 600;
-    letter-spacing: 0.3px;
+    font-weight: 700;
+    /* 取消 / 确定这类底部按钮：全大写 */
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
     cursor: pointer;
     outline: none;
     -webkit-tap-highlight-color: transparent;
@@ -743,7 +767,9 @@ body {
 .datetime-label {
     flex: 0 0 42px;
     font-size: 13px;
-    color: var(--on-surface-variant);
+    /* 也是「栏目名」：深色 + 粗体 */
+    font-weight: 700;
+    color: var(--on-surface);
 }
 
 .datetime-row {
@@ -766,9 +792,11 @@ body {
     border-bottom: 1px solid var(--outline);
     border-radius: 0;
     background: transparent;
-    color: var(--on-surface);
+    /* 分段输入也是「值」：浅色 + 正常字重 */
+    color: var(--on-surface-variant);
     font: inherit;
     font-size: 15px;
+    font-weight: 400;
     font-variant-numeric: tabular-nums;
     text-align: center;
     outline: none;
@@ -786,6 +814,7 @@ body {
 .seg::placeholder {
     font-size: 13px;
     color: var(--on-surface-variant);
+    opacity: 0.6;
 }
 
 /* --------------------------------------------------------------------------
@@ -1186,6 +1215,10 @@ body {
    每一级都可展开 / 折叠；层级靠标题的缩进体现，卡片本体的对齐不变
    -------------------------------------------------------------------------- */
 
+/*
+   分组行：三级字体完全一致 —— 左边标签「深色 + 粗体」，右边层级名「浅色 + 正常字重」。
+   层级只靠左侧缩进（行内 padding-left）体现，不再靠字号/字重/颜色区分。
+   -------------------------------------------------------------------------- */
 .group {
     list-style: none;
 }
@@ -1198,8 +1231,12 @@ body {
     padding: 10px 20px;
     border: 0;
     background: none;
-    color: var(--on-surface-variant);
+    color: var(--on-surface);
     font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
     text-align: left;
     cursor: pointer;
     outline: none;
@@ -1228,21 +1265,15 @@ body {
     transform: rotate(-90deg);
 }
 
-.group-year > .group-head {
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
-}
-
-.group-month > .group-head {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--on-surface);
-}
-
+/* 三级覆盖只保留缩进差异，字体属性一律与 .group-head 一致 */
+.group-year > .group-head,
+.group-month > .group-head,
 .group-week > .group-head {
     font-size: 13px;
+    font-weight: 700;
+    color: var(--on-surface);
+    letter-spacing: 0;
+    text-transform: none;
 }
 
 .group-title {
@@ -1255,9 +1286,10 @@ body {
 
 .group-level {
     flex: 0 0 auto;
-    font-size: 12px;
-    font-weight: 500;
-    opacity: 0.7;
+    /* 层级名是「值」：与标签同字号，但浅色 + 正常字重 */
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--on-surface-variant);
 }
 
 .group-body {

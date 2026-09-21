@@ -34,6 +34,13 @@
   - 导航栏与页面背景的关系固定为「导航栏更极端」：日间导航栏比背景更白，夜间导航栏比背景更黑；
     设置项这类“栏”则取 `--surface`，与 `--bg` 拉开差异以体现分区。
   - 主题色定义集中在 `app/src/main/assets/www/styles.css` 的 `:root` 与 `@media (prefers-color-scheme: dark)` 中，加壳侧的系统栏颜色在 `res/values/colors.xml` 与 `res/values-night/colors.xml`。
+- **排版规则**（v0.0.19 起，`styles.css` 顶部有对应注释，改样式时照着走）：
+  - 标题（`.sheet-title` 表单标题 / `.page-title` 页面标题）：**深色 + 全大写 + 粗体**，表单标题居中
+  - 栏目名（`.form-label` / `.datetime-label` / `.setting-label`）：**深色 + 粗体**，保持正常大小写
+  - 值（`.form-input` / `.form-select` / `.seg` / `.setting-value`）：**浅色 + 正常字重**，保持正常大小写
+  - 底部按钮（`.btn`，取消 / 确定）：**全大写**
+  - 时间页分组行三级字体完全一致，层级只靠左侧缩进区分
+  - 中文不受 `text-transform: uppercase` 影响，所以这套规则只对英文界面产生大小写变化
 - **语言**：默认英文（`en`），可在设置页「通用 → 语言」切换为中文（`zh`）。
   i18n 在 `app/src/main/assets/www/i18n.js`（`data-i18n` 属性 + `LivologI18n.t/setLocale`，
   选择存在 `localStorage`）；原生端以 `res/values/strings.xml` 作为英文默认资源。
