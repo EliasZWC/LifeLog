@@ -210,6 +210,9 @@
 
     var CHEVRON_PATH = '<path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>';
 
+    /** 浮层（图标面板等）离屏幕右沿至少留出的空隙 */
+    var SAFE_EDGE = 4;
+
     /**
      * 用自绘控件替代原生 <select>（原生在 WebView 里弹出的是系统样式，无法统一风格）。
      *
@@ -366,21 +369,45 @@
         mount.appendChild(trigger);
 
         var panel = el('div', 'icon-panel');
-        // 面板按内容自动定宽：图标格子从左往右排，末尾格子必须与触发按钮右沿对齐，
-        // 所以宽度 = 列数 × 格子宽 + 列间距。列数写成 CSS 变量，由样式表统一定义。
-        var columns = parseInt(
-            getComputedStyle(document.documentElement).getPropertyValue('--icon-cols'),
-            10
-        );
-        if (!(columns > 0)) {
-            columns = 8;
-        }
-        var columnVar = getComputedStyle(document.documentElement)
-            .getPropertyValue('--icon-option')
-            .trim();
-        if (columnVar) {
-            panel.style.width = 'calc(' + columns + ' * ' + columnVar +
-                ' + ' + (columns - 1) + ' * var(--icon-gap) + 2 * var(--icon-panel-pad))';
+        // 面板是**浮层**：宽度按列数算（末尾格子与触发按钮右沿对齐），但不受表单宽度限制 ——
+        // 表单只占视窗的一部分，面板可以铺到更宽。
+        // ⚠️ 可用宽度 = 「视口 − 表单左内边距」，所以能排下的列数比表单内多。
+        //    宽度算出来超过可用宽度就压回去，否则会溢出视口、把整个页面顶宽。
+        var rootStyle = getComputedStyle(document.documentElement);
+        var optionSize = rootStyle.getPropertyValue('--icon-option').trim();
+        var gapSize = rootStyle.getPropertyValue('--icon-gap').trim();
+        var padSize = rootStyle.getPropertyValue('--icon-panel-pad').trim();
+        var columns = parseInt(rootStyle.getPropertyValue('--icon-cols'), 10) || 8;
+
+        /**
+         * 按当前视口宽度放面板：宽度取「列数算出来的值」与「可用宽度」的较小者，
+         * 右沿贴住触发按钮，左侧若放不下就贴到左内边距（让出屏幕边缘）。
+         */
+        function place() {
+            if (!mount.parentElement) {
+                return;
+            }
+            // 右沿对齐的是**触发按钮**（.icon-trigger），不是挂载容器
+            var anchor = trigger.getBoundingClientRect();
+            // .sheet 的水平内边距就是表单离屏幕左沿的距离
+            var sheetEl = mount.closest('.sheet');
+            var sheetStyle = sheetEl ? getComputedStyle(sheetEl) : null;
+            var edge = sheetStyle ? parseFloat(sheetStyle.paddingLeft) || 0 : SAFE_EDGE;
+            var maxWidth = window.innerWidth - edge - SAFE_EDGE;
+
+            var wanted = columns * (parseFloat(optionSize) || 40) +
+                (columns - 1) * (parseFloat(gapSize) || 4) +
+                2 * (parseFloat(padSize) || 10);
+            var width = Math.min(wanted, maxWidth);
+
+            // 默认右沿对齐触发按钮；左边放不下就整个挪到「左内边距」起算
+            var right = window.innerWidth - anchor.right;
+            if (anchor.right - width < edge) {
+                right = window.innerWidth - (edge + width);
+            }
+            panel.style.width = width + 'px';
+            panel.style.left = 'auto';
+            panel.style.right = Math.max(0, right) + 'px';
         }
         panel.setAttribute('role', 'dialog');
         panel.hidden = true;
@@ -410,7 +437,11 @@
             grid.appendChild(button);
         });
         panel.appendChild(grid);
-        mount.appendChild(panel);
+        // ⚠️ 面板挂到 .sheet 上而不是 .icon-picker 里：这样它是**浮层**，
+        //    宽度不受表单 / 表单行的限制（表单只占视窗一部分），定位仍是相对 .sheet。
+        //    反正面板只在自己 sheet 打开时可见，挂哪一层对交互无影响。
+        var layer = mount.closest('.sheet') || mount.parentElement || mount;
+        layer.appendChild(panel);
 
         function reflect() {
             trigger.replaceChild(icon(selected, 'icon-trigger-icon'), trigger.firstChild);
@@ -420,6 +451,7 @@
         }
 
         function open() {
+            place();
             panel.hidden = false;
             trigger.setAttribute('aria-expanded', 'true');
             // 选中的那个滚进可视区

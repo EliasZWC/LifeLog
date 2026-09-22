@@ -58,7 +58,8 @@
     --fab-fg: var(--bg);
 
     /* 图标面板：列数 / 格子大小 / 间距 / 内边距。
-       JS 要读这几个值算面板宽度（末尾格子与触发按钮右沿对齐），改这里就够了 */
+       JS 要读这几个值算面板宽度（末尾格子与触发按钮右沿对齐），改这里就够了。
+       面板是浮层，不跟着表单宽度走（越靠左越宽），可用宽度 = 视口 − 表单左内边距。 */
     --icon-cols: 8;
     --icon-option: 40px;
     --icon-gap: 4px;
@@ -922,15 +923,15 @@ body {
 }
 
 /*
-   图标面板：相对所在表单绝对定位，像一个就地弹出的小窗口。
-   ⚠️ 面板在 .sheet 里（.sheet 会随键盘上移，相对它定位最稳），但 .sheet 有
-      overflow-y: auto 且定位基准是「相对定位祖先」，所以宽度必须显式给足，
-      否则会被可用宽度裁掉右边一列。
+   图标面板：就地弹出的小窗口。
+   ⚠️ 面板是**浮层**，不该被表单宽度卡住（表单只占视窗的一部分）：
+      所以它是 .sheet 的直接定位子元素（.sheet 自带 position: relative —— 注意 .sheet
+      本身是 fixed，就是触发按钮的定位祖先），宽度取「视口 − 两侧内边距」，
+      可以比表单宽。left/right 用负内边距抵消 .sheet 的 padding，让它贴到屏幕边缘。
    宽度由 JS 按列数算好（见 components.js），保证末尾格子与触发按钮右沿对齐。
 */
 .icon-panel {
     position: absolute;
-    right: 0;
     z-index: 2;
     margin-top: 6px;
     padding: var(--icon-panel-pad) 0 calc(var(--icon-panel-pad) + 4px);
@@ -962,8 +963,11 @@ body {
 
 .icon-grid {
     display: grid;
-    /* 列数写死（--icon-cols），这样面板宽度和格子数才能算得对得齐 */
-    grid-template-columns: repeat(var(--icon-cols), var(--icon-option));
+    /* 列数写死（--icon-cols），这样面板宽度和格子数才能算得对得齐。
+       ⚠️ 用 minmax(0, var(--icon-option)) 而不是写死 var(--icon-option)：
+          窄屏时面板会被压到比「列数 × 格子」更窄，写死的话总宽撑爆、右边一列被裁掉；
+          minmax(0, …) 让格子等比例缩，每列都还看得见。 */
+    grid-template-columns: repeat(var(--icon-cols), minmax(0, var(--icon-option)));
     /* 最后一行的格子跟着前面的走，不要居中 */
     justify-content: start;
     gap: var(--icon-gap);
@@ -975,8 +979,11 @@ body {
 .icon-option {
     display: grid;
     place-items: center;
-    width: var(--icon-option);
-    height: var(--icon-option);
+    /* 宽度交给栅格列（minmax(0, …)）；这样面板被压窄时格子跟着缩 */
+    width: 100%;
+    max-width: var(--icon-option);
+    aspect-ratio: 1;
+    justify-self: start;
     padding: 0;
     border: 0;
     border-radius: 50%;
