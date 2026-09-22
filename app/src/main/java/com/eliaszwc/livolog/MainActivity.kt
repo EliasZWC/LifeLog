@@ -9,8 +9,13 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -64,6 +69,9 @@ class MainActivity : AppCompatActivity() {
 
     /** 页面加载完成前不往网页里注入脚本 */
     private var pageReady = false
+
+    /** 上一次发起入口页加载的时刻（用 elapsedRealtime，不受系统时间改动影响） */
+    private var lastLoadAt = 0L
 
     /**
      * 网页的启动动画还在演（或还没结束）时为 true。
@@ -199,6 +207,12 @@ class MainActivity : AppCompatActivity() {
         webView = findViewById(R.id.web_view)
         configureWebView()
 
+        // 后台久置被系统回收后重建 Activity 时，WebView 想把「旧状态」恢复回来，
+        // 但渲染进程已经没了，恢复出来就是一片空白（用户看到的白屏）。
+        // 我们的数据全在 CSV / localStorage 里，网页自己会重新载入，所以干脆不让它恢复，
+        // 每次进 onCreate 都老老实实重新加载入口页。
+        webView.saveEnabled = false
+
         // WebView 铺满整屏（包括状态栏与系统导航条区域），使遮罩、弹窗能盖住整屏
         layoutRoot = findViewById(R.id.root)
         ViewCompat.setOnApplyWindowInsetsListener(layoutRoot) { _, insets ->
@@ -217,7 +231,94 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (savedInstanceState == null) {
+            loadEntry()
+        }
+    }
+
+    /** 加载入口页，并记下时刻（自愈逻辑靠它做节流） */
+    private fun loadEntry() {
+        if (!::webView.isInitialized) return
+        lastLoadAt = SystemClock.elapsedRealtime()
+        pageReady = false
+        try {
             webView.loadUrl(WEB_ENTRY_URL)
+        } catch (t: Throwable) {
+            Log.w(TAG, "加载入口页失败", t)
+        }
+    }
+
+    /**
+     * 渲染进程被系统回收后，旧 WebView 已经彻底不可用，只能整只换掉。
+     * 后台久置回来白屏就是这件事 —— 不重建的话页面永远不会再出来。
+     */
+    private fun rebuildWebView() {
+        if (!::webView.isInitialized) return
+
+        val parent = webView.parent as? ViewGroup
+        val params = webView.layoutParams
+
+        try {
+            parent?.removeView(webView)
+            webView.destroy()
+        } catch (t: Throwable) {
+            Log.w(TAG, "销毁旧 WebView 失败", t)
+        }
+
+        pageReady = false
+        latestRecordsCsv = ""
+        latestMetricsCsv = ""
+
+        webView = WebView(this).apply { id = R.id.web_view }
+        if (parent != null && params != null) {
+            parent.addView(webView, params)
+        }
+        configureWebView()
+        loadEntry()
+    }
+
+    /**
+     * 回到前台时确认网页还活着。
+     * 两种情况都会自带自愈：
+     *   1. 页面压根没就绪（被丢掉 / 上次加载失败）→ 重新加载；
+     *   2. 页面自称就绪，但问不动（渲染进程已经死了，WebView 只剩一层壳）→ 重新加载。
+     * 加载本身有节流，不至于来回打转。
+     */
+    private fun recoverWebViewIfNeeded() {
+        if (!::webView.isInitialized) return
+
+        val now = SystemClock.elapsedRealtime()
+        if (!pageReady) {
+            if (now - lastLoadAt > RELOAD_THROTTLE_MS) {
+                Log.w(TAG, "页面未就绪，重新加载")
+                loadEntry()
+            }
+            return
+        }
+
+        var answered = false
+        val handler = Handler(Looper.getMainLooper())
+        val timeout = Runnable {
+            if (!answered) {
+                Log.w(TAG, "页面没有响应探活，重新加载")
+                loadEntry()
+            }
+        }
+        handler.postDelayed(timeout, LIVENESS_TIMEOUT_MS)
+
+        try {
+            webView.evaluateJavascript("window.Livolog ? \"ok\" : \"blank\"") { result ->
+                answered = true
+                handler.removeCallbacks(timeout)
+                if (result == null || result.contains("blank")) {
+                    Log.w(TAG, "页面已失效（$result），重新加载")
+                    loadEntry()
+                }
+            }
+        } catch (t: Throwable) {
+            answered = true
+            handler.removeCallbacks(timeout)
+            Log.w(TAG, "探活失败，重新加载", t)
+            loadEntry()
         }
     }
 
@@ -297,6 +398,18 @@ class MainActivity : AppCompatActivity() {
                 }
                 // 首次进入时 onResume 可能比页面更早就跑完了，这里补一次
                 maybeCheckUpdate()
+            }
+
+            override fun onRenderProcessGone(
+                view: WebView,
+                detail: RenderProcessGoneDetail?,
+            ): Boolean {
+                // 后台久置很常见：系统把 WebView 的渲染进程回收了。
+                // 旧 WebView 已经不可用（继续用就是一片空白），必须整只换掉；
+                // 返回 true 表示「我自己处理」，否则系统会连 app 进程一起杀掉。
+                Log.w(TAG, "WebView 渲染进程退出（didCrash=${detail?.didCrash()}），重建 WebView")
+                rebuildWebView()
+                return true
             }
         }
 
@@ -605,6 +718,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // 后台久置回来自愈：页面被系统丢掉时重新加载，别把白屏留给用户
+        recoverWebViewIfNeeded()
         maybeCheckUpdate()
     }
 
@@ -836,6 +951,12 @@ class MainActivity : AppCompatActivity() {
 
         /** 网页一直没通知启动动画结束时的兜底时长（网页那边约 2.2s） */
         const val SPLASH_TIMEOUT_MS = 4000L
+
+        /** 回到前台探活网页时的等待上限 */
+        const val LIVENESS_TIMEOUT_MS = 2000L
+
+        /** 两次重新加载之间的最小间隔，避免自愈逻辑来回打转 */
+        const val RELOAD_THROTTLE_MS = 3000L
 
         const val PREFS_NAME = "livolog"
         /** v0.0.16 及之前用的偏好文件名，只用于一次性迁移 */

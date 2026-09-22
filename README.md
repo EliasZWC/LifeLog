@@ -9,7 +9,7 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前版本 | **v0.1.5** |
+| 当前版本 | **v0.1.6** |
 | 显示名 | Livolog |
 | 包名 | `com.eliaszwc.livolog` |
 | 最低支持 | Android 8.0（API 26） |
@@ -136,15 +136,17 @@
 落盘位置：`Documents/Livolog/records.csv`（API 29+ 走 MediaStore，无需任何权限，文件管理器可见；
 部分定制系统限制 MediaStore 时会退回应用专属目录，实际路径会显示在设置页）。
 
-CSV 表头固定为 `id,behavior,type,start,end`：
+CSV 表头固定为 `id,behavior,type,start,end,note`：
 
 - `behavior` 写的是行为**名称**而不是 id，便于人读与迁移
 - `start` / `end` 为本地时间 `YYYY-MM-DD HH:mm`，时点的 `end` 留空
+- `note` 是选填的描述（v0.1.6 起），可能带逗号 / 引号 / 换行，按 RFC4180 转义；
+  旧文件（只有 5 列）照样能读，note 列不存在就当空
 - 行尾 CRLF，Excel 可直接打开
 
 ```js
 Behavior = { id, name, icon }                                  // icon 为 icons.js 里的图标名
-Record   = { id, behaviorId, type, start, end }                // type: 'period' | 'moment'
+Record   = { id, behaviorId, type, start, end, note }          // type: 'period' | 'moment'；note 选填
 ```
 
 - **行为是时间记录的前提**：先在行为页建立行为，才能在时间页新增记录。
@@ -322,6 +324,8 @@ git push origin v0.0.2
 - [x] 时间页天标识改为 `YYYY-MM-DD, 周几`
 - [x] 新建记录按行为习惯预选记录类型
 - [x] 统计图点某一天看具体数值
+- [x] 时间记录可写描述（选填，卡片上多一行）
+- [x] 后台久置回来自愈（渲染进程被回收后自动重建）
 - [x] 设置页：通用（语言 / 主题）/ 数据管理 / 关于（版本 / 联系）
 - [ ] 卡片编辑
 - [ ] 统计页

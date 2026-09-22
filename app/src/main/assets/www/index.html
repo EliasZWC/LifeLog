@@ -498,6 +498,13 @@
             <p class="form-hint" id="time-hint" hidden></p>
         </div>
 
+        <!-- 描述：选填，填了才会在卡片上多出一行 -->
+        <div class="form-row">
+            <label class="form-label" for="time-note" data-i18n="time.form.note">Description</label>
+            <input class="form-input" id="time-note" type="text" autocomplete="off"
+                data-i18n-placeholder="time.form.note.placeholder" placeholder="Optional, e.g. slept badly" />
+        </div>
+
         <div class="form-actions">
             <button class="btn" type="button" id="time-cancel" data-i18n="action.cancel">Cancel</button>
             <button class="btn btn-primary" type="button" id="time-confirm" disabled

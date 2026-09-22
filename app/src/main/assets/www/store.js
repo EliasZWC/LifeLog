@@ -6,7 +6,7 @@
  *
  * 数据结构：
  *   Behavior = { id, name, icon }
- *   Record   = { id, behaviorId, type: 'period' | 'moment', start: <epoch ms>, end: <epoch ms> | null }
+ *   Record   = { id, behaviorId, type: 'period' | 'moment', start: <epoch ms>, end: <epoch ms> | null, note: string }
  */
 (function (global) {
     'use strict';
@@ -161,13 +161,14 @@
         });
     }
 
-    function addRecord(behaviorId, type, start, end) {
+    function addRecord(behaviorId, type, start, end, note) {
         var record = {
             id: newId(),
             behaviorId: behaviorId,
             type: type,
             start: start,
-            end: type === 'period' ? end : null
+            end: type === 'period' ? end : null,
+            note: normalizeNote(note)
         };
         var list = read(RECORD_KEY);
         list.push(record);
@@ -175,8 +176,8 @@
         return record;
     }
 
-    /** 改一条已有记录（行为 / 类型 / 起止时间都能改） */
-    function updateRecord(id, behaviorId, type, start, end) {
+    /** 改一条已有记录（行为 / 类型 / 起止时间 / 描述都能改） */
+    function updateRecord(id, behaviorId, type, start, end, note) {
         var list = read(RECORD_KEY);
         var target = null;
 
@@ -188,6 +189,7 @@
             item.type = type;
             item.start = start;
             item.end = type === 'period' ? end : null;
+            item.note = normalizeNote(note);
             target = item;
         });
 
@@ -195,6 +197,11 @@
             write(RECORD_KEY, list);
         }
         return target;
+    }
+
+    /** 描述是选填的：去掉首尾空白，空就存空串（展示时靠空串判断要不要显示） */
+    function normalizeNote(note) {
+        return String(note === null || note === undefined ? '' : note).trim();
     }
 
     function removeRecord(id) {
@@ -263,7 +270,8 @@
                     behaviorId: byName[row.behavior].id,
                     type: row.type,
                     start: row.start,
-                    end: row.end
+                    end: row.end,
+                    note: normalizeNote(row.note)
                 };
             });
 

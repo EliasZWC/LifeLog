@@ -1,15 +1,17 @@
 /**
  * Livolog - CSV 序列化 / 解析（时间记录的落盘格式）。
  *
- * 表头固定为：id,behavior,type,start,end
+ * 表头固定为：id,behavior,type,start,end,note
  * - behavior 写的是行为**名称**而不是 id，这样文件人能读、也能跨设备迁移
  * - start / end 为本地时间 "YYYY-MM-DD HH:mm"；时点的 end 留空
+ * - note 是选填的描述，可能带逗号 / 引号 / 换行，所以按 RFC4180 转义
  * - 行尾用 CRLF，方便 Excel 直接打开
+ * - 旧文件（只有 5 列）照样能读：note 列不存在就当空
  */
 (function (global) {
     'use strict';
 
-    var HEADER = ['id', 'behavior', 'type', 'start', 'end'];
+    var HEADER = ['id', 'behavior', 'type', 'start', 'end', 'note'];
 
     function pad(value, length) {
         var text = String(value);
@@ -70,7 +72,8 @@
                 escapeField(namesById[record.behaviorId] || ''),
                 escapeField(record.type),
                 escapeField(formatTimestamp(record.start)),
-                escapeField(hasEnd ? formatTimestamp(record.end) : '')
+                escapeField(hasEnd ? formatTimestamp(record.end) : ''),
+                escapeField(record.note || '')
             ].join(','));
         });
 
@@ -192,7 +195,9 @@
                 behavior: behavior,
                 type: type,
                 start: start,
-                end: end
+                end: end,
+                // 旧文件没有 note 列（也可能是空），统一成空串
+                note: at.note === undefined ? '' : String(row[at.note] || '').trim()
             });
 
             if (behaviorNames.indexOf(behavior) < 0) {

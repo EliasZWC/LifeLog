@@ -193,7 +193,7 @@
             var card = global.LivologUI.el('li', 'card');
             card.dataset.id = record.id;
             card.appendChild(global.LivologUI.icon(behavior.icon, 'card-icon'));
-            card.appendChild(global.LivologUI.el('span', 'card-title', behavior.name));
+            card.appendChild(global.LivologTimePage.cardBody(behavior.name, record.note));
 
             var time = global.LivologUI.el('span', 'card-time');
             time.appendChild(global.LivologUI.el(

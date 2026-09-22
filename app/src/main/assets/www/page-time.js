@@ -31,6 +31,7 @@
     var typeSelect = null;
     var fieldsEl = null;
     var hintEl = null;
+    var noteInput = null;
     var cancelBtn = null;
     var confirmBtn = null;
 
@@ -281,6 +282,19 @@
         return global.LivologUI.el('li', 'day-mark', text);
     }
 
+    /**
+     * 卡片左边那两块：主文字 + 选填的描述。
+     * 描述为空时连元素都不建，所以没有描述的记录卡片和以前一样高。
+     */
+    function cardBody(title, note) {
+        var body = global.LivologUI.el('div', 'card-body');
+        body.appendChild(global.LivologUI.el('span', 'card-title', title));
+        if (note) {
+            body.appendChild(global.LivologUI.el('span', 'card-note', note));
+        }
+        return body;
+    }
+
     /** 单条记录卡片（与行为详情页里的列表长一样） */
     function recordCard(record) {
         var behavior = global.LivologStore.getBehavior(record.behaviorId);
@@ -291,7 +305,10 @@
             behavior ? behavior.icon : global.LivologIcons.fallback,
             'card-icon'
         ));
-        card.appendChild(global.LivologUI.el('span', 'card-title', behavior ? behavior.name : '—'));
+        card.appendChild(cardBody(
+            behavior ? behavior.name : '—',
+            record.note
+        ));
 
         var time = global.LivologUI.el('span', 'card-time');
         time.appendChild(global.LivologUI.el('span', 'card-time-date', dateLine(record)));
@@ -549,6 +566,7 @@
         }
 
         sheetTitle.textContent = t(editingId ? 'time.form.editTitle' : 'time.form.title');
+        noteInput.value = editingId ? (record.note || '') : '';
         behaviorSelect.refresh();
         typeSelect.refresh();
         buildTimeFields(editingId ? { start: record.start, end: record.end } : null);
@@ -606,14 +624,16 @@
                 behaviorValue,
                 result.type,
                 result.start,
-                result.end
+                result.end,
+                noteInput.value
             );
         } else {
             global.LivologStore.addRecord(
                 behaviorValue,
                 result.type,
                 result.start,
-                result.end
+                result.end,
+                noteInput.value
             );
         }
 
@@ -641,6 +661,7 @@
         sheetTitle = document.getElementById('sheet-time-title');
         fieldsEl = document.getElementById('time-fields');
         hintEl = document.getElementById('time-hint');
+        noteInput = document.getElementById('time-note');
         cancelBtn = document.getElementById('time-cancel');
         confirmBtn = document.getElementById('time-confirm');
 
@@ -693,8 +714,9 @@
         render: render,
         openForm: openForm,
         selection: selection,
-        // 行为详情页复用同一套时间格式化
+        // 行为详情页复用同一套时间格式化 / 卡片结构
         dateLine: dateLine,
-        clockLine: clockLine
+        clockLine: clockLine,
+        cardBody: cardBody
     };
 })(window);

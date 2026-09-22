@@ -435,6 +435,30 @@ body {
     white-space: nowrap;
 }
 
+/*
+   记录卡片左边那两行：主文字 + 选填的描述。
+   没描述时只有主文字，卡片高度不变。
+*/
+.card-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* 竖着排的时候别让标题在高度上撑开 */
+.card-body .card-title {
+    flex: 0 0 auto;
+}
+
+.card-note {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--on-surface-variant);
+    overflow-wrap: anywhere;
+}
+
 /* 时间右对齐；年月日在上、时分在下 */
 .card-time {
     flex: 0 0 auto;
