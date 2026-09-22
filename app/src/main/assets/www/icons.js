@@ -511,9 +511,8 @@
     /** 「常用」里的图标（虚拟分类，会与归属分类重叠） */
     var FAVORITES = [
         'hotel', 'restaurant', 'local_cafe', 'directions_run',
-        'fitness_center', 'book', 'work', 'computer',
-        'pill', 'monitor_weight', 'favorite', 'shopping_cart',
-        'people', 'star',
+        'fitness_center', 'book', 'work', 'pill',
+        'favorite', 'shopping_cart', 'people', 'star',
     ];
 
     var FALLBACK = 'star';

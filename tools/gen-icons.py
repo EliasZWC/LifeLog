@@ -164,8 +164,7 @@ GROUPS = [
 
 FAVORITES = [
     "hotel", "restaurant", "local_cafe", "directions_run", "fitness_center",
-    "book", "work", "computer", "pill", "monitor_weight",
-    "favorite", "shopping_cart", "people", "star",
+    "book", "work", "pill", "favorite", "shopping_cart", "people", "star",
 ]
 
 HEADER = '''/**
