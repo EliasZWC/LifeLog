@@ -11,6 +11,7 @@
     var scrim = null;
     var currentSheet = null;
     var menuEl = null;
+    var checklistScrim = null;
 
     // --- DOM 小工具 ---------------------------------------------------------
 
@@ -969,6 +970,144 @@
         }, 0);
     }
 
+    /**
+     * 居中模态的**多选清单**（跟踪统计的「Select」用它挑要看哪几个项目）。
+     *
+     * 和 openMenu 的区别：菜单是单选 + 贴着触发元素弹，这里是**多选** + 居中模态
+     * （和图标选择器同一套观感：遮罩 + 正中的面板 + 确定 / 取消）。
+     *
+     * @param {object} options
+     *   title:    string
+     *   items:    [{ id, label, checked }]
+     *   allLabel: string   「全选」那一行的文案
+     *   confirmLabel / cancelLabel: string
+     *   onConfirm: (ids: string[]) => void   确定时回调选中的 id（空数组 = 全部）
+     * @returns {{close: Function}}
+     */
+    function openChecklist(options) {
+        closeChecklist();
+
+        var scrim = el('div', 'checklist-scrim');
+        var panel = el('div', 'checklist-panel');
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-modal', 'true');
+
+        panel.appendChild(el('div', 'checklist-title', options.title || ''));
+
+        var body = el('div', 'checklist-body');
+        var boxes = {};
+
+        (options.items || []).forEach(function (item) {
+            var row = el('label', 'checklist-item');
+            var input = document.createElement('input');
+            input.type = 'checkbox';
+            input.className = 'checklist-box';
+            input.checked = !!item.checked;
+            input.addEventListener('change', function () {
+                // 至少留一个选中，否则「什么都不选」会让人以为图表坏了
+                if (!picked().length) {
+                    input.checked = true;
+                    return;
+                }
+                syncAll();
+            });
+            row.appendChild(input);
+            row.appendChild(el('span', 'checklist-label', item.label));
+            boxes[item.id] = input;
+            body.appendChild(row);
+        });
+
+        // 顶部的「全选」：勾上就回到「全部」（等价于没有筛选）
+        var allRow = el('label', 'checklist-item checklist-all');
+        var allBox = document.createElement('input');
+        allBox.type = 'checkbox';
+        allBox.className = 'checklist-box';
+        allRow.appendChild(allBox);
+        allRow.appendChild(el('span', 'checklist-label', options.allLabel || 'All'));
+        allBox.addEventListener('change', function () {
+            var on = allBox.checked;
+            Object.keys(boxes).forEach(function (id) {
+                boxes[id].checked = on;
+            });
+            if (!on) {
+                // 取消全选没意义（必须看点什么），恢复成全选
+                allBox.checked = true;
+                Object.keys(boxes).forEach(function (id) {
+                    boxes[id].checked = true;
+                });
+            }
+            syncAll();
+        });
+        body.insertBefore(allRow, body.firstChild);
+        panel.appendChild(body);
+
+        function picked() {
+            return Object.keys(boxes).filter(function (id) {
+                return boxes[id].checked;
+            });
+        }
+
+        function syncAll() {
+            var ids = picked();
+            var allIds = Object.keys(boxes);
+            allBox.checked = ids.length === allIds.length;
+            allBox.indeterminate = ids.length > 0 && ids.length < allIds.length;
+        }
+
+        var actions = el('div', 'checklist-actions');
+        var cancel = el('button', 'btn btn-text', options.cancelLabel || '');
+        cancel.type = 'button';
+        cancel.addEventListener('click', closeChecklist);
+
+        var confirm = el('button', 'btn btn-primary', options.confirmLabel || '');
+        confirm.type = 'button';
+        confirm.addEventListener('click', function () {
+            var ids = picked();
+            var allIds = Object.keys(boxes);
+            closeChecklist();
+            // 全选 == 不筛选（存空数组，UI 显示 All）
+            options.onConfirm(ids.length === allIds.length ? [] : ids);
+        });
+
+        actions.appendChild(cancel);
+        actions.appendChild(confirm);
+        panel.appendChild(actions);
+
+        scrim.appendChild(panel);
+        // 挂在 #app 上：position: fixed 会被 .page 的 overflow 裁掉
+        (document.getElementById('app') || document.body).appendChild(scrim);
+        checklistScrim = scrim;
+
+        syncAll();
+
+        // 点遮罩关闭
+        scrim.addEventListener('click', function (event) {
+            if (event.target === scrim) {
+                closeChecklist();
+            }
+        });
+
+        global.requestAnimationFrame(function () {
+            scrim.classList.add('is-open');
+        });
+
+        return { close: closeChecklist };
+    }
+
+    function closeChecklist() {
+        if (!checklistScrim) {
+            return;
+        }
+        var node = checklistScrim;
+        checklistScrim = null;
+        node.classList.remove('is-open');
+        global.setTimeout(function () {
+            if (node.parentNode) {
+                node.parentNode.removeChild(node);
+            }
+        }, 180);
+    }
+
     // --- 卡片多选 -----------------------------------------------------------
 
     var selection = {
@@ -976,7 +1115,6 @@
         ids: [],
         provider: null
     };
-
     var selectionBar = null;
     var selectionCount = null;
 
@@ -1140,6 +1278,8 @@
         },
         openMenu: openMenu,
         closeMenu: closeMenu,
+        openChecklist: openChecklist,
+        closeChecklist: closeChecklist,
         bindSelection: bindSelection,
         isSelecting: isSelecting,
         isSelected: isSelected,

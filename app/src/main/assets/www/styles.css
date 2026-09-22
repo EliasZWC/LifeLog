@@ -516,8 +516,13 @@ body {
 }
 
 .field-add {
-    align-self: flex-start;
-    margin-top: 10px;
+    /*
+       用户 2026-09-22 要求：新建跟踪项表单里的「添加项目」按钮靠右。
+       ⚠️ 父级 .form-block-items 是普通块级（不是 flex），所以 align-self 没用，
+          得用 display:block + margin-left:auto 才会贴右。
+    */
+    display: block;
+    margin: 10px 0 0 auto;
     padding: 6px 0;
     border: 0;
     background: none;
@@ -833,9 +838,21 @@ body {
     opacity: 0.55;
 }
 
-/* 确认按钮：用与「删除」红色同色系的绿（用户 2026-09-22 要求） */
+/*
+   确认按钮：用与「删除」红色同色系的绿（用户 2026-09-22 要求）。
+   ⚠️ 只有**确认**性质的按钮用绿色；普通动作按钮用 .btn-action（见下），
+      否则整页到处都是绿的，绿色就不代表「确认」了。
+*/
 .btn-primary {
     color: var(--success);
+}
+
+/*
+   普通动作按钮（如更新弹窗的「更新」）：用原来最强的前景色，不占用绿色。
+   「更新」是执行动作，不是对某个操作的确认，所以不该是绿的。
+*/
+.btn-action {
+    color: var(--nav-active);
 }
 
 .btn:disabled {
@@ -1313,6 +1330,105 @@ body {
 }
 
 /* --------------------------------------------------------------------------
+   多选清单（居中模态，跟踪统计的「Select…」用）
+   与图标选择器同一套观感：遮罩 + 正中的面板
+   -------------------------------------------------------------------------- */
+
+.checklist-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 21;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transition: opacity 180ms ease;
+}
+
+.checklist-scrim.is-open {
+    opacity: 1;
+}
+
+.checklist-panel {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 320px;
+    max-height: calc(100vh - 48px);
+    padding: 16px 16px 8px;
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: 16px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+    transform: scale(0.96);
+    transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.checklist-scrim.is-open .checklist-panel {
+    transform: scale(1);
+}
+
+.checklist-title {
+    padding: 0 2px 10px;
+    font-size: 15px;
+    /* 标题：深色 + 粗体 */
+    font-weight: 700;
+    color: var(--on-surface);
+}
+
+.checklist-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    margin: 0 -4px;
+    padding: 0 4px;
+}
+
+.checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 2px;
+    cursor: pointer;
+}
+
+/* 「全选」与下面的项目之间拉一条线分开 */
+.checklist-all {
+    border-bottom: 1px solid var(--outline);
+    margin-bottom: 2px;
+}
+
+.checklist-box {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--nav-active);
+}
+
+.checklist-label {
+    flex: 1 1 auto;
+    font-size: 15px;
+    color: var(--on-surface);
+}
+
+.checklist-actions {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: flex-end;
+    gap: 4px;
+    padding-top: 4px;
+    border-top: 1px solid var(--outline);
+}
+
+/* 「Select…」那一行的值：和别的 setting-value 一样是浅色值 */
+.stats-options .setting-value {
+    color: var(--on-surface-variant);
+}
+
+/* --------------------------------------------------------------------------
    卡片多选操作栏（盖在页面标题栏上滑入）
    -------------------------------------------------------------------------- */
 
@@ -1433,7 +1549,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 8px;
     width: 100%;
     padding: 0;
     border: 0;
@@ -1446,6 +1562,27 @@ body {
     outline: none;
     -webkit-tap-highlight-color: transparent;
     transition: transform 120ms ease, opacity 120ms ease;
+}
+
+/*
+   右侧值后面的下拉箭头（用户 2026-09-22 要求）：光看一个值看不出这行能点，
+   给个 ▾ 才像下拉。比值再小一号、更浅，不抢戏。
+*/
+.setting-chevron {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    color: var(--on-surface-variant);
+    opacity: 0.8;
+}
+
+.setting-chevron svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
 }
 
 .setting-action:active {
@@ -1613,11 +1750,20 @@ body {
 }
 
 /*
-   多序列折线图：所有线同色，靠 `stroke-dasharray` 区分。
-   ⚠️ 线型不在这里定义 —— 它由 page-metric-detail.js 的 SERIES_DASHES 用**行内属性**给出，
-      图例的样例线也读同一份数据，两边永远一致（CSS 里再抄一份会不同步）。
-   主题是黑白的，用颜色区分会破坏约定，所以只用线型。
+   多序列折线图：所有线同色，靠**线型 + 点标记形状**区分。
+   ⚠️ 线型与标记形状不在这里定义 —— 由 page-metric-detail.js 的 SERIES_STYLES
+      用**行内属性**给出，图例的样例线也读同一份数据，两边永远一致。
+   主题是黑白的，用颜色区分会破坏约定。
+   用户 2026-09-22 要求：虚线只用一种，其余靠标记形状（圆 / 方 / 三角 / 菱形 / 叉）区分。
 */
+
+/* 「叉」标记没有填充，靠两条描边线，所以要单独给 stroke */
+.chart-dot-cross {
+    fill: none;
+    stroke: var(--on-surface);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+}
 
 /* 图例：画在图表块里、图的下方（用户要求图例不要单独占工具栏一行） */
 .chart-legend {
@@ -1639,7 +1785,7 @@ body {
 .chart-legend-swatch {
     flex: 0 0 auto;
     width: 26px;
-    height: 8px;
+    height: 16px;
     overflow: visible;
 }
 
@@ -1735,6 +1881,9 @@ body {
 }
 
 .stats-range-time {
+    display: flex;
+    align-items: center;
+    gap: 2px;
     padding: 0;
     border: 0;
     background: none;
@@ -1748,6 +1897,17 @@ body {
     outline: none;
     -webkit-tap-highlight-color: transparent;
     transition: opacity 120ms ease;
+}
+
+/* 时间按钮里的箭头比别处再小一点，避免把日期挤窄 */
+.stats-range-time .setting-chevron {
+    width: 16px;
+    height: 16px;
+}
+
+.stats-range-time .setting-chevron svg {
+    width: 16px;
+    height: 16px;
 }
 
 .stats-range-time:active {

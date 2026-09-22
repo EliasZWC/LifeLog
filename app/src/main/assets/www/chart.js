@@ -420,8 +420,51 @@
      * @param {{format?: (value:number)=>string, tipFormat?: (seriesIndex:number, value:number)=>string}} [options]
      * @returns {SVGElement}
      */
-    function buildMulti(days, series, options) {
-        var list = days && days.length ? days : [{ day: Date.now() }];
+    /**
+     * 数据点标记。多序列时靠**形状**区分（不能只用虚线纹理：几种虚线肉眼分不清，
+     * 用户 2026-09-22 明确说「实线一个虚线一个就行了，其他用叉什么的」）。
+     *
+     * @param {string} shape  'circle' | 'square' | 'triangle' | 'cross' | 'diamond'
+     * @param {number} index  序列序号（用于 class，方便单独调样式）
+     * @param {number} x
+     * @param {number} y
+     * @returns {string} SVG 片段
+     */
+    function marker(shape, index, x, y) {
+        var cls = 'chart-dot chart-series-' + index;
+        var cx = x.toFixed(1);
+        var cy = y.toFixed(1);
+        var r = 2.6;
+        switch (shape) {
+        case 'square':
+            return '<rect class="' + cls + '" x="' + (x - r).toFixed(1) + '" y="' +
+                (y - r).toFixed(1) + '" width="' + (r * 2) + '" height="' + (r * 2) + '" />';
+        case 'triangle':
+            return '<polygon class="' + cls + '" points="' +
+                cx + ',' + (y - r * 1.3).toFixed(1) + ' ' +
+                (x - r * 1.2).toFixed(1) + ',' + (y + r).toFixed(1) + ' ' +
+                (x + r * 1.2).toFixed(1) + ',' + (y + r).toFixed(1) + '" />';
+        case 'diamond':
+            return '<polygon class="' + cls + '" points="' +
+                cx + ',' + (y - r * 1.4).toFixed(1) + ' ' +
+                (x + r * 1.4).toFixed(1) + ',' + cy + ' ' +
+                cx + ',' + (y + r * 1.4).toFixed(1) + ' ' +
+                (x - r * 1.4).toFixed(1) + ',' + cy + '" />';
+        case 'cross':
+            // 叉：两条短线（不填充，靠 stroke）
+            var d = r * 1.35;
+            return '<path class="' + cls + ' chart-dot-cross" d="M' +
+                (x - d).toFixed(1) + ',' + (y - d).toFixed(1) + 'L' +
+                (x + d).toFixed(1) + ',' + (y + d).toFixed(1) + 'M' +
+                (x + d).toFixed(1) + ',' + (y - d).toFixed(1) + 'L' +
+                (x - d).toFixed(1) + ',' + (y + d).toFixed(1) + '" />';
+        default:
+            return '<circle class="' + cls + '" cx="' + cx + '" cy="' + cy +
+                '" r="' + r + '" />';
+        }
+    }
+
+    function buildMulti(days, series, options) {        var list = days && days.length ? days : [{ day: Date.now() }];
         var plotW = WIDTH - PAD_X - PAD_X;
         var plotH = HEIGHT - PAD_TOP - PAD_BOTTOM;
         var baseY = PAD_TOP + plotH;
@@ -489,11 +532,20 @@
                 }
             });
             if (points.length < 2) {
-                // 只有一个点也要看得见（画个孤点）
+                /*
+                   只有一个点（比如两条记录都在同一天）时，光画个 2.6px 的圆点，
+                   整张图看起来是空的（用户报过「图表为空」）。这里补一条**横贯绘图区**
+                   的短基线 + 放大的标记，让「这天有什么值」一眼能看见。
+                */
                 points.forEach(function (entry) {
-                    parts.push('<circle class="chart-dot chart-series-' + seriesIndex +
-                        '" cx="' + centerX(entry.index).toFixed(1) + '" cy="' +
-                        toY(entry.value).toFixed(1) + '" r="2.6" />');
+                    var x = centerX(entry.index);
+                    var y = toY(entry.value);
+                    var style = item.dash ? ' stroke-dasharray="' + item.dash + '"' : '';
+                    parts.push('<line class="chart-line chart-series-' + seriesIndex +
+                        '" x1="' + (x - slot / 2 + 4).toFixed(1) + '" y1="' + y.toFixed(1) +
+                        '" x2="' + (x + slot / 2 - 4).toFixed(1) + '" y2="' + y.toFixed(1) +
+                        '"' + style + ' />');
+                    parts.push(marker(item.marker, seriesIndex, x, y));
                 });
                 return;
             }
@@ -505,10 +557,10 @@
                 }).join(' ') + '"' + style + ' />');
 
             if (points.length <= 40) {
+                // 点标记也按序列换形状，这样即使线密集也能靠标记区分
                 points.forEach(function (entry) {
-                    parts.push('<circle class="chart-dot chart-series-' + seriesIndex +
-                        '" cx="' + centerX(entry.index).toFixed(1) + '" cy="' +
-                        toY(entry.value).toFixed(1) + '" r="2.2" />');
+                    parts.push(marker(item.marker, seriesIndex,
+                        centerX(entry.index), toY(entry.value)));
                 });
             }
         });
@@ -646,6 +698,8 @@
     global.LivologChart = {
         build: build,
         buildMulti: buildMulti,
+        /** 供图例复用：画出与折线一致的标记（形状见 marker()） */
+        marker: marker,
         bucketByDay: bucketByDay,
         bucketSpans: bucketSpans,
         rangeOf: rangeOf,

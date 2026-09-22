@@ -318,7 +318,7 @@
         // 左边：项目名 + 值（只有一个项目时就是单纯的数值）
         var body = global.LivologUI.el('div', 'card-body');
         metric.fields.forEach(function (field) {
-            var value = global.LivologMetrics.valueOf(record, field.id);
+            var value = global.LivologMetrics.valueOf(record, field.id, metric.id);
             var line = global.LivologUI.el('span', 'card-value-line');
             if (metric.fields.length > 1) {
                 line.appendChild(global.LivologUI.el('span', 'card-value-key', field.name));
@@ -402,33 +402,51 @@
     }
 
     /*
-       线型表：多项目时靠它区分哪条线是哪个项目。
-       顺序要与 metric.fields 一致；不够用时循环取（项目一般 2~4 个）。
+       多项目时的线型表。顺序要与 metric.fields 一致；不够用就循环取。
+       ⚠️ 用户 2026-09-22 明确要求：**只用实线和一种虚线**，别再堆各种
+          `7 3 2 3` 之类的花式虚线 —— 肉眼根本分不清哪条是哪条。
+          超过两条时改用**点标记形状**区分（圆 / 方 / 三角 / 菱形 / 叉）。
     */
-    var SERIES_DASHES = [null, '5 3', '1 3', '7 3 2 3', '2 2', '9 3 2 3 2 3'];
+    var SERIES_STYLES = [
+        { dash: null, marker: 'circle' },
+        { dash: '6 4', marker: 'square' },
+        { dash: null, marker: 'triangle' },
+        { dash: '6 4', marker: 'diamond' },
+        { dash: null, marker: 'cross' }
+    ];
 
-    /** 第 i 条线的 dasharray（null = 实线） */
+    /** 第 i 条线的样式 {dash, marker} */
+    function styleOf(index) {
+        return SERIES_STYLES[index % SERIES_STYLES.length];
+    }
+
     function dashOf(index) {
-        return SERIES_DASHES[index % SERIES_DASHES.length];
+        return styleOf(index).dash;
+    }
+
+    function markerOf(index) {
+        return styleOf(index).marker;
     }
 
     /**
      * 图内图例：每条线一个「线型样例 + 项目名」，画在图表块里、图的下面。
-     * 线型样例要和真正的线一致（同一个 dash），否则图例没意义。
+     * 样例线的颜色 / 虚实 / 标记形状都要和真正的线一致，否则图例没意义。
      */
     function buildLegend(metric, chosen) {
         var legend = global.LivologUI.el('div', 'chart-legend');
         chosen.forEach(function (field) {
             var index = metric.fields.indexOf(field);
-            var dash = dashOf(index < 0 ? 0 : index);
+            var style = styleOf(index < 0 ? 0 : index);
 
             var entry = global.LivologUI.el('span', 'chart-legend-entry');
             var swatch = document.createElementNS(
                 'http://www.w3.org/2000/svg', 'svg'
             );
             swatch.setAttribute('class', 'chart-legend-swatch');
-            swatch.setAttribute('viewBox', '0 0 24 8');
+            // 比线本身高一些，否则中间的标记会被上下裁掉
+            swatch.setAttribute('viewBox', '0 -4 24 16');
             swatch.setAttribute('aria-hidden', 'true');
+
             var line = document.createElementNS(
                 'http://www.w3.org/2000/svg', 'line'
             );
@@ -436,10 +454,14 @@
             line.setAttribute('y1', '4');
             line.setAttribute('x2', '24');
             line.setAttribute('y2', '4');
-            if (dash) {
-                line.setAttribute('stroke-dasharray', dash);
+            if (style.dash) {
+                line.setAttribute('stroke-dasharray', style.dash);
             }
             swatch.appendChild(line);
+
+            // 图例样例线上也画一个同形状的小标记，和真实折线一致
+            swatch.insertAdjacentHTML('beforeend',
+                global.LivologChart.marker(style.marker, index, 12, 4));
             entry.appendChild(swatch);
             entry.appendChild(global.LivologUI.el('span', 'chart-legend-name', field.name));
             legend.appendChild(entry);
@@ -498,18 +520,19 @@
             // 每天取该项目当天的最后一个值（同一天记多次就取最后的）
             var byDay = {};
             records.forEach(function (record) {
-                var value = global.LivologMetrics.valueOf(record, field.id);
+                var value = global.LivologMetrics.valueOf(record, field.id, metric.id);
                 if (value === null) {
                     return;
                 }
                 var day = global.LivologDateTime.startOfDay(record.time);
                 byDay[day] = value;
             });
-            // 线型按「在跟踪项字段里的位置」定，这样取消/勾选项目时同一个项目的线型不变
+            // 线型 / 标记按「在跟踪项字段里的位置」定，这样取消/勾选项目时同一条线的样式不变
             var index = metric.fields.indexOf(field);
             return {
                 name: field.name,
                 dash: dashOf(index < 0 ? 0 : index),
+                marker: markerOf(index < 0 ? 0 : index),
                 points: dayList.map(function (day) {
                     var has = Object.prototype.hasOwnProperty.call(byDay, day);
                     return { day: day, value: has ? byDay[day] : 0, has: has };
@@ -572,7 +595,7 @@
         // 统计信息只针对「主项目」（多项目量纲不同，混在一起算没有意义）
         var primary = global.LivologMetrics.primaryField(metric);
         var ordered = records.filter(function (record) {
-            return global.LivologMetrics.valueOf(record, primary.id) !== null;
+            return global.LivologMetrics.valueOf(record, primary.id, metric.id) !== null;
         }).slice().sort(function (a, b) {
             return a.time - b.time;
         });
@@ -581,14 +604,14 @@
         var max = -Infinity;
         var min = Infinity;
         ordered.forEach(function (record) {
-            var value = global.LivologMetrics.valueOf(record, primary.id);
+            var value = global.LivologMetrics.valueOf(record, primary.id, metric.id);
             total += value;
             if (value > max) max = value;
             if (value < min) min = value;
         });
 
         var latest = ordered.length
-            ? global.LivologMetrics.valueOf(ordered[ordered.length - 1], primary.id)
+            ? global.LivologMetrics.valueOf(ordered[ordered.length - 1], primary.id, metric.id)
             : null;
 
         var list = global.LivologUI.el('dl', 'stats-list');
@@ -651,7 +674,7 @@
             input.dataset.fieldId = field.id;
             input.placeholder = t('metric.record.valuePlaceholder');
             var existing = editingRecordId
-                ? global.LivologMetrics.valueOf(record, field.id)
+                ? global.LivologMetrics.valueOf(record, field.id, metric.id)
                 : null;
             input.value = existing === null ? '' : formatValue(existing);
             block.appendChild(input);

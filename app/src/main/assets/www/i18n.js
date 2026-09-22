@@ -54,6 +54,7 @@
             'stats.range': 'Range',
             'stats.series': 'Items',
             'stats.series.all': 'All',
+            'stats.series.pick': 'Select…',
             'stats.pickStart': 'Start date',
             'stats.pickEnd': 'End date',
 
@@ -254,6 +255,7 @@
             'stats.range': '时间范围',
             'stats.series': '项目',
             'stats.series.all': '全部',
+            'stats.series.pick': '选择…',
             'stats.pickStart': '选择开始日期',
             'stats.pickEnd': '选择结束日期',
 

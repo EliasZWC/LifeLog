@@ -26,8 +26,20 @@
      * 老数据（跟踪项没有 fields）补出来的那个字段要用的**固定 id**。
      * ⚠️ 不能用 newId()：normalizeMetric 每次读取都会跑，随机 id 会让同一个跟踪项
      *    每次的字段 id 都不同，老记录（values 里存的是当时那个 id）就全对不上了。
-     *    固定成这个常量后，读取多少遍都稳定。
+     *
+     * ⚠️ 也**不能**用一个全局常量（v0.1.15 前的写法）：那样所有老跟踪项的
+     *    第一字段 id 都叫 `legacy-value`，而 valueOf 只按 fieldId 匹配、不看这条
+     *    记录属于哪个跟踪项，于是 A 的值能被 B 读到（用户报的「某项跟踪把别的
+     *    跟踪的所有项目都包含了」就是这个）。所以 id 必须**按跟踪项派生**。
      */
+    var LEGACY_FIELD_PREFIX = 'legacy:';
+
+    /** 某个跟踪项「自动补出来的老字段」的固定 id（每个跟踪项各不相同） */
+    function legacyFieldId(metricId) {
+        return LEGACY_FIELD_PREFIX + String(metricId === undefined || metricId === null ? '' : metricId);
+    }
+
+    /** 旧版本用过的全局常量 id；迁移时要把它们换算成按跟踪项派生的 id */
     var LEGACY_FIELD_ID = 'legacy-value';
 
     var listeners = [];
@@ -103,9 +115,9 @@
      * 把字段描述统一成 [{id, name}]，旧数据（没有 fields）自动补一个「值」字段。
      *
      * @param {Array} fields
-     * @param {{legacy?: boolean}} [options]
-     *        legacy = true 表示这是在「补老数据」，补出来的字段用固定 id
-     *        （见 LEGACY_FIELD_ID 的说明），保证多次读取拿到同一个 id。
+     * @param {{metricId?: string, legacy?: boolean}} [options]
+     *        legacy = true 表示这是在「补老数据」，补出来的字段用按跟踪项派生的固定 id，
+     *        保证多次读取拿到同一个 id，且不同跟踪项之间不会撞车。
      */
     function normalizeFields(fields, options) {
         var out = [];
@@ -117,9 +129,12 @@
             out.push({ id: (field && field.id) || newId(), name: name });
         });
         if (!out.length) {
-            // ⚠️ 老数据补字段：id 必须固定，否则每次读取都换一个，记录全对不上
-            var legacyId = options && options.legacy ? LEGACY_FIELD_ID : newId();
-            out.push({ id: legacyId, name: DEFAULT_FIELD });
+            // ⚠️ 老数据补字段：id 必须固定且按跟踪项区分，否则要么每次读取都换一个，
+            //    要么不同跟踪项共用同一个 id（都会让记录对不上）。
+            var id = options && options.legacy
+                ? legacyFieldId(options.metricId)
+                : newId();
+            out.push({ id: id, name: DEFAULT_FIELD });
         }
         return out;
     }
@@ -130,16 +145,20 @@
      *   - primary 指向不存在的字段 → 指回第一个；
      *   - isDerived（计算出来的）字段名 → 不参与编辑
      *
-     * ⚠️ 给老数据补字段时**必须用固定 id**（LEGACY_FIELD_ID），不能用 newId()：
+     * ⚠️ 给老数据补字段时**必须用按跟踪项派生的固定 id**：
      *    normalizeMetric 每次读取都会跑一遍，用随机 id 会导致同一个跟踪项
-     *    每次拿到的字段 id 都不一样 → 老记录的 values 永远对不上 → 记录「不能用了」。
-     *    （v0.1.13 修的 bug，就是这么来的。）
+     *    每次拿到的字段 id 都不一样 → 老记录的 values 永远对不上 → 记录「不能用了」；
+     *    而用一个全局常量又会让不同跟踪项的字段 id 相同 → 值会互相串。
+     *    （前一个是 v0.1.13 修的，后一个是 v0.1.15 修的。）
      */
     function normalizeMetric(metric) {
         if (!metric) {
             return null;
         }
-        metric.fields = normalizeFields(metric.fields, { legacy: true });
+        metric.fields = normalizeFields(metric.fields, {
+            legacy: true,
+            metricId: metric.id
+        });
         if (metric.isDerived && metric.name) {
             metric.fields = [{ id: metric.fields[0].id, name: String(metric.name).trim() }];
             metric.primary = metric.fields[0].id;
@@ -314,7 +333,7 @@
             var metric = byId[record.metricId];
             var fieldId = metric && metric.fields.length
                 ? metric.fields[0].id
-                : LEGACY_FIELD_ID;
+                : legacyFieldId(record.metricId);
             var number = normalizeValue(record.value);
             record.values = number === null
                 ? []
@@ -323,8 +342,40 @@
             changed = true;
         });
 
-        // 3. 把记录的 fieldId 对齐到跟踪项当前字段：
-        //    认不上的（老版本随机生成的 id）按「第一个有值的字段」落到第一个字段上。
+        /*
+           2.5 把旧版那个**全局** `legacy-value` 换算成按跟踪项派生的 id。
+               旧版所有老跟踪项的第一字段都叫这个，换算后各归各家，值才不会互相串。
+        */
+        records.forEach(function (record) {
+            if (!Array.isArray(record.values) || !record.values.length) {
+                return;
+            }
+            var metric = byId[record.metricId];
+            if (!metric || !metric.fields.length) {
+                return;
+            }
+            var target = metric.fields[0].id;
+            if (target === LEGACY_FIELD_ID) {
+                return; // 目标本身就是那个常量，不用换
+            }
+            var touched = false;
+            record.values.forEach(function (entry) {
+                if (entry.fieldId === LEGACY_FIELD_ID) {
+                    entry.fieldId = target;
+                    touched = true;
+                }
+            });
+            if (touched) {
+                changed = true;
+            }
+        });
+
+        /*
+           3. 把记录的 fieldId 对齐到跟踪项当前字段：
+              认不上的（老版本随机生成的 id）落到第一个字段上，但如果记录里
+              **已经有本跟踪项的字段**，就只丢掉认不上的那些，不再硬塞 ——
+              否则会把别的跟踪项的值也塞进来（用户报的「包含了不属于本项的项目」）。
+        */
         records.forEach(function (record) {
             var metric = byId[record.metricId];
             if (!metric || !Array.isArray(record.values) || !record.values.length) {
@@ -338,8 +389,7 @@
                 return keep[entry.fieldId];
             });
 
-            // 老记录可能带着对不上的 fieldId（老版本每次读取都随机生成字段 id）→
-            // 落到第一个字段上，值本身不丢。
+            // 一个都没对上（老版本每次读取都随机生成字段 id）→ 落到第一个字段，值不丢
             if (!kept.length) {
                 var fallback = metric.fields[0];
                 var first = record.values.filter(function (entry) {
@@ -507,15 +557,32 @@
         }
         // 老结构：{ value: <number> }
         if (record.value !== undefined && record.value !== null) {
-            var fields = fieldsOf(record.metricId || metricId);
-            var field = fields.length ? fields[0] : { id: LEGACY_FIELD_ID };
+            var owner = record.metricId || metricId;
+            var fields = fieldsOf(owner);
+            // 用按跟踪项派生的 id 兜底，避免不同跟踪项之间串值
+            var field = fields.length ? fields[0] : { id: legacyFieldId(owner) };
             return [{ fieldId: field.id, value: normalizeValue(record.value) }];
         }
         return [];
     }
 
-    /** 取某条记录某个字段的值（没有就是 null） */
-    function valueOf(record, fieldId) {
+    /**
+     * 取某条记录某个字段的值（没有就是 null）。
+     *
+     * ⚠️ 必须**同时**校验 fieldId 与记录归属的跟踪项：老数据里不同跟踪项的字段 id
+     *    可能撞车（旧版都用 `legacy-value`），只看 fieldId 会让 A 跟踪项读到 B 的值。
+     *    这里在「记录的 metricId 与入参给出的跟踪项不一致」且字段不属于该记录时返回 null。
+     */
+    function valueOf(record, fieldId, metricId) {
+        if (!record || !fieldId) {
+            return null;
+        }
+        // 记录自己的跟踪项优先；调用方传进来的 metricId 只作为交叉校验
+        var owner = record.metricId;
+        if (owner && metricId && owner !== metricId) {
+            // 明确不是同一个跟踪项 —— 绝不返回别的跟踪项的值
+            return null;
+        }
         var found = null;
         normalizeRecordValues(record).forEach(function (entry) {
             if (entry.fieldId === fieldId && found === null) {
@@ -597,7 +664,7 @@
                     row.push('');
                     return;
                 }
-                var value = valueOf(record, column.fieldId);
+                var value = valueOf(record, column.fieldId, metric.id);
                 row.push(global.LivologCsv.escapeField(value === null ? '' : value));
             });
 
