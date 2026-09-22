@@ -4,7 +4,9 @@
  * 与行为详情页同构：全屏覆盖层 + 标题栏（返回 / 跟踪项名称 / 菜单）+ 视图栏（记录 / 统计）。
  *
  * 区别在**记录视图**：跟踪记录不属于时间记录，加不进时间页，
- * 所以这一页自带一个悬浮按钮作为**唯一**入口，表单也只有「记录时间 + 记录值」。
+ * 所以这一页自带一个悬浮按钮作为**唯一**入口，表单是「记录时间 + 每个字段一个值」。
+ * 一个跟踪项可以有多个字段（比如血压 = 高压 / 低压 / 脉搏），
+ * 卡片显示「字段名 值」的列表，统计图默认看主字段（可在选项里改）。
  * 记录卡片与时间页一样支持长按多选删除。
  */
 (function (global) {
@@ -31,7 +33,7 @@
     var recordTitle = null;
     var recordFields = null;
     var recordHint = null;
-    var recordValue = null;
+    var recordValues = [];
     var recordConfirm = null;
 
     var currentId = null;
@@ -40,8 +42,8 @@
 
     var DAY_MS = 24 * 60 * 60 * 1000;
 
-    /** 统计视图的选项：图类型 + 统计区间；每次打开详情页重置 */
-    var stats = { chartType: 'bar', range: null };
+    /** 统计视图的选项：图类型 + 统计区间 + 看哪个字段；每次打开详情页重置 */
+    var stats = { chartType: 'bar', range: null, fieldId: null };
 
     var group = null;
     var editingRecordId = null;
@@ -68,7 +70,7 @@
         recordTitle = document.getElementById('sheet-metric-record-title');
         recordFields = document.getElementById('metric-record-fields');
         recordHint = document.getElementById('metric-record-hint');
-        recordValue = document.getElementById('metric-record-value');
+        recordValues = document.getElementById('metric-record-values');
         recordConfirm = document.getElementById('metric-record-confirm');
 
         backBtn.addEventListener('click', function () {
@@ -96,12 +98,14 @@
             global.LivologUI.closeSheet();
         });
         recordConfirm.addEventListener('click', submitRecord);
-        recordValue.addEventListener('input', validateRecord);
-        recordValue.addEventListener('keydown', function (event) {
+
+        // 字段是动态生成的，用委托监听回车提交
+        recordValues.addEventListener('keydown', function (event) {
             if (event.key === 'Enter') {
                 submitRecord();
             }
         });
+        recordValues.addEventListener('input', validateRecord);
 
         global.LivologMetrics.onChange(refresh);
         if (global.LivologI18n) {
@@ -133,7 +137,7 @@
 
         currentId = id;
         currentView = DEFAULT_VIEW;
-        stats = { chartType: 'bar', range: null };
+        stats = { chartType: 'bar', range: null, fieldId: null };
 
         // 这一页自己当多选目标（长按卡片 → 顶部操作栏 → 删除）
         global.LivologUI.bindSelection(selection);
@@ -236,7 +240,23 @@
             var card = global.LivologUI.el('li', 'card');
             card.dataset.id = record.id;
             card.appendChild(global.LivologUI.icon(metric.icon, 'card-icon'));
-            card.appendChild(global.LivologUI.el('span', 'card-title', formatValue(record.value)));
+
+            // 左边：字段名 + 值（只有一个字段时就是单纯的数值）
+            var body = global.LivologUI.el('div', 'card-body');
+            metric.fields.forEach(function (field) {
+                var value = global.LivologMetrics.valueOf(record, field.id);
+                var line = global.LivologUI.el('span', 'card-value-line');
+                if (metric.fields.length > 1) {
+                    line.appendChild(global.LivologUI.el('span', 'card-value-key', field.name));
+                }
+                line.appendChild(global.LivologUI.el(
+                    'span',
+                    'card-title',
+                    value === null ? '—' : formatValue(value)
+                ));
+                body.appendChild(line);
+            });
+            card.appendChild(body);
 
             var time = global.LivologUI.el('span', 'card-time');
             time.appendChild(global.LivologUI.el(
@@ -319,14 +339,29 @@
             stats.range = defaultRange(all);
         }
 
+        var fields = metric.fields;
+        var primary = global.LivologMetrics.primaryField(metric);
+        var field = null;
+        fields.forEach(function (item) {
+            if (item.id === stats.fieldId && !field) {
+                field = item;
+            }
+        });
+        if (!field) {
+            field = primary;
+            stats.fieldId = field.id;
+        }
+
         var range = stats.range;
         var records = all.filter(function (record) {
             var day = global.LivologDateTime.startOfDay(record.time);
             return day >= range.start && day <= range.end;
         });
 
-        // 按时间升序算统计
-        var ordered = records.slice().sort(function (a, b) {
+        // 按时间升序算统计（只看当前字段，值为空的记录不计）
+        var ordered = records.filter(function (record) {
+            return global.LivologMetrics.valueOf(record, field.id) !== null;
+        }).slice().sort(function (a, b) {
             return a.time - b.time;
         });
 
@@ -337,11 +372,12 @@
         var min = Infinity;
 
         ordered.forEach(function (record) {
+            var value = global.LivologMetrics.valueOf(record, field.id);
             times.push(record.time);
-            values.push(record.value);
-            total += record.value;
-            if (record.value > max) max = record.value;
-            if (record.value < min) min = record.value;
+            values.push(value);
+            total += value;
+            if (value > max) max = value;
+            if (value < min) min = value;
         });
 
         var points = global.LivologChart.bucketByDay(times, values, range);
@@ -355,9 +391,18 @@
             getRange: function () {
                 return stats.range;
             },
+            // 多字段时多一行「展示哪个值」；单字段不显示
+            getFields: function () {
+                return fields.length > 1 ? fields : null;
+            },
+            getFieldId: function () {
+                return stats.fieldId;
+            },
             onChange: function (key, value) {
                 if (key === 'chartType') {
                     stats.chartType = value;
+                } else if (key === 'field') {
+                    stats.fieldId = value;
                 } else {
                     stats.range = normalizeRange(stats.range, key, value);
                 }
@@ -377,7 +422,9 @@
         }));
         wrap.appendChild(chartBlock);
 
-        var latest = ordered.length ? ordered[ordered.length - 1].value : null;
+        var latest = ordered.length
+            ? global.LivologMetrics.valueOf(ordered[ordered.length - 1], field.id)
+            : null;
 
         var list = global.LivologUI.el('dl', 'stats-list');
         [
@@ -408,6 +455,11 @@
             return;
         }
 
+        var metric = global.LivologMetrics.getMetric(currentId);
+        if (!metric) {
+            return;
+        }
+
         editingRecordId = record && record.id ? record.id : null;
         var at = editingRecordId ? record.time : Date.now();
 
@@ -415,7 +467,28 @@
         group = global.LivologDateTime.buildGroup(null, at, validateRecord);
         recordFields.appendChild(group.root);
 
-        recordValue.value = editingRecordId ? formatValue(record.value) : '';
+        // 每个字段一个输入框；改已有记录时把旧值填回去
+        recordValues.innerHTML = '';
+        recordValueInputs = {};
+        metric.fields.forEach(function (field) {
+            var row = global.LivologUI.el('div', 'form-row');
+            row.appendChild(global.LivologUI.el('label', 'form-label', field.name));
+            var input = document.createElement('input');
+            input.className = 'form-input';
+            input.type = 'text';
+            input.inputMode = 'decimal';
+            input.autocomplete = 'off';
+            input.dataset.fieldId = field.id;
+            input.placeholder = t('metric.record.valuePlaceholder');
+            var existing = editingRecordId
+                ? global.LivologMetrics.valueOf(record, field.id)
+                : null;
+            input.value = existing === null ? '' : formatValue(existing);
+            row.appendChild(input);
+            recordValues.appendChild(row);
+            recordValueInputs[field.id] = input;
+        });
+
         recordTitle.textContent = t(
             editingRecordId ? 'metric.record.editTitle' : 'metric.record.title'
         );
@@ -424,25 +497,42 @@
         global.LivologUI.openSheet(recordSheet);
     }
 
-    function readRecordValue() {
-        var text = recordValue.value.trim();
-        if (!text) {
-            return null;
-        }
-        var number = Number(text);
-        return isFinite(number) ? number : null;
+    /** 表单里每个字段的输入框，按字段 id 索引 */
+    var recordValueInputs = {};
+
+    /** 读表单：返回 {fieldId: 值字符串}，只收有内容的 */
+    function readRecordValues() {
+        var out = {};
+        var any = false;
+        var invalid = false;
+        Object.keys(recordValueInputs).forEach(function (fieldId) {
+            var text = recordValueInputs[fieldId].value.trim();
+            if (!text) {
+                return;
+            }
+            var number = Number(text);
+            if (!isFinite(number)) {
+                invalid = true;
+                return;
+            }
+            out[fieldId] = number;
+            any = true;
+        });
+        return { values: out, any: any, invalid: invalid };
     }
 
     function validateRecord() {
         var time = group ? global.LivologDateTime.toTimestamp(
             global.LivologDateTime.readGroup(group)
         ) : null;
-        var value = readRecordValue();
+        var read = readRecordValues();
 
         var hint = '';
         if (time === null) {
             hint = t('metric.record.invalidTime');
-        } else if (value === null) {
+        } else if (read.invalid) {
+            hint = t('metric.record.invalidValue');
+        } else if (!read.any) {
             hint = t('metric.record.invalidValue');
         }
 
@@ -450,7 +540,7 @@
         recordHint.hidden = !hint;
         recordConfirm.disabled = !!hint;
 
-        return { ok: !hint, time: time, value: value };
+        return { ok: !hint, time: time, values: read.values };
     }
 
     function submitRecord() {
@@ -461,10 +551,10 @@
 
         if (editingRecordId) {
             global.LivologMetrics.updateRecord(
-                editingRecordId, currentId, result.time, result.value
+                editingRecordId, currentId, result.time, result.values
             );
         } else {
-            global.LivologMetrics.addRecord(currentId, result.time, result.value);
+            global.LivologMetrics.addRecord(currentId, result.time, result.values);
         }
 
         editingRecordId = null;

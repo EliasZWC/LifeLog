@@ -459,6 +459,64 @@ body {
     overflow-wrap: anywhere;
 }
 
+/* 多字段跟踪的卡片：一行「字段名 + 值」，每行都跟着主文字的大小 */
+.card-value-line {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+}
+
+.card-value-key {
+    flex: 0 0 auto;
+    font-size: 13px;
+    color: var(--on-surface-variant);
+}
+
+/* --------------------------------------------------------------------------
+   字段编辑（跟踪项表单）：一个字段一行，底部可以再加
+   -------------------------------------------------------------------------- */
+
+.field-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.field-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.field-row .form-input {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.field-remove {
+    flex: 0 0 auto;
+}
+
+.field-add {
+    align-self: flex-start;
+    margin-top: 10px;
+    padding: 6px 0;
+    border: 0;
+    background: none;
+    color: var(--on-surface-variant);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.field-add:active {
+    opacity: 0.55;
+}
+
 /* 时间右对齐；年月日在上、时分在下 */
 .card-time {
     flex: 0 0 auto;
@@ -787,26 +845,100 @@ body {
 
 /* --------------------------------------------------------------------------
    图标选择器
+   行内只显示当前选中的图标，点一下弹出一整块图标面板（图标太多，滑条太长了）。
    -------------------------------------------------------------------------- */
 
 .icon-picker {
+    flex: 0 0 auto;
     display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 6px;
-    scrollbar-width: none;
+    align-items: center;
 }
 
-.icon-picker::-webkit-scrollbar {
+.icon-trigger {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--on-surface-variant);
+    font: inherit;
+    cursor: pointer;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 160ms ease;
+}
+
+.icon-trigger:active {
+    background: var(--surface-raised);
+}
+
+.icon-trigger-icon {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    color: var(--on-surface);
+}
+
+.icon-trigger-icon svg {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+}
+
+/*
+   图标面板：相对所在表单绝对定位，像一个就地弹出的小窗口。
+   表单本身在 .sheet 里，所以面板不会超出屏幕。
+*/
+.icon-panel {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    z-index: 2;
+    margin-top: 6px;
+    padding: 6px 0 10px;
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: 14px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+}
+
+.icon-panel[hidden] {
     display: none;
 }
 
+.icon-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 6px 2px 16px;
+}
+
+.icon-panel-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--on-surface);
+}
+
+.icon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+    gap: 4px;
+    max-height: 40vh;
+    overflow-y: auto;
+    padding: 4px 10px 0;
+}
+
 .icon-option {
-    flex: 0 0 auto;
     display: grid;
     place-items: center;
-    width: 44px;
-    height: 44px;
+    width: 100%;
+    aspect-ratio: 1;
     padding: 0;
     border: 0;
     border-radius: 50%;

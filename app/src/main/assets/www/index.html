@@ -412,9 +412,17 @@
                 data-i18n-placeholder="metric.form.namePlaceholder" placeholder="e.g. Weight" />
         </div>
 
+        <!-- 字段：一个值一行，比如血压的 高压 / 低压 / 脉搏 -->
         <div class="form-block">
+            <span class="form-label" data-i18n="metric.form.fields">Fields</span>
+            <p class="form-hint" data-i18n="metric.form.fields.tip">
+                Add a row per value, e.g. systolic / diastolic / pulse</p>
+            <div id="metric-fields"></div>
+        </div>
+
+        <div class="form-row">
             <span class="form-label" data-i18n="behavior.form.icon">Icon</span>
-            <!-- 图标由 icons.js 提供，这里由脚本填充 -->
+            <!-- 图标太多，改成点一下弹面板选（见 components.js 的 createIconPicker） -->
             <div class="icon-picker" id="metric-icon-picker"></div>
         </div>
 
@@ -437,12 +445,8 @@
             <p class="form-hint" id="metric-record-hint" hidden></p>
         </div>
 
-        <div class="form-row">
-            <label class="form-label" for="metric-record-value" data-i18n="metric.record.value">Value</label>
-            <input class="form-input" id="metric-record-value" type="text" inputmode="decimal"
-                autocomplete="off" data-i18n-placeholder="metric.record.valuePlaceholder"
-                placeholder="0" />
-        </div>
+        <!-- 每个字段一个输入框，由脚本按跟踪项生成 -->
+        <div class="form-block" id="metric-record-values"></div>
 
         <div class="form-actions">
             <button class="btn" type="button" id="metric-record-cancel"
@@ -463,9 +467,9 @@
                 data-i18n-placeholder="behavior.form.namePlaceholder" placeholder="e.g. Sleep" />
         </div>
 
-        <div class="form-block">
+        <div class="form-row">
             <span class="form-label" data-i18n="behavior.form.icon">Icon</span>
-            <!-- 图标由 icons.js 提供，这里由脚本填充 -->
+            <!-- 图标太多，改成点一下弹面板选（见 components.js 的 createIconPicker） -->
             <div class="icon-picker" id="behavior-icon-picker"></div>
         </div>
 

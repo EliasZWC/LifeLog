@@ -347,16 +347,44 @@
     }
 
     /**
-     * 图标选择器（横向滚动的图标条），行为表单与跟踪表单共用。
+     * 图标选择器：行内只显示当前选中的图标，点一下弹出一整块图标面板。
+     * 图标多了以后横向滑条太长，所以改成「点开再选」。
      * @param {HTMLElement} mount 容器，会被清空
-     * @param {string} [initial] 初始选中的图标名
      * @returns {{ select: (name: string) => void, getSelected: () => string }}
      */
-    function createIconPicker(mount, initial) {
+    function createIconPicker(mount) {
         var names = global.LivologIcons.names();
-        var selected = null;
+        var selected = names[0];
 
         mount.innerHTML = '';
+
+        var trigger = el('button', 'icon-trigger');
+        trigger.type = 'button';
+        trigger.setAttribute('aria-haspopup', 'dialog');
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.appendChild(icon(selected, 'icon-trigger-icon'));
+        var chevron = el('span', 'select-chevron');
+        chevron.setAttribute('aria-hidden', 'true');
+        chevron.innerHTML = '<svg viewBox="0 0 24 24" focusable="false">' + CHEVRON_PATH + '</svg>';
+        trigger.appendChild(chevron);
+        mount.appendChild(trigger);
+
+        var panel = el('div', 'icon-panel');
+        panel.setAttribute('role', 'dialog');
+        panel.hidden = true;
+
+        var toolbar = el('div', 'icon-panel-head');
+        toolbar.appendChild(el('span', 'icon-panel-title', t('icon.pick')));
+        var closeButton = el('button', 'icon-button');
+        closeButton.type = 'button';
+        closeButton.setAttribute('aria-label', t('action.close'));
+        closeButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+            '<path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>' +
+            '</svg>';
+        toolbar.appendChild(closeButton);
+        panel.appendChild(toolbar);
+
+        var grid = el('div', 'icon-grid');
         names.forEach(function (name) {
             var button = el('button', 'icon-option');
             button.type = 'button';
@@ -365,18 +393,64 @@
             button.appendChild(icon(name));
             button.addEventListener('click', function () {
                 select(name);
+                close();
             });
-            mount.appendChild(button);
+            grid.appendChild(button);
         });
+        panel.appendChild(grid);
+        mount.appendChild(panel);
 
-        function select(name) {
-            selected = name;
-            Array.prototype.forEach.call(mount.children, function (button) {
-                button.classList.toggle('is-selected', button.dataset.icon === name);
+        function reflect() {
+            trigger.replaceChild(icon(selected, 'icon-trigger-icon'), trigger.firstChild);
+            Array.prototype.forEach.call(grid.children, function (button) {
+                button.classList.toggle('is-selected', button.dataset.icon === selected);
             });
         }
 
-        select(names.indexOf(initial) >= 0 ? initial : names[0]);
+        function open() {
+            panel.hidden = false;
+            trigger.setAttribute('aria-expanded', 'true');
+            // 选中的那个滚进可视区
+            var active = null;
+            Array.prototype.forEach.call(grid.children, function (button) {
+                if (button.dataset.icon === selected) active = button;
+            });
+            if (active && active.scrollIntoView) {
+                active.scrollIntoView({ block: 'center' });
+            }
+        }
+
+        function close() {
+            panel.hidden = true;
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+
+        function select(name) {
+            if (names.indexOf(name) < 0) {
+                return;
+            }
+            selected = name;
+            reflect();
+        }
+
+        trigger.addEventListener('click', function () {
+            if (panel.hidden) {
+                open();
+            } else {
+                close();
+            }
+        });
+        closeButton.addEventListener('click', close);
+
+        // 切语言时「选择图标」与关闭按钮的无障碍文案要跟着变
+        if (global.LivologI18n) {
+            global.LivologI18n.onChange(function () {
+                panel.querySelector('.icon-panel-title').textContent = t('icon.pick');
+                closeButton.setAttribute('aria-label', t('action.close'));
+            });
+        }
+
+        reflect();
 
         return {
             select: select,

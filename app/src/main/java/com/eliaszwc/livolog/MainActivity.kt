@@ -83,6 +83,13 @@ class MainActivity : AppCompatActivity() {
     /** 网页里 <input type="file"> 点开后，等系统选择器返回时要用 */
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
 
+    /**
+     * 本次进程是否已经把磁盘上的 CSV 载入过网页。
+     * ⚠️ 只有「载入还没完成」时才重试：从后台回到前台时再读盘会拿旧内容覆盖
+     * 网页里正在编辑的新数据（极端情况下会把用户刚加的记录抹掉）。
+     */
+    private var csvLoaded = false
+
     /** 设置页「导出数据」：等系统「另存为」返回时要把这份 CSV 写进用户选的位置 */
     private var pendingExportCsv: String? = null
 
@@ -263,6 +270,7 @@ class MainActivity : AppCompatActivity() {
         pageReady = false
         latestRecordsCsv = ""
         latestMetricsCsv = ""
+        csvLoaded = false
 
         webView = WebView(this).apply { id = R.id.web_view }
         if (parent != null && params != null) {
@@ -481,8 +489,13 @@ class MainActivity : AppCompatActivity() {
         evaluateInWeb("window.LivologShell && window.LivologShell.setVersion(\"$name\", $code);")
     }
 
-    /** 把 Livolog 目录里的 CSV 内容与路径推给网页（文件不存在时内容为空串） */
+    /**
+     * 把 Livolog 目录里的 CSV 内容与路径推给网页（文件不存在时内容为空串）。
+     * 只在本次进程还没载入过时才会真读盘。
+     */
     private fun pushCsvToWeb() {
+        if (csvLoaded) return
+
         val context = applicationContext
         Thread {
             val records = CsvStore.read(context, CsvStore.FILE_RECORDS)
@@ -494,6 +507,7 @@ class MainActivity : AppCompatActivity() {
             latestMetricsCsv = metrics ?: ""
 
             runOnUiThread {
+                csvLoaded = true
                 evaluateInWeb(
                     "window.LivologShell && window.LivologShell.onStorageReady(" +
                         "${JSONObject.quote(records ?: "")}, ${JSONObject.quote(path)});"
@@ -659,15 +673,17 @@ class MainActivity : AppCompatActivity() {
     // 导出数据
     // -----------------------------------------------------------------------
 
-    /** 设置页「导出数据」：弹系统「另存为」让用户选位置 */
+    /** 设置页「导出数据」：弹系统「另存为」让用户选位置，文件名自动编号避免重名 */
     private fun handleExportCsv(csv: String) {
         pendingExportCsv = csv
 
-        val stamp = SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())
+        val next = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .getInt(KEY_EXPORT_INDEX, 0) + 1
+
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = CsvStore.MIME
-            putExtra(Intent.EXTRA_TITLE, "livolog-$stamp.csv")
+            putExtra(Intent.EXTRA_TITLE, nextExportName(next))
         }
 
         try {
@@ -678,6 +694,10 @@ class MainActivity : AppCompatActivity() {
             notifyExported(false, t.message ?: "no-picker")
         }
     }
+
+    /** 导出文件名：livolog-001.csv ；序号只在真的写成功之后才前进 */
+    private fun nextExportName(index: Int): String =
+        "livolog-" + String.format(Locale.US, "%03d", index) + ".csv"
 
     /** 把 CSV 写进「另存为」选中的文档 */
     private fun writeExport(uri: Uri, csv: String) {
@@ -702,6 +722,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun notifyExported(ok: Boolean, detail: String) {
+        if (ok) {
+            // 只有真的写成功才把序号往前推，取消 / 失败不会白白吃掉一个号
+            val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            prefs.edit()
+                .putInt(KEY_EXPORT_INDEX, prefs.getInt(KEY_EXPORT_INDEX, 0) + 1)
+                .apply()
+        }
+
         evaluateInWeb(
             "window.LivologShell && window.LivologShell.onExported(" +
                 "$ok, ${JSONObject.quote(detail)});"
@@ -962,6 +990,8 @@ class MainActivity : AppCompatActivity() {
         /** 上次拉起安装器时装的是哪个版本、从哪个版本升 */
         const val KEY_PENDING_UPDATE = "pending_update_version"
         const val KEY_PENDING_UPDATE_FROM = "pending_update_from"
+        /** 「导出数据」的文件名序号（livolog-001.csv …） */
+        const val KEY_EXPORT_INDEX = "export_index"
 
         const val THEME_LIGHT = "light"
         const val THEME_DARK = "dark"

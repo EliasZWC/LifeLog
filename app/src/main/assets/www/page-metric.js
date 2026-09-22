@@ -13,6 +13,7 @@
     var sheet = null;
     var sheetTitle = null;
     var nameInput = null;
+    var fieldsEl = null;
     var iconPicker = null;
     var cancelBtn = null;
     var confirmBtn = null;
@@ -30,6 +31,7 @@
         sheet = document.getElementById('sheet-metric');
         sheetTitle = document.getElementById('sheet-metric-title');
         nameInput = document.getElementById('metric-name');
+        fieldsEl = document.getElementById('metric-fields');
         cancelBtn = document.getElementById('metric-cancel');
         confirmBtn = document.getElementById('metric-confirm');
 
@@ -78,9 +80,83 @@
         editingId = id || null;
         nameInput.value = metric ? metric.name : '';
         iconPicker.select(metric ? metric.icon : global.LivologIcons.names()[0]);
+        renderFieldRows(metric ? metric.fields.map(function (field) {
+            return field.name;
+        }) : ['']);
         applyTitle();
         validate();
         global.LivologUI.openSheet(sheet);
+    }
+
+    /** 字段名输入行：初始一行，底部按钮可以再加 */
+    function renderFieldRows(names) {
+        fieldsEl.innerHTML = '';
+
+        var rows = global.LivologUI.el('div', 'field-rows');
+        fieldsEl.appendChild(rows);
+
+        (names.length ? names : ['']).forEach(function (value) {
+            rows.appendChild(fieldRow(value));
+        });
+
+        var add = global.LivologUI.el('button', 'field-add');
+        add.type = 'button';
+        add.setAttribute('data-i18n', 'metric.form.field.add');
+        add.textContent = t('metric.form.field.add');
+        add.addEventListener('click', function () {
+            rows.appendChild(fieldRow(''));
+            validate();
+            var inputs = rows.querySelectorAll('.field-input');
+            if (inputs.length) {
+                inputs[inputs.length - 1].focus();
+            }
+        });
+        fieldsEl.appendChild(add);
+    }
+
+    /** 一行字段：输入框 + 删除按钮 */
+    function fieldRow(value) {
+        var row = global.LivologUI.el('div', 'field-row');
+
+        var input = document.createElement('input');
+        input.className = 'form-input field-input';
+        input.type = 'text';
+        input.maxLength = 16;
+        input.autocomplete = 'off';
+        input.placeholder = t('metric.form.fieldNamePlaceholder');
+        input.value = value;
+        input.addEventListener('input', validate);
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                submit();
+            }
+        });
+        row.appendChild(input);
+
+        var remove = global.LivologUI.el('button', 'icon-button field-remove');
+        remove.type = 'button';
+        remove.setAttribute('aria-label', t('action.close'));
+        remove.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+            '<path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
+        remove.addEventListener('click', function () {
+            row.remove();
+            validate();
+        });
+        row.appendChild(remove);
+
+        return row;
+    }
+
+    /** 表单里填的字段名（去掉空行） */
+    function readFieldNames() {
+        return Array.prototype.map.call(
+            fieldsEl.querySelectorAll('.field-input'),
+            function (input) {
+                return input.value.trim();
+            }
+        ).filter(function (name) {
+            return !!name;
+        });
     }
 
     function applyTitle() {
@@ -90,7 +166,7 @@
     }
 
     function validate() {
-        var ok = nameInput.value.trim().length > 0;
+        var ok = nameInput.value.trim().length > 0 && readFieldNames().length > 0;
         confirmBtn.disabled = !ok;
         return ok;
     }
@@ -100,11 +176,17 @@
             return;
         }
 
+        var fields = readFieldNames().map(function (name) {
+            return { name: name };
+        });
+
         if (editingId) {
-            global.LivologMetrics.updateMetric(editingId, nameInput.value, iconPicker.getSelected());
+            global.LivologMetrics.updateMetric(
+                editingId, nameInput.value, iconPicker.getSelected(), fields
+            );
             global.LivologMetricDetail.refresh();
         } else {
-            global.LivologMetrics.addMetric(nameInput.value, iconPicker.getSelected());
+            global.LivologMetrics.addMetric(nameInput.value, iconPicker.getSelected(), fields);
         }
 
         global.LivologUI.closeSheet();

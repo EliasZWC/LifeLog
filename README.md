@@ -9,7 +9,7 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前版本 | **v0.1.6** |
+| 当前版本 | **v0.1.7** |
 | 显示名 | Livolog |
 | 包名 | `com.eliaszwc.livolog` |
 | 最低支持 | Android 8.0（API 26） |
@@ -158,14 +158,15 @@ Record   = { id, behaviorId, type, start, end, note }          // type: 'period'
 跟跟踪是与「行为 / 时间记录」完全独立的另一套数据，存在于导航栏第二个页签（Track）：
 
 ```js
-Metric       = { id, name, icon }
-MetricRecord = { id, metricId, time, value }
+Metric       = { id, name, icon, fields: [{id, name}], primary: <fieldId> }
+MetricRecord = { id, metricId, time, values: [{fieldId, value}] }
 ```
 
-- 跟踪项就是「被跟踪的数据」，比如体重、腰围、每日喝水量。
-- 跟踪记录本质上都是**时点**：只有记录时间与记录值，没有起止时间，
+- 跟踪项就是「被跟踪的数据」，比如体重、腰围、血压（v0.1.7 起支持多字段：血压 = 高压 / 低压 / 脉搏）。
+- 跟踪记录本质上都是**时点**：只有记录时间与各字段的值，没有起止时间，
   所以它们永远不会出现在时间页，只能从跟踪详情页的悬浮按钮添加。
-- CSV 表头为 `id,metric,time,value`，`metric` 同样写名称，与 `records.csv` 放在同一个目录。
+- CSV 是「一条记录一行」的宽表，表头为 `id,metric,time,<字段名>…`（字段名即列名），
+  `metric` 同样写名称，与 `records.csv` 放在同一个目录。
 
 ### 存储位置
 
@@ -326,6 +327,9 @@ git push origin v0.0.2
 - [x] 统计图点某一天看具体数值
 - [x] 时间记录可写描述（选填，卡片上多一行）
 - [x] 后台久置回来自愈（渲染进程被回收后自动重建）
+- [x] 图标选择改为点开弹窗（62 个图标）
+- [x] 跟踪项支持多字段键值记录（如血压：高压 / 低压 / 脉搏）
+- [x] 导出文件名自动编号（livolog-001.csv…）
 - [x] 设置页：通用（语言 / 主题）/ 数据管理 / 关于（版本 / 联系）
 - [ ] 卡片编辑
 - [ ] 统计页

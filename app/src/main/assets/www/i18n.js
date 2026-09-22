@@ -109,6 +109,11 @@
             'metric.edit.title': 'Edit tracker',
             'metric.form.name': 'Name',
             'metric.form.namePlaceholder': 'e.g. Weight',
+            'metric.form.fields': 'Fields',
+            'metric.form.fields.tip': 'Add a row per value, e.g. systolic / diastolic / pulse',
+            'metric.form.field.add': 'Add field',
+            'metric.form.fieldNamePlaceholder': 'Field name',
+            'metric.form.fields.invalid': 'Give every field a name',
             'metric.menu.rename': 'Rename',
             'metric.detail.records': 'Records',
             'metric.detail.stats': 'Stats',
@@ -125,6 +130,8 @@
             'metric.record.editTitle': 'Edit entry',
             'metric.record.value': 'Value',
             'metric.record.valuePlaceholder': '0',
+            'metric.detail.formula': 'Show',
+            'metric.detail.chartFormula': 'Show which value',
             'metric.record.invalidTime': 'Time is incomplete',
             'metric.record.invalidValue': 'Please enter a number',
             'metric.delete.title': 'Delete tracker',
@@ -172,6 +179,9 @@
 
             'action.cancel': 'Cancel',
             'action.confirm': 'Confirm',
+            'action.close': 'Close',
+
+            'icon.pick': 'Choose icon',
 
             'selection.cancel': 'Cancel selection',
             'selection.delete': 'Delete selected',
@@ -283,6 +293,11 @@
             'metric.edit.title': '编辑跟踪项',
             'metric.form.name': '名称',
             'metric.form.namePlaceholder': '例如：体重',
+            'metric.form.fields': '字段',
+            'metric.form.fields.tip': '一个值一行，例如：高压 / 低压 / 脉搏',
+            'metric.form.field.add': '添加字段',
+            'metric.form.fieldNamePlaceholder': '字段名',
+            'metric.form.fields.invalid': '每个字段都要填名字',
             'metric.menu.rename': '重命名',
             'metric.detail.records': '记录',
             'metric.detail.stats': '统计',
@@ -299,6 +314,8 @@
             'metric.record.editTitle': '修改记录',
             'metric.record.value': '记录值',
             'metric.record.valuePlaceholder': '0',
+            'metric.detail.formula': '计算公式',
+            'metric.detail.chartFormula': '展示哪个值',
             'metric.record.invalidTime': '时间未填写完整',
             'metric.record.invalidValue': '请填写一个数值',
             'metric.delete.title': '删除跟踪项',
@@ -345,6 +362,9 @@
 
             'action.cancel': '取消',
             'action.confirm': '确定',
+            'action.close': '关闭',
+
+            'icon.pick': '选择图标',
 
             'selection.cancel': '取消选择',
             'selection.delete': '删除所选',
