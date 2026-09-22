@@ -14,8 +14,14 @@
 
     var WIDTH = 320;
     var HEIGHT = 170;
-    var PAD_LEFT = 40;
-    var PAD_RIGHT = 8;
+    /*
+       ⚠️ 左右内边距必须相等，否则「绘图区」会偏（SVG 本身撑满宽度、居中，
+          但绘图区是从 PAD_X 画到 WIDTH-PAD_X 的）。
+          左边要放纵轴刻度数字（text-anchor: end，贴在 PAD_X - 6 处），
+          所以要按最长刻度留够 —— 像 130.48 这种带小数的值有 6 个字符，
+          窄了会被裁掉前面几位（曾经 PAD_X=26 就裁成 "0.48"）。
+    */
+    var PAD_X = 38;
     var PAD_TOP = 14;
     var PAD_BOTTOM = 26;
     var DAY_MS = 24 * 60 * 60 * 1000;
@@ -46,7 +52,7 @@
         var list = points && points.length ? points : [{ day: Date.now(), value: 0, has: false }];
         var type = options && options.type === 'line' ? 'line' : 'bar';
 
-        var plotW = WIDTH - PAD_LEFT - PAD_RIGHT;
+        var plotW = WIDTH - PAD_X - PAD_X;
         var plotH = HEIGHT - PAD_TOP - PAD_BOTTOM;
         var baseY = PAD_TOP + plotH;
 
@@ -83,18 +89,18 @@
         var barW = Math.max(1, Math.min(slot - 3, 22));
 
         var parts = [
-            '<line class="chart-grid" x1="' + PAD_LEFT + '" y1="' + PAD_TOP +
-                '" x2="' + (WIDTH - PAD_RIGHT) + '" y2="' + PAD_TOP + '" />',
-            '<line class="chart-axis" x1="' + PAD_LEFT + '" y1="' + baseY +
-                '" x2="' + (WIDTH - PAD_RIGHT) + '" y2="' + baseY + '" />',
-            '<text class="chart-tick" x="' + (PAD_LEFT - 6) + '" y="' +
+            '<line class="chart-grid" x1="' + PAD_X + '" y1="' + PAD_TOP +
+                '" x2="' + (WIDTH - PAD_X) + '" y2="' + PAD_TOP + '" />',
+            '<line class="chart-axis" x1="' + PAD_X + '" y1="' + baseY +
+                '" x2="' + (WIDTH - PAD_X) + '" y2="' + baseY + '" />',
+            '<text class="chart-tick" x="' + (PAD_X - 6) + '" y="' +
                 (PAD_TOP + 4) + '" text-anchor="end">' + tickLabel(max) + '</text>',
-            '<text class="chart-tick" x="' + (PAD_LEFT - 6) + '" y="' +
+            '<text class="chart-tick" x="' + (PAD_X - 6) + '" y="' +
                 (baseY + 4) + '" text-anchor="end">' + tickLabel(min) + '</text>'
         ];
 
         function centerX(index) {
-            return PAD_LEFT + index * slot + slot / 2;
+            return PAD_X + index * slot + slot / 2;
         }
 
         if (type === 'line') {
@@ -105,7 +111,7 @@
                     return;
                 }
                 var height = Math.max(2, ((point.value - min) / span) * plotH);
-                var x = PAD_LEFT + index * slot + (slot - barW) / 2;
+                var x = PAD_X + index * slot + (slot - barW) / 2;
                 parts.push(
                     '<rect class="chart-bar" data-index="' + index + '" x="' + x.toFixed(1) +
                     '" y="' + (baseY - height).toFixed(1) + '" width="' + barW.toFixed(1) +
@@ -146,7 +152,7 @@
         list.forEach(function (point, index) {
             parts.push(
                 '<rect class="chart-hit" data-index="' + index + '" x="' +
-                (PAD_LEFT + index * slot).toFixed(1) + '" y="' + PAD_TOP + '" width="' +
+                (PAD_X + index * slot).toFixed(1) + '" y="' + PAD_TOP + '" width="' +
                 slot.toFixed(1) + '" height="' + plotH + '" />'
             );
         });
@@ -196,8 +202,8 @@
             var boxW = text.length * 6.2 + 16;
             var boxH = 19;
             var boxX = Math.min(
-                Math.max(tip.cx - boxW / 2, PAD_LEFT),
-                WIDTH - PAD_RIGHT - boxW
+                Math.max(tip.cx - boxW / 2, PAD_X),
+                WIDTH - PAD_X - boxW
             );
             // 优先浮在柱顶 / 折线点上方；上面没地方就压到它下面
             var boxY = tip.top - boxH - 7;
@@ -398,8 +404,248 @@
         return { start: startOfDay(min), end: startOfDay(max) };
     }
 
+    /**
+     * 多序列折线图：同一个横轴（日）上画好几条线，用**不同的线型**区分。
+     * 用在跟踪项的统计里 —— 一条记录有好几个项目（高压 / 低压 / 脉搏），
+     * 每个项目一条线；用户不再选「看哪个值」，而是一次看全，
+     * 靠 `dash`（实线 / 虚线 / 点线…）区分是哪一项。
+     *
+     * ⚠️ 和单序列 build(points, {type:'line'}) 的区别：
+     *    - 纵轴范围取所有序列的并集（共用一根轴才可比）
+     *    - 只画线，不画柱子（项目之间量纲可能不同，但至少线型能区分）
+     *
+     * @param {Array<{day: number}>} days 横轴（按升序的每一天）
+     * @param {Array<{name: string, points: Array<{day:number, value:number, has:boolean}>,
+     *                dash: string|null}>} series
+     * @param {{format?: (value:number)=>string, tipFormat?: (seriesIndex:number, value:number)=>string}} [options]
+     * @returns {SVGElement}
+     */
+    function buildMulti(days, series, options) {
+        var list = days && days.length ? days : [{ day: Date.now() }];
+        var plotW = WIDTH - PAD_X - PAD_X;
+        var plotH = HEIGHT - PAD_TOP - PAD_BOTTOM;
+        var baseY = PAD_TOP + plotH;
+
+        var max = -Infinity;
+        var min = Infinity;
+        var hasAny = false;
+        (series || []).forEach(function (item) {
+            (item.points || []).forEach(function (point) {
+                if (!point.has) {
+                    return;
+                }
+                hasAny = true;
+                if (point.value > max) max = point.value;
+                if (point.value < min) min = point.value;
+            });
+        });
+
+        if (hasAny) {
+            if (max === min) {
+                max += 1;
+                min -= 1;
+            }
+        } else {
+            min = 0;
+            max = 1;
+        }
+
+        // 上下各留 8% 余量，免得最高 / 最低点贴着边框
+        var pad = (max - min) * 0.08 || 1;
+        max += pad;
+        min -= pad;
+
+        var span = max - min || 1;
+        function toY(value) {
+            return baseY - ((value - min) / span) * plotH;
+        }
+
+        var slot = plotW / list.length;
+
+        function centerX(index) {
+            return PAD_X + index * slot + slot / 2;
+        }
+
+        var parts = [
+            '<line class="chart-grid" x1="' + PAD_X + '" y1="' + PAD_TOP +
+                '" x2="' + (WIDTH - PAD_X) + '" y2="' + PAD_TOP + '" />',
+            '<line class="chart-axis" x1="' + PAD_X + '" y1="' + baseY +
+                '" x2="' + (WIDTH - PAD_X) + '" y2="' + baseY + '" />',
+            '<text class="chart-tick" x="' + (PAD_X - 6) + '" y="' +
+                (PAD_TOP + 4) + '" text-anchor="end">' + tickLabel(max) + '</text>',
+            '<text class="chart-tick" x="' + (PAD_X - 6) + '" y="' +
+                (baseY + 4) + '" text-anchor="end">' + tickLabel(min) + '</text>'
+        ];
+
+        // 每条序列：把有数据的天按顺序连起来（没记录的天跨过去，不断线）
+        (series || []).forEach(function (item, seriesIndex) {
+            var points = [];
+            (item.points || []).forEach(function (point) {
+                var index = list.findIndex(function (day) {
+                    return day.day === point.day;
+                });
+                if (index >= 0 && point.has) {
+                    points.push({ index: index, value: point.value });
+                }
+            });
+            if (points.length < 2) {
+                // 只有一个点也要看得见（画个孤点）
+                points.forEach(function (entry) {
+                    parts.push('<circle class="chart-dot chart-series-' + seriesIndex +
+                        '" cx="' + centerX(entry.index).toFixed(1) + '" cy="' +
+                        toY(entry.value).toFixed(1) + '" r="2.6" />');
+                });
+                return;
+            }
+
+            var style = item.dash ? ' stroke-dasharray="' + item.dash + '"' : '';
+            parts.push('<polyline class="chart-line chart-series-' + seriesIndex +
+                '" points="' + points.map(function (entry) {
+                    return centerX(entry.index).toFixed(1) + ',' + toY(entry.value).toFixed(1);
+                }).join(' ') + '"' + style + ' />');
+
+            if (points.length <= 40) {
+                points.forEach(function (entry) {
+                    parts.push('<circle class="chart-dot chart-series-' + seriesIndex +
+                        '" cx="' + centerX(entry.index).toFixed(1) + '" cy="' +
+                        toY(entry.value).toFixed(1) + '" r="2.2" />');
+                });
+            }
+        });
+
+        // 横轴只标「首 / 中 / 尾」三处日期
+        [0, Math.floor((list.length - 1) / 2), list.length - 1]
+            .filter(function (value, index, array) {
+                return array.indexOf(value) === index;
+            })
+            .forEach(function (index) {
+                var anchor = index === 0
+                    ? 'start'
+                    : (index === list.length - 1 ? 'end' : 'middle');
+                parts.push(
+                    '<text class="chart-tick" x="' + centerX(index).toFixed(1) + '" y="' +
+                    (baseY + 17) + '" text-anchor="' + anchor + '">' +
+                    dateLabel(list[index].day) + '</text>'
+                );
+            });
+
+        // 每天一整列透明命中区：点一下列出那一天各序列的值
+        var tips = list.map(function (day, index) {
+            var values = [];
+            var has = false;
+            (series || []).forEach(function (item) {
+                (item.points || []).forEach(function (point) {
+                    if (point.day !== day.day) {
+                        return;
+                    }
+                    values.push({ name: item.name, value: point.value, has: point.has });
+                    if (point.has) {
+                        has = true;
+                    }
+                });
+            });
+            return { day: day.day, cx: centerX(index), values: values, has: has };
+        });
+
+        list.forEach(function (day, index) {
+            parts.push(
+                '<rect class="chart-hit" data-index="' + index + '" x="' +
+                (PAD_X + index * slot).toFixed(1) + '" y="' + PAD_TOP + '" width="' +
+                slot.toFixed(1) + '" height="' + plotH + '" />'
+            );
+        });
+
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'chart');
+        svg.setAttribute('data-chart-type', 'line');
+        svg.setAttribute('viewBox', '0 0 ' + WIDTH + ' ' + HEIGHT);
+        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        svg.setAttribute('role', 'img');
+        svg.innerHTML = parts.join('');
+
+        attachMultiTips(svg, tips, options, baseY);
+        return svg;
+    }
+
+    /** 多序列的气泡：一天一行「项目名 值」 */
+    function attachMultiTips(svg, tips, options, baseY) {
+        var layer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        layer.setAttribute('class', 'chart-tip');
+        layer.setAttribute('hidden', 'true');
+        svg.appendChild(layer);
+
+        var current = -1;
+
+        function clear() {
+            layer.setAttribute('hidden', 'true');
+            layer.innerHTML = '';
+        }
+
+        function show(index) {
+            var tip = tips[index];
+            var rows = tip.values.filter(function (row) {
+                return row.has;
+            });
+            var format = (options && options.format) || function (value) {
+                return String(Math.round(value * 100) / 100);
+            };
+
+            var lines = rows.map(function (row) {
+                return format(row.value, row.name);
+            });
+            // 多行气泡：每行一个项目的值
+            var lineH = 15;
+            var boxH = lines.length * lineH + 8;
+            var boxW = 0;
+            lines.forEach(function (text) {
+                boxW = Math.max(boxW, text.length * 6.2 + 16);
+            });
+            var boxX = Math.min(
+                Math.max(tip.cx - boxW / 2, PAD_X),
+                WIDTH - PAD_X - boxW
+            );
+            var boxY = PAD_TOP + 2;
+
+            var inner =
+                '<line class="chart-guide" x1="' + tip.cx.toFixed(1) +
+                '" y1="' + PAD_TOP + '" x2="' + tip.cx.toFixed(1) +
+                '" y2="' + baseY + '" />' +
+                '<rect x="' + boxX.toFixed(1) + '" y="' + boxY.toFixed(1) +
+                '" width="' + boxW.toFixed(1) + '" height="' + boxH +
+                '" rx="6" />';
+
+            lines.forEach(function (text, row) {
+                inner += '<text x="' + (boxX + boxW / 2).toFixed(1) + '" y="' +
+                    (boxY + 14 + row * lineH).toFixed(1) + '" text-anchor="middle">' +
+                    text + '</text>';
+            });
+
+            layer.innerHTML = inner;
+            layer.removeAttribute('hidden');
+        }
+
+        svg.addEventListener('click', function (event) {
+            var hit = event.target.closest ? event.target.closest('.chart-hit') : null;
+            if (!hit) {
+                return;
+            }
+            var index = Number(hit.getAttribute('data-index'));
+            if (!tips[index] || !tips[index].has) {
+                return;
+            }
+            if (current === index) {
+                current = -1;
+                clear();
+                return;
+            }
+            current = index;
+            show(index);
+        });
+    }
+
     global.LivologChart = {
         build: build,
+        buildMulti: buildMulti,
         bucketByDay: bucketByDay,
         bucketSpans: bucketSpans,
         rangeOf: rangeOf,

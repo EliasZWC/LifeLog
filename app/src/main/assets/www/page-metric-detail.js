@@ -23,6 +23,9 @@
     var viewNav = null;
     var listEl = null;
     var recordFab = null;
+    var viewBar = null;
+    var viewLabel = null;
+    var viewButton = null;
 
     var deleteSheet = null;
     var deleteTip = null;
@@ -40,10 +43,19 @@
     var currentView = DEFAULT_VIEW;
     var isOpen = false;
 
+    /*
+       记录视图的时间范围：与时间页同一套（全部 / 最近一年 / 最近一月 / 最近一周），
+       但**不复用**时间页的 localStorage 偏好 —— 详情页的范围是临时的，
+       每次打开都回到「全部」。
+    */
+    var RANGES = ['all', 'year', 'month', 'week'];
+    var RANGE_DAYS = { all: 0, year: 365, month: 30, week: 7 };
+    var range = 'all';
+
     var DAY_MS = 24 * 60 * 60 * 1000;
 
-    /** 统计视图的选项：图类型 + 统计区间 + 看哪个字段；每次打开详情页重置 */
-    var stats = { chartType: 'bar', range: null, fieldId: null };
+    /** 统计视图的选项：时间区间；每次打开详情页重置（图类型固定为折线图） */
+    var stats = { range: null };
 
     var group = null;
     var editingRecordId = null;
@@ -60,6 +72,9 @@
         viewNav = document.getElementById('metric-detail-view-nav');
         listEl = document.getElementById('metric-detail-list');
         recordFab = document.getElementById('metric-record-fab');
+        viewBar = document.getElementById('metric-detail-view-bar');
+        viewLabel = document.getElementById('metric-detail-view-current');
+        viewButton = document.getElementById('metric-detail-view-button');
 
         deleteSheet = document.getElementById('sheet-delete-metric');
         deleteTip = document.getElementById('metric-delete-tip');
@@ -78,6 +93,7 @@
         });
         menuBtn.addEventListener('click', openActions);
         viewNav.addEventListener('click', onViewNavClick);
+        viewButton.addEventListener('click', openRangeMenu);
         recordFab.addEventListener('click', function () {
             openRecordForm(null);
         });
@@ -137,7 +153,8 @@
 
         currentId = id;
         currentView = DEFAULT_VIEW;
-        stats = { chartType: 'bar', range: null, fieldId: null };
+        range = 'all';
+        stats = { range: null };
 
         // 这一页自己当多选目标（长按卡片 → 顶部操作栏 → 删除）
         global.LivologUI.bindSelection(selection);
@@ -225,70 +242,126 @@
     function renderList(metric) {
         listEl.innerHTML = '';
 
+        // 视图栏只在记录视图显示（统计视图自己有选项栏）
+        viewBar.hidden = currentView !== 'records';
+
         if (currentView === 'stats') {
             renderStats(metric);
             return;
         }
 
-        var records = global.LivologMetrics.getRecords(metric.id);
+        var records = global.LivologMetrics.getRecords(metric.id).filter(function (record) {
+            var days = RANGE_DAYS[range] || 0;
+            if (!days) {
+                return true;
+            }
+            var start = global.LivologDateTime.startOfDay(Date.now()) - (days - 1) * DAY_MS;
+            return record.time >= start;
+        });
+
+        renderViewBar();
+
         if (!records.length) {
             listEl.appendChild(global.LivologUI.emptyState(t('metric.detail.empty')));
             return;
         }
 
-        records.forEach(function (record) {
-            var card = global.LivologUI.el('li', 'card');
-            card.dataset.id = record.id;
-            card.appendChild(global.LivologUI.icon(metric.icon, 'card-icon'));
-
-            // 左边：字段名 + 值（只有一个字段时就是单纯的数值）
-            var body = global.LivologUI.el('div', 'card-body');
-            metric.fields.forEach(function (field) {
-                var value = global.LivologMetrics.valueOf(record, field.id);
-                var line = global.LivologUI.el('span', 'card-value-line');
-                if (metric.fields.length > 1) {
-                    line.appendChild(global.LivologUI.el('span', 'card-value-key', field.name));
-                }
-                line.appendChild(global.LivologUI.el(
-                    'span',
-                    'card-title',
-                    value === null ? '—' : formatValue(value)
-                ));
-                body.appendChild(line);
-            });
-            card.appendChild(body);
-
-            var time = global.LivologUI.el('span', 'card-time');
-            time.appendChild(global.LivologUI.el(
-                'span', 'card-time-date', global.LivologDateTime.formatDate(record.time)
-            ));
-            time.appendChild(global.LivologUI.el(
-                'span', 'card-time-clock', global.LivologDateTime.formatClock(record.time)
-            ));
-            card.appendChild(time);
-
-            if (global.LivologUI.isSelected(record.id)) {
-                card.classList.add('is-selected');
+        // 与时间页同一个分段逻辑：按天插日期标记
+        global.LivologTimePage.appendRecordCards(
+            listEl,
+            records,
+            function (record) {
+                return buildRecordCard(metric, record);
+            },
+            function (record) {
+                return record.time;
             }
+        );
+    }
 
-            global.LivologUI.attachLongPress(card, function () {
-                global.LivologUI.startSelection(record.id);
-            });
+    /** 范围栏的文字 */
+    function renderViewBar() {
+        viewLabel.textContent = t('time.range.' + range);
+        viewButton.setAttribute('aria-expanded', 'false');
+    }
 
-            card.addEventListener('click', function () {
-                if (global.LivologUI.justLongPressed()) {
-                    return;
+    function openRangeMenu() {
+        viewButton.setAttribute('aria-expanded', 'true');
+        global.LivologUI.openMenu(
+            viewButton,
+            RANGES.map(function (value) {
+                return {
+                    value: value,
+                    label: t('time.range.' + value),
+                    selected: value === range
+                };
+            }),
+            function (value) {
+                renderViewBar();
+                if (value !== range) {
+                    var from = RANGES.indexOf(range);
+                    var to = RANGES.indexOf(value);
+                    range = value;
+                    renderList(global.LivologMetrics.getMetric(currentId));
+                    global.LivologUI.animateEnter(listEl, to >= from ? 1 : -1);
                 }
-                if (global.LivologUI.isSelecting()) {
-                    global.LivologUI.toggleSelection(record.id);
-                    return;
-                }
-                // 普通点击 = 修改这条记录
-                openRecordForm(record);
-            });
+            }
+        );
+    }
 
-            listEl.appendChild(card);
+    /** 一条记录的卡片 */
+    function buildRecordCard(metric, record) {
+        var card = global.LivologUI.el('li', 'card');
+        card.dataset.id = record.id;
+        card.appendChild(global.LivologUI.icon(metric.icon, 'card-icon'));
+
+        // 左边：项目名 + 值（只有一个项目时就是单纯的数值）
+        var body = global.LivologUI.el('div', 'card-body');
+        metric.fields.forEach(function (field) {
+            var value = global.LivologMetrics.valueOf(record, field.id);
+            var line = global.LivologUI.el('span', 'card-value-line');
+            if (metric.fields.length > 1) {
+                line.appendChild(global.LivologUI.el('span', 'card-value-key', field.name));
+            }
+            line.appendChild(global.LivologUI.el(
+                'span',
+                'card-title',
+                value === null ? '—' : formatValue(value)
+            ));
+            body.appendChild(line);
         });
+        card.appendChild(body);
+
+        var time = global.LivologUI.el('span', 'card-time');
+        time.appendChild(global.LivologUI.el(
+            'span', 'card-time-date', global.LivologDateTime.formatDate(record.time)
+        ));
+        time.appendChild(global.LivologUI.el(
+            'span', 'card-time-clock', global.LivologDateTime.formatClock(record.time)
+        ));
+        card.appendChild(time);
+
+        if (global.LivologUI.isSelected(record.id)) {
+            card.classList.add('is-selected');
+        }
+
+        global.LivologUI.attachLongPress(card, function () {
+            global.LivologUI.startSelection(record.id);
+        });
+
+        card.addEventListener('click', function () {
+            if (global.LivologUI.justLongPressed()) {
+                return;
+            }
+            if (global.LivologUI.isSelecting()) {
+                global.LivologUI.toggleSelection(record.id);
+                return;
+            }
+            // 普通点击 = 修改这条记录
+            openRecordForm(record);
+        });
+
+        return card;
     }
 
     /** 数值去掉多余的小数位：72.50 → 72.5，1500 → 1500 */
@@ -328,6 +401,17 @@
         return next;
     }
 
+    /*
+       线型表：多项目时靠它区分哪条线是哪个项目。
+       顺序要与 metric.fields 一致；不够用时循环取（项目一般 2~4 个）。
+    */
+    var SERIES_DASHES = [null, '5 3', '1 3', '7 3 2 3', '2 2', '9 3 2 3 2 3'];
+
+    /** 第 i 条线的 dasharray（null = 实线） */
+    function dashOf(index) {
+        return SERIES_DASHES[index % SERIES_DASHES.length];
+    }
+
     function renderStats(metric) {
         var all = global.LivologMetrics.getRecords(metric.id);
         if (!all.length) {
@@ -340,70 +424,78 @@
         }
 
         var fields = metric.fields;
-        var primary = global.LivologMetrics.primaryField(metric);
-        var field = null;
-        fields.forEach(function (item) {
-            if (item.id === stats.fieldId && !field) {
-                field = item;
-            }
-        });
-        if (!field) {
-            field = primary;
-            stats.fieldId = field.id;
-        }
-
         var range = stats.range;
         var records = all.filter(function (record) {
             var day = global.LivologDateTime.startOfDay(record.time);
             return day >= range.start && day <= range.end;
         });
 
-        // 按时间升序算统计（只看当前字段，值为空的记录不计）
-        var ordered = records.filter(function (record) {
-            return global.LivologMetrics.valueOf(record, field.id) !== null;
-        }).slice().sort(function (a, b) {
-            return a.time - b.time;
+        /*
+           每个项目一条折线：把该项目「有记录」的日子按时间归到每天，再交给
+           LivologChart.buildMulti 一次画出来，用线型区分项目。
+           某个项目某天没值 → 那天的点标记为 has:false，折线跨过去（不断线）。
+        */
+        var dayList = [];
+        var daySeen = {};
+        records.forEach(function (record) {
+            var day = global.LivologDateTime.startOfDay(record.time);
+            if (!daySeen[day]) {
+                daySeen[day] = true;
+                dayList.push(day);
+            }
+        });
+        dayList.sort(function (a, b) {
+            return a - b;
         });
 
-        var times = [];
-        var values = [];
-        var total = 0;
-        var max = -Infinity;
-        var min = Infinity;
-
-        ordered.forEach(function (record) {
-            var value = global.LivologMetrics.valueOf(record, field.id);
-            times.push(record.time);
-            values.push(value);
-            total += value;
-            if (value > max) max = value;
-            if (value < min) min = value;
+        var series = fields.map(function (field, index) {
+            // 每天取该项目当天的最后一个值（同一天记多次就取最后的）
+            var byDay = {};
+            records.forEach(function (record) {
+                var value = global.LivologMetrics.valueOf(record, field.id);
+                if (value === null) {
+                    return;
+                }
+                var day = global.LivologDateTime.startOfDay(record.time);
+                byDay[day] = value;
+            });
+            return {
+                name: field.name,
+                dash: dashOf(index),
+                points: dayList.map(function (day) {
+                    var has = Object.prototype.hasOwnProperty.call(byDay, day);
+                    return { day: day, value: has ? byDay[day] : 0, has: has };
+                })
+            };
         });
 
-        var points = global.LivologChart.bucketByDay(times, values, range);
+        // 横轴要有「天」可画；一条记录都没落在区间里时给一天空白
+        var days = dayList.length ? dayList.map(function (day) {
+            return { day: day };
+        }) : [{ day: range.start }];
 
         var wrap = global.LivologUI.el('li', 'stats');
 
         var toolbar = global.LivologStats.build({
             getChartType: function () {
-                return stats.chartType;
+                return 'line';
             },
             getRange: function () {
                 return stats.range;
             },
-            // 多字段时多一行「展示哪个值」；单字段不显示
+            // 统一用折线图，所以不再给「图类型」这一行
+            lockChartType: true,
+            // 多项目时给一行图例（线型样例 + 项目名）
             getFields: function () {
                 return fields.length > 1 ? fields : null;
             },
-            getFieldId: function () {
-                return stats.fieldId;
+            getDashes: function () {
+                return fields.map(function (field, index) {
+                    return dashOf(index);
+                });
             },
             onChange: function (key, value) {
-                if (key === 'chartType') {
-                    stats.chartType = value;
-                } else if (key === 'field') {
-                    stats.fieldId = value;
-                } else {
+                if (key !== 'field' && key !== 'chartType') {
                     stats.range = normalizeRange(stats.range, key, value);
                 }
                 refresh();
@@ -415,19 +507,42 @@
         chartBlock.appendChild(global.LivologUI.el(
             'span', 'stats-chart-title', t('metric.detail.chartDaily')
         ));
-        chartBlock.appendChild(global.LivologChart.build(points, {
-            type: stats.chartType,
-            // 点某一天时气泡里显示的是那天的取值（和列表里的写法一致）
-            format: formatValue
+        chartBlock.appendChild(global.LivologChart.buildMulti(days, series, {
+            // 气泡里每行一个项目：写「项目名 值」，多项目时才带名字
+            format: function (value, name) {
+                return fields.length > 1 && name
+                    ? name + ' ' + formatValue(value)
+                    : formatValue(value);
+            }
         }));
         wrap.appendChild(chartBlock);
 
+        // 统计信息只针对「主项目」（多项目量纲不同，混在一起算没有意义）
+        var primary = global.LivologMetrics.primaryField(metric);
+        var ordered = records.filter(function (record) {
+            return global.LivologMetrics.valueOf(record, primary.id) !== null;
+        }).slice().sort(function (a, b) {
+            return a.time - b.time;
+        });
+
+        var total = 0;
+        var max = -Infinity;
+        var min = Infinity;
+        ordered.forEach(function (record) {
+            var value = global.LivologMetrics.valueOf(record, primary.id);
+            total += value;
+            if (value > max) max = value;
+            if (value < min) min = value;
+        });
+
         var latest = ordered.length
-            ? global.LivologMetrics.valueOf(ordered[ordered.length - 1], field.id)
+            ? global.LivologMetrics.valueOf(ordered[ordered.length - 1], primary.id)
             : null;
 
         var list = global.LivologUI.el('dl', 'stats-list');
         [
+            // 统计口径写在最前面，免得误以为是把所有项目混在一起算的
+            [t('metric.detail.formula'), primary.name],
             [t('metric.detail.count'), String(ordered.length)],
             [t('metric.detail.latest'), latest === null ? '—' : formatValue(latest)],
             [
@@ -569,7 +684,7 @@
         menuBtn.setAttribute('aria-expanded', 'true');
         global.LivologUI.openMenu(menuBtn, [
             { value: 'rename', label: t('behavior.menu.rename') },
-            { value: 'delete', label: t('behavior.menu.delete') }
+            { value: 'delete', label: t('behavior.menu.delete'), danger: true }
         ], function (value) {
             menuBtn.setAttribute('aria-expanded', 'false');
             if (value === 'rename') {

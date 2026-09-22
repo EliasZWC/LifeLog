@@ -101,8 +101,8 @@
 
         var add = global.LivologUI.el('button', 'field-add');
         add.type = 'button';
-        add.setAttribute('data-i18n', 'metric.form.field.add');
-        add.textContent = t('metric.form.field.add');
+        add.setAttribute('data-i18n', 'metric.form.item.add');
+        add.textContent = t('metric.form.item.add');
         add.addEventListener('click', function () {
             rows.appendChild(fieldRow(''));
             validate();
@@ -123,7 +123,7 @@
         input.type = 'text';
         input.maxLength = 16;
         input.autocomplete = 'off';
-        input.placeholder = t('metric.form.fieldNamePlaceholder');
+        input.placeholder = t('metric.form.itemNamePlaceholder');
         input.value = value;
         input.addEventListener('input', validate);
         input.addEventListener('keydown', function (event) {

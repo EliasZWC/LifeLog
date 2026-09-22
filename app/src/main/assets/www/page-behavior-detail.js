@@ -17,6 +17,9 @@
     var menuBtn = null;
     var viewNav = null;
     var listEl = null;
+    var viewBar = null;
+    var viewLabel = null;
+    var viewButton = null;
 
     var deleteSheet = null;
     var deleteTip = null;
@@ -26,6 +29,15 @@
     var currentId = null;
     var currentView = DEFAULT_VIEW;
     var isOpen = false;
+
+    /*
+       记录视图的时间范围：与时间页同一套（全部 / 最近一年 / 最近一月 / 最近一周），
+       但**不复用**时间页的 localStorage 偏好 —— 详情页的范围是临时的，
+       每次打开都回到「全部」。
+    */
+    var RANGES = ['all', 'year', 'month', 'week'];
+    var RANGE_DAYS = { all: 0, year: 365, month: 30, week: 7 };
+    var range = 'all';
 
     var DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -43,6 +55,9 @@
         menuBtn = document.getElementById('detail-menu');
         viewNav = document.getElementById('detail-view-nav');
         listEl = document.getElementById('detail-list');
+        viewBar = document.getElementById('detail-view-bar');
+        viewLabel = document.getElementById('detail-view-current');
+        viewButton = document.getElementById('detail-view-button');
 
         deleteSheet = document.getElementById('sheet-delete-behavior');
         deleteTip = document.getElementById('delete-tip');
@@ -54,6 +69,7 @@
         });
         menuBtn.addEventListener('click', openActions);
         viewNav.addEventListener('click', onViewNavClick);
+        viewButton.addEventListener('click', openRangeMenu);
 
         document.getElementById('delete-cancel').addEventListener('click', function () {
             global.LivologUI.closeSheet();
@@ -89,6 +105,7 @@
 
         currentId = id;
         currentView = DEFAULT_VIEW;
+        range = 'all';
         stats = { chartType: 'bar', range: null };
 
         // 这一页自己当多选目标（长按卡片 → 顶部操作栏 → 删除）
@@ -175,57 +192,116 @@
     function renderList(behavior) {
         listEl.innerHTML = '';
 
+        // 视图栏只在记录视图显示
+        viewBar.hidden = currentView !== 'records';
+
         if (currentView === 'stats') {
             renderStats(behavior);
             return;
         }
 
-        var records = global.LivologStore.getRecords().filter(function (record) {
+        var all = global.LivologStore.getRecords().filter(function (record) {
             return record.behaviorId === behavior.id;
         });
+
+        var records = all.filter(function (record) {
+            var days = RANGE_DAYS[range] || 0;
+            if (!days) {
+                return true;
+            }
+            var start = global.LivologDateTime.startOfDay(Date.now()) - (days - 1) * DAY_MS;
+            // 跨天记录只要和区间有重叠就算（与统计口径一致）
+            var end = record.type === 'period' && record.end !== null ? record.end : record.start;
+            return end >= start;
+        });
+
+        renderViewBar();
 
         if (!records.length) {
             listEl.appendChild(global.LivologUI.emptyState(t('behavior.detail.empty')));
             return;
         }
 
-        records.forEach(function (record) {
-            var card = global.LivologUI.el('li', 'card');
-            card.dataset.id = record.id;
-            card.appendChild(global.LivologUI.icon(behavior.icon, 'card-icon'));
-            card.appendChild(global.LivologTimePage.cardBody(behavior.name, record.note));
-
-            var time = global.LivologUI.el('span', 'card-time');
-            time.appendChild(global.LivologUI.el(
-                'span', 'card-time-date', global.LivologTimePage.dateLine(record)
-            ));
-            time.appendChild(global.LivologUI.el(
-                'span', 'card-time-clock', global.LivologTimePage.clockLine(record)
-            ));
-            card.appendChild(time);
-
-            if (global.LivologUI.isSelected(record.id)) {
-                card.classList.add('is-selected');
+        // 与时间页同一个分段逻辑：按天插日期标记
+        global.LivologTimePage.appendRecordCards(
+            listEl,
+            records,
+            function (record) {
+                return buildRecordCard(behavior, record);
+            },
+            function (record) {
+                return record.start;
             }
+        );
+    }
 
-            global.LivologUI.attachLongPress(card, function () {
-                global.LivologUI.startSelection(record.id);
-            });
+    /** 范围栏的文字 */
+    function renderViewBar() {
+        viewLabel.textContent = t('time.range.' + range);
+        viewButton.setAttribute('aria-expanded', 'false');
+    }
 
-            card.addEventListener('click', function () {
-                if (global.LivologUI.justLongPressed()) {
-                    return;
+    function openRangeMenu() {
+        viewButton.setAttribute('aria-expanded', 'true');
+        global.LivologUI.openMenu(
+            viewButton,
+            RANGES.map(function (value) {
+                return {
+                    value: value,
+                    label: t('time.range.' + value),
+                    selected: value === range
+                };
+            }),
+            function (value) {
+                renderViewBar();
+                if (value !== range) {
+                    var from = RANGES.indexOf(range);
+                    var to = RANGES.indexOf(value);
+                    range = value;
+                    renderList(global.LivologStore.getBehavior(currentId));
+                    global.LivologUI.animateEnter(listEl, to >= from ? 1 : -1);
                 }
-                if (global.LivologUI.isSelecting()) {
-                    global.LivologUI.toggleSelection(record.id);
-                    return;
-                }
-                // 与时间页一致：普通点击即可修改这条记录
-                global.LivologTimePage.openForm(record);
-            });
+            }
+        );
+    }
 
-            listEl.appendChild(card);
+    /** 一条记录的卡片 */
+    function buildRecordCard(behavior, record) {
+        var card = global.LivologUI.el('li', 'card');
+        card.dataset.id = record.id;
+        card.appendChild(global.LivologUI.icon(behavior.icon, 'card-icon'));
+        card.appendChild(global.LivologTimePage.cardBody(behavior.name, record.note));
+
+        var time = global.LivologUI.el('span', 'card-time');
+        time.appendChild(global.LivologUI.el(
+            'span', 'card-time-date', global.LivologTimePage.dateLine(record)
+        ));
+        time.appendChild(global.LivologUI.el(
+            'span', 'card-time-clock', global.LivologTimePage.clockLine(record)
+        ));
+        card.appendChild(time);
+
+        if (global.LivologUI.isSelected(record.id)) {
+            card.classList.add('is-selected');
+        }
+
+        global.LivologUI.attachLongPress(card, function () {
+            global.LivologUI.startSelection(record.id);
         });
+
+        card.addEventListener('click', function () {
+            if (global.LivologUI.justLongPressed()) {
+                return;
+            }
+            if (global.LivologUI.isSelecting()) {
+                global.LivologUI.toggleSelection(record.id);
+                return;
+            }
+            // 与时间页一致：普通点击即可修改这条记录
+            global.LivologTimePage.openForm(record);
+        });
+
+        return card;
     }
 
     // --- 统计视图 -----------------------------------------------------------
@@ -389,7 +465,7 @@
         menuBtn.setAttribute('aria-expanded', 'true');
         global.LivologUI.openMenu(menuBtn, [
             { value: 'rename', label: t('behavior.menu.rename') },
-            { value: 'delete', label: t('behavior.menu.delete') }
+            { value: 'delete', label: t('behavior.menu.delete'), danger: true }
         ], function (value) {
             menuBtn.setAttribute('aria-expanded', 'false');
             if (value === 'rename') {

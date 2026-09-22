@@ -357,7 +357,9 @@
      */
     function createIconPicker(mount) {
         var names = global.LivologIcons.names();
-        var selected = names[0];
+        // 默认选中「常用」里的第一个，而不是整表第一个（整表第一个未必常用）
+        var favorite = global.LivologIcons.namesIn('favorite');
+        var selected = favorite.length ? favorite[0] : names[0];
 
         mount.innerHTML = '';
 
@@ -404,8 +406,33 @@
         toolbar.appendChild(closeButton);
         panel.appendChild(toolbar);
 
-        var grid = el('div', 'icon-grid');
-        names.forEach(function (name) {
+        // --- 搜索栏 ---------------------------------------------------------
+        // 中英文都能搜（关键词表在 icons.js 的 kw 里），输入即过滤。
+        var searchBar = el('div', 'icon-search');
+        var searchInput = document.createElement('input');
+        searchInput.className = 'icon-search-input';
+        searchInput.type = 'search';
+        searchInput.autocomplete = 'off';
+        searchInput.setAttribute('data-i18n-placeholder', 'icon.search');
+        searchInput.placeholder = t('icon.search');
+        searchBar.appendChild(searchInput);
+        var searchClear = el('button', 'icon-button icon-search-clear');
+        searchClear.type = 'button';
+        searchClear.setAttribute('aria-label', t('action.clear'));
+        searchClear.hidden = true;
+        searchClear.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+            '<path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>' +
+            '</svg>';
+        searchBar.appendChild(searchClear);
+        panel.appendChild(searchBar);
+
+        // --- 分类 + 图标 ----------------------------------------------------
+        // 骨架一次建好，之后只切 hidden，不重建 DOM。
+        var bodyEl = el('div', 'icon-body');
+        var categoryEls = [];
+
+        /** 一个图标按钮（分类视图与搜索结果共用，行为一致） */
+        function makeOption(name) {
             var button = el('button', 'icon-option');
             button.type = 'button';
             button.dataset.icon = name;
@@ -415,9 +442,92 @@
                 select(name);
                 close();
             });
-            grid.appendChild(button);
+            return button;
+        }
+
+        global.LivologIcons.categories().forEach(function (category) {
+            var members = global.LivologIcons.namesIn(category.id);
+            if (!members.length) {
+                return;
+            }
+
+            var section = el('div', 'icon-category');
+            section.dataset.category = category.id;
+
+            var head = el('button', 'icon-category-head');
+            head.type = 'button';
+            head.appendChild(el('span', 'icon-category-chevron')).innerHTML =
+                '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+                '<path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/></svg>';
+            head.appendChild(el('span', 'icon-category-title', t(category.label)));
+            head.appendChild(el('span', 'icon-category-count', String(members.length)));
+            section.appendChild(head);
+
+            var grid = el('div', 'icon-grid');
+            members.forEach(function (name) {
+                grid.appendChild(makeOption(name));
+            });
+            section.appendChild(grid);
+
+            // 折叠状态：只有「常用」默认展开
+            var opened = !!category.defaultOpen;
+            var apply = function () {
+                grid.hidden = !opened;
+                head.setAttribute('aria-expanded', opened ? 'true' : 'false');
+                section.classList.toggle('is-collapsed', !opened);
+            };
+            apply();
+
+            head.addEventListener('click', function () {
+                opened = !opened;
+                apply();
+            });
+
+            bodyEl.appendChild(section);
+            categoryEls.push({
+                id: category.id,
+                section: section,
+                head: head,
+                grid: grid
+            });
         });
-        panel.appendChild(grid);
+        panel.appendChild(bodyEl);
+
+        // 搜索结果区（搜索时替掉分类视图）
+        var resultsEl = el('div', 'icon-results');
+        var resultsGrid = el('div', 'icon-grid');
+        resultsEl.appendChild(resultsGrid);
+        var emptyEl = el('p', 'icon-results-empty', t('icon.searchEmpty'));
+        emptyEl.hidden = true;
+        resultsEl.appendChild(emptyEl);
+        resultsEl.hidden = true;
+        panel.appendChild(resultsEl);
+
+        function setQuery(query) {
+            var text = String(query || '').trim();
+            searchClear.hidden = !text;
+            bodyEl.hidden = !!text;
+            resultsEl.hidden = !text;
+            if (!text) {
+                return;
+            }
+            // 每次重新建按钮（结果通常很少，重建比同步两份列表简单）
+            resultsGrid.innerHTML = '';
+            var hits = global.LivologIcons.search(text);
+            hits.forEach(function (name) {
+                resultsGrid.appendChild(makeOption(name));
+            });
+            emptyEl.hidden = hits.length > 0;
+        }
+
+        searchInput.addEventListener('input', function () {
+            setQuery(searchInput.value);
+        });
+        searchClear.addEventListener('click', function () {
+            searchInput.value = '';
+            setQuery('');
+            searchInput.focus();
+        });
 
         // 遮罩：面板是居中对话框，后面压一层暗底才看得出「这是个模态」。
         // ⚠️ 挂在 #app 上、用 position: fixed —— 面板要盖住整个视窗，
@@ -430,15 +540,22 @@
 
         function reflect() {
             trigger.replaceChild(icon(selected, 'icon-trigger-icon'), trigger.firstChild);
-            Array.prototype.forEach.call(grid.children, function (button) {
-                button.classList.toggle('is-selected', button.dataset.icon === selected);
-            });
+            // 分类视图与搜索结果里的按钮都要跟着高亮
+            Array.prototype.forEach.call(
+                panel.querySelectorAll('.icon-option'),
+                function (button) {
+                    button.classList.toggle('is-selected', button.dataset.icon === selected);
+                }
+            );
         }
 
         function open() {
             place();
             scrim.hidden = false;
             panel.hidden = false;
+            // 每次打开都清掉上次的搜索词，回到分类视图
+            searchInput.value = '';
+            setQuery('');
             // 下一帧再加 is-open，让透明度过渡能跑起来
             requestAnimationFrame(function () {
                 scrim.classList.add('is-open');
@@ -446,10 +563,7 @@
             });
             trigger.setAttribute('aria-expanded', 'true');
             // 选中的那个滚进可视区
-            var active = null;
-            Array.prototype.forEach.call(grid.children, function (button) {
-                if (button.dataset.icon === selected) active = button;
-            });
+            var active = panel.querySelector('.icon-option.is-selected');
             if (active && active.scrollIntoView) {
                 active.scrollIntoView({ block: 'center' });
             }
@@ -464,7 +578,7 @@
         }
 
         function select(name) {
-            if (names.indexOf(name) < 0) {
+            if (!global.LivologIcons.has(name)) {
                 return;
             }
             selected = name;
@@ -482,11 +596,23 @@
         // 点遮罩关闭
         scrim.addEventListener('click', close);
 
-        // 切语言时「选择图标」与关闭按钮的无障碍文案要跟着变
+        // 切语言时面板里的文案要跟着变（分类名 / 搜索框 / 空态提示）
         if (global.LivologI18n) {
             global.LivologI18n.onChange(function () {
                 panel.querySelector('.icon-panel-title').textContent = t('icon.pick');
                 closeButton.setAttribute('aria-label', t('action.close'));
+                searchClear.setAttribute('aria-label', t('action.clear'));
+                emptyEl.textContent = t('icon.searchEmpty');
+                global.LivologIcons.categories().forEach(function (category) {
+                    categoryEls.forEach(function (entry) {
+                        if (entry.id === category.id) {
+                            var title = entry.section.querySelector('.icon-category-title');
+                            if (title) {
+                                title.textContent = t(category.label);
+                            }
+                        }
+                    });
+                });
             });
         }
 
@@ -797,7 +923,8 @@
     /**
      * 在 anchor 下方弹出菜单。
      * @param {Element} anchor
-     * @param {Array<{value:string,label:string,selected?:boolean}>} items
+     * @param {Array<{value:string,label:string,selected?:boolean,danger?:boolean}>} items
+     *        danger = 破坏性操作（删除等），文字标红
      * @param {(value:string)=>void} onSelect
      */
     function openMenu(anchor, items, onSelect) {
@@ -812,6 +939,9 @@
             button.setAttribute('role', 'menuitem');
             if (item.selected) {
                 button.classList.add('is-selected');
+            }
+            if (item.danger) {
+                button.classList.add('is-danger');
             }
             button.addEventListener('click', function () {
                 closeMenu();

@@ -258,20 +258,10 @@
         return li;
     }
 
-    /**
-     * 按天排列记录：换一天就在前面插一条日期标记。
-     * 顶部已经有「年 / 月 / 周」分区了，这里只做同一分区内部的天与天的分隔。
-     */
+    /** 时间页的记录列表：按 .start 分天（复用共用的 appendRecordCards） */
     function appendRecords(container, records) {
-        var lastDay = null;
-
-        records.forEach(function (record) {
-            var day = global.LivologDateTime.startOfDay(record.start);
-            if (day !== lastDay) {
-                lastDay = day;
-                container.appendChild(dayMark(day));
-            }
-            container.appendChild(recordCard(record));
+        appendRecordCards(container, records, recordCard, function (record) {
+            return record.start;
         });
     }
 
@@ -280,6 +270,31 @@
         var text = global.LivologDateTime.formatDate(day) + ', ' +
             t('weekday.' + new Date(day).getDay());
         return global.LivologUI.el('li', 'day-mark', text);
+    }
+
+    /**
+     * 按天排列卡片：换一天就在前面插一条日期标记。
+     * 时间页与行为 / 跟踪详情页共用（三处的记录视图长得一样）。
+     *
+     * @param {HTMLElement} container
+     * @param {Array<{time: number}>} entries 已按时间**降序**排好的条目
+     * @param {(entry: object) => HTMLElement} buildCard 造一张卡片
+     * @param {(entry: object) => number} [timeOf] 取时间戳，默认取 entry.time
+     */
+    function appendRecordCards(container, entries, buildCard, timeOf) {
+        var at = timeOf || function (entry) {
+            return entry.time;
+        };
+        var lastDay = null;
+
+        entries.forEach(function (entry) {
+            var day = global.LivologDateTime.startOfDay(at(entry));
+            if (day !== lastDay) {
+                lastDay = day;
+                container.appendChild(dayMark(day));
+            }
+            container.appendChild(buildCard(entry));
+        });
     }
 
     /**
@@ -717,6 +732,9 @@
         // 行为详情页复用同一套时间格式化 / 卡片结构
         dateLine: dateLine,
         clockLine: clockLine,
-        cardBody: cardBody
+        cardBody: cardBody,
+        // 详情页的记录视图也按天分隔（与时间页同一个实现）
+        dayMark: dayMark,
+        appendRecordCards: appendRecordCards
     };
 })(window);

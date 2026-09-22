@@ -305,6 +305,19 @@
                 data-i18n="view.stats">Stats</button>
         </nav>
 
+        <!-- 记录视图的范围栏：与时间页同一个结构（左名称、右图标按钮） -->
+        <div class="view-bar" id="detail-view-bar">
+            <span class="view-current" id="detail-view-current">All</span>
+            <button class="icon-button" type="button" id="detail-view-button" aria-haspopup="menu"
+                aria-expanded="false" aria-label="Switch view" data-i18n-aria-label="view.switch">
+                <!-- Google Material Icons: view_list -->
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path
+                        d="M3,14h4v-4H3V14z M3,19h4v-4H3V19z M3,9h4V5H3V9z M8,14h13v-4H8V14z M8,19h13v-4H8V19z M8,5v4h13V5H8z" />
+                </svg>
+            </button>
+        </div>
+
         <div class="detail-body">
             <ul class="card-list" id="detail-list"></ul>
         </div>
@@ -341,6 +354,20 @@
             <button class="seg-nav-item" type="button" data-view="stats" aria-selected="false"
                 data-i18n="view.stats">Stats</button>
         </nav>
+
+        <!-- 记录视图的范围栏：与时间页同一个结构（左名称、右图标按钮） -->
+        <div class="view-bar" id="metric-detail-view-bar">
+            <span class="view-current" id="metric-detail-view-current">All</span>
+            <button class="icon-button" type="button" id="metric-detail-view-button"
+                aria-haspopup="menu" aria-expanded="false" aria-label="Switch view"
+                data-i18n-aria-label="view.switch">
+                <!-- Google Material Icons: view_list -->
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path
+                        d="M3,14h4v-4H3V14z M3,19h4v-4H3V19z M3,9h4V5H3V9z M8,14h13v-4H8V14z M8,19h13v-4H8V19z M8,5v4h13V5H8z" />
+                </svg>
+            </button>
+        </div>
 
         <div class="detail-body">
             <ul class="card-list" id="metric-detail-list"></ul>
@@ -412,9 +439,10 @@
                 data-i18n-placeholder="metric.form.namePlaceholder" placeholder="e.g. Weight" />
         </div>
 
-        <!-- 字段：一个值一行，比如血压的 高压 / 低压 / 脉搏 -->
-        <div class="form-block">
-            <span class="form-label" data-i18n="metric.form.fields">Fields</span>
+        <!-- 项目：一个值一行，比如血压的 高压 / 低压 / 脉搏。
+             标题样式与上面 Name 一致（同一个 .form-label，不再挂 .form-block 的缩小版） -->
+        <div class="form-block form-block-items">
+            <span class="form-label" data-i18n="metric.form.items">Items</span>
             <div id="metric-fields"></div>
         </div>
 
