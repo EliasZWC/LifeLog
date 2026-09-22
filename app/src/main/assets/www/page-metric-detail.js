@@ -54,8 +54,8 @@
 
     var DAY_MS = 24 * 60 * 60 * 1000;
 
-    /** 统计视图的选项：时间区间；每次打开详情页重置（图类型固定为折线图） */
-    var stats = { range: null };
+    /** 统计视图的选项：时间区间 + 看哪几个项目；每次打开详情页重置（图类型固定折线图） */
+    var stats = { range: null, series: [] };
 
     var group = null;
     var editingRecordId = null;
@@ -154,7 +154,7 @@
         currentId = id;
         currentView = DEFAULT_VIEW;
         range = 'all';
-        stats = { range: null };
+        stats = { range: null, series: [] };
 
         // 这一页自己当多选目标（长按卡片 → 顶部操作栏 → 删除）
         global.LivologUI.bindSelection(selection);
@@ -412,6 +412,41 @@
         return SERIES_DASHES[index % SERIES_DASHES.length];
     }
 
+    /**
+     * 图内图例：每条线一个「线型样例 + 项目名」，画在图表块里、图的下面。
+     * 线型样例要和真正的线一致（同一个 dash），否则图例没意义。
+     */
+    function buildLegend(metric, chosen) {
+        var legend = global.LivologUI.el('div', 'chart-legend');
+        chosen.forEach(function (field) {
+            var index = metric.fields.indexOf(field);
+            var dash = dashOf(index < 0 ? 0 : index);
+
+            var entry = global.LivologUI.el('span', 'chart-legend-entry');
+            var swatch = document.createElementNS(
+                'http://www.w3.org/2000/svg', 'svg'
+            );
+            swatch.setAttribute('class', 'chart-legend-swatch');
+            swatch.setAttribute('viewBox', '0 0 24 8');
+            swatch.setAttribute('aria-hidden', 'true');
+            var line = document.createElementNS(
+                'http://www.w3.org/2000/svg', 'line'
+            );
+            line.setAttribute('x1', '0');
+            line.setAttribute('y1', '4');
+            line.setAttribute('x2', '24');
+            line.setAttribute('y2', '4');
+            if (dash) {
+                line.setAttribute('stroke-dasharray', dash);
+            }
+            swatch.appendChild(line);
+            entry.appendChild(swatch);
+            entry.appendChild(global.LivologUI.el('span', 'chart-legend-name', field.name));
+            legend.appendChild(entry);
+        });
+        return legend;
+    }
+
     function renderStats(metric) {
         var all = global.LivologMetrics.getRecords(metric.id);
         if (!all.length) {
@@ -431,6 +466,17 @@
         });
 
         /*
+           只画「选中的项目」；一个都没选（stats.series 为空数组）= 全部。
+           图例直接画在图里（图内左上角），不单独占一行。
+        */
+        var chosen = fields.filter(function (field) {
+            return !stats.series.length || stats.series.indexOf(field.id) >= 0;
+        });
+        if (!chosen.length) {
+            chosen = fields.slice();
+        }
+
+        /*
            每个项目一条折线：把该项目「有记录」的日子按时间归到每天，再交给
            LivologChart.buildMulti 一次画出来，用线型区分项目。
            某个项目某天没值 → 那天的点标记为 has:false，折线跨过去（不断线）。
@@ -448,7 +494,7 @@
             return a - b;
         });
 
-        var series = fields.map(function (field, index) {
+        var series = chosen.map(function (field) {
             // 每天取该项目当天的最后一个值（同一天记多次就取最后的）
             var byDay = {};
             records.forEach(function (record) {
@@ -459,9 +505,11 @@
                 var day = global.LivologDateTime.startOfDay(record.time);
                 byDay[day] = value;
             });
+            // 线型按「在跟踪项字段里的位置」定，这样取消/勾选项目时同一个项目的线型不变
+            var index = metric.fields.indexOf(field);
             return {
                 name: field.name,
-                dash: dashOf(index),
+                dash: dashOf(index < 0 ? 0 : index),
                 points: dayList.map(function (day) {
                     var has = Object.prototype.hasOwnProperty.call(byDay, day);
                     return { day: day, value: has ? byDay[day] : 0, has: has };
@@ -485,17 +533,17 @@
             },
             // 统一用折线图，所以不再给「图类型」这一行
             lockChartType: true,
-            // 多项目时给一行图例（线型样例 + 项目名）
-            getFields: function () {
+            // 第一行：选看哪几个项目（多项目才显示）
+            getSeries: function () {
                 return fields.length > 1 ? fields : null;
             },
-            getDashes: function () {
-                return fields.map(function (field, index) {
-                    return dashOf(index);
-                });
+            getSelectedSeries: function () {
+                return stats.series;
             },
             onChange: function (key, value) {
-                if (key !== 'field' && key !== 'chartType') {
+                if (key === 'series') {
+                    stats.series = value;
+                } else if (key !== 'field' && key !== 'chartType') {
                     stats.range = normalizeRange(stats.range, key, value);
                 }
                 refresh();
@@ -510,11 +558,15 @@
         chartBlock.appendChild(global.LivologChart.buildMulti(days, series, {
             // 气泡里每行一个项目：写「项目名 值」，多项目时才带名字
             format: function (value, name) {
-                return fields.length > 1 && name
+                return chosen.length > 1 && name
                     ? name + ' ' + formatValue(value)
                     : formatValue(value);
             }
         }));
+        // 图例画在图里面（图下方），不再单独占工具栏一行
+        if (chosen.length > 1) {
+            chartBlock.appendChild(buildLegend(metric, chosen));
+        }
         wrap.appendChild(chartBlock);
 
         // 统计信息只针对「主项目」（多项目量纲不同，混在一起算没有意义）
@@ -579,7 +631,8 @@
         var at = editingRecordId ? record.time : Date.now();
 
         recordFields.innerHTML = '';
-        group = global.LivologDateTime.buildGroup(null, at, validateRecord);
+        // 时间只有「什么时候记的」一种含义，给个提示文字与下面的字段标签对齐
+        group = global.LivologDateTime.buildGroup(t('time.form.happen'), at, validateRecord);
         recordFields.appendChild(group.root);
 
         // 每个字段一块「标签 + 输入框」，上下排：

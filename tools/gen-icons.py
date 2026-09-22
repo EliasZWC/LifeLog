@@ -7,6 +7,7 @@
 用法：python tools/gen-icons.py
 """
 import re
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -15,11 +16,29 @@ TOOLS = ROOT / "tools"
 OLD = (WWW / "icons.js").read_text(encoding="utf-8")
 
 PATHS = {}
-# 旧文件里是 JS 对象字面量：name: '<path...>',（最后一项可能没逗号）
-for m in re.finditer(r"^\s{8}([a-z_0-9]+):\s*'(<.*?>)',?\s*$", OLD, re.M):
+# 旧文件里是对象字面量：
+#     name: {
+#         cat: 'sport',
+#         kw: '...',
+#         path: '<path .../>'
+#     },
+# （kw 里可能带中文，别用 \S 之类的假设；path 允许跨行用 .*? 匹配）
+OLD_ENTRY = re.compile(
+    r"^\s{8}([a-z_0-9]+):\s*\{\s*\n"
+    r"\s*cat:\s*'[^']*',\s*\n"
+    r"\s*kw:\s*'[^']*',\s*\n"
+    r"\s*path:\s*'(<.*?>)',?\s*\n"
+    r"\s*\},",
+    re.M,
+)
+for m in OLD_ENTRY.finditer(OLD):
     PATHS[m.group(1)] = m.group(2)
 
-for fname in ("_new.txt", "_new2.txt"):
+# 兜底：也接受「name: '<path>'」这种简单写法
+for m in re.finditer(r"^\s{8}([a-z_0-9]+):\s*'(<.*?>)',?\s*$", OLD, re.M):
+    PATHS.setdefault(m.group(1), m.group(2))
+
+for fname in ("_new.txt", "_new2.txt", "_new3.txt"):
     p = TOOLS / fname
     if not p.exists():
         continue
@@ -35,8 +54,6 @@ for fname in ("_new.txt", "_new2.txt"):
 GROUPS = [
     ("sport", [
         ("directions_run", "running jog 跑步 运动"),
-        ("directions_walk", "walking 走路 散步 步行"),
-        ("directions_bike", "cycling bike 骑车 自行车"),
         ("hiking", "hiking 徒步 登山 爬山"),
         ("rowing", "rowing 划船 赛艇"),
         ("pool", "swimming pool 游泳 泳池"),
@@ -66,7 +83,11 @@ GROUPS = [
     ("health", [
         ("local_hospital", "hospital 医院 就医"),
         ("medical_services", "medical first aid 医疗 急救 药箱"),
-        ("medication", "medicine pill 吃药 药 药丸 药片"),
+        ("cardiology", "heart pulse ecg 心脏 心电图 心率 心血管"),
+        ("genetics", "dna gene 基因 遗传 化验"),
+        ("pill", "medicine pill capsule 药 药丸 药片 吃药"),
+        ("syringe", "injection shot needle 打针 注射 针管"),
+        ("medication", "medicine 吃药 药 药瓶"),
         ("medication_liquid", "medicine liquid syrup 药水 糖浆 药"),
         ("vaccines", "vaccine injection 疫苗 打针 注射"),
         ("bloodtype", "blood 血型 抽血 血液"),
@@ -93,32 +114,38 @@ GROUPS = [
         ("flight", "flight plane 飞机 航班 出行"),
         ("hotel", "hotel sleep 住宿 酒店 旅馆"),
     ]),
-    ("work", [
+    ("study", [
         ("school", "school study 上学 学习 学校"),
         ("book", "book read 看书 读书 阅读"),
+        ("book_4", "book read notebook 书本 读书 阅读 教材"),
         ("library_books", "books library 图书 图书馆 阅读"),
-        ("work", "work briefcase 工作 上班 公文包"),
-        ("computer", "computer desktop 电脑 台式机 办公"),
         ("psychology", "psychology brain 心理 思考 脑力"),
         ("translate", "translate language 翻译 语言 外语"),
+    ]),
+    ("work", [
+        ("work", "work briefcase 工作 上班 公文包"),
+        ("computer", "computer desktop 电脑 台式机 办公"),
         ("description", "document note 文档 文件 笔记"),
         ("edit", "edit write 写作 编辑 笔记"),
         ("bookmarks", "bookmark save 书签 收藏 标记"),
+        ("call", "call phone 电话 打电话"),
+        ("email", "email mail 邮件 邮箱"),
+        ("star", "star 星标 星星 收藏 标记"),
     ]),
-    ("life", [
-        ("home", "home house 家 在家 房子"),
-        ("cleaning_services", "cleaning 打扫 清洁 家务"),
-        ("wash", "wash 洗衣 洗涤 洗澡"),
-        ("local_laundry_service", "laundry washer 洗衣机 洗衣"),
-        ("shopping_cart", "shopping cart 购物 买菜 超市"),
-        ("shopping_bag", "shopping bag 购物 买东西 逛街"),
-        ("savings", "savings money piggy 存钱 储蓄 理财"),
-        ("attach_money", "money 钱 花费 记账"),
-        ("pets", "pet dog cat 宠物 猫 狗"),
-        ("people", "people friends 朋友 社交 聚会"),
-        ("face", "face 面部 护肤 脸"),
-        ("alarm", "alarm clock 闹钟 定时 提醒"),
-        ("bolt", "bolt lightning 闪电 打雷 电"),
+    ("daily", [
+        ("home", "home house 家 在家 房子 日常 daily"),
+        ("cleaning_services", "cleaning 打扫 清洁 家务 日常 daily"),
+        ("wash", "wash 洗衣 洗涤 洗澡 日常 daily"),
+        ("local_laundry_service", "laundry washer 洗衣机 洗衣 日常 daily"),
+        ("shopping_cart", "shopping cart 购物 买菜 超市 日常 daily"),
+        ("shopping_bag", "shopping bag 购物 买东西 逛街 日常 daily"),
+        ("savings", "savings money piggy 存钱 储蓄 理财 日常 daily"),
+        ("attach_money", "money 钱 花费 记账 日常 daily"),
+        ("pets", "pet dog cat 宠物 猫 狗 日常 daily"),
+        ("people", "people friends 朋友 社交 聚会 日常 daily"),
+        ("face", "face 面部 护肤 脸 日常 daily"),
+        ("alarm", "alarm clock 闹钟 定时 提醒 日常 daily"),
+        ("bolt", "bolt lightning 闪电 打雷 电 日常 daily"),
     ]),
     ("play", [
         ("music_note", "music 音乐 听歌"),
@@ -130,18 +157,15 @@ GROUPS = [
         ("mood", "mood happy 心情 情绪 开心"),
     ]),
     ("other", [
-        ("star", "star 星标 收藏 标记"),
-        ("call", "call phone 电话 打电话"),
-        ("email", "email mail 邮件 邮箱"),
+        ("directions_walk", "walking 走路 散步 步行"),
+        ("directions_bike", "cycling bike 骑车 自行车"),
     ]),
 ]
 
 FAVORITES = [
-    "hotel", "restaurant", "local_cafe", "directions_run", "directions_walk",
-    "directions_bike", "fitness_center", "book", "work", "computer",
-    "bedtime", "water_drop", "medication", "monitor_weight", "favorite",
-    "home", "cleaning_services", "shopping_cart", "music_note", "movie",
-    "smartphone", "people", "edit", "star",
+    "hotel", "restaurant", "local_cafe", "directions_run", "fitness_center",
+    "book", "work", "computer", "pill", "monitor_weight",
+    "favorite", "shopping_cart", "people", "star",
 ]
 
 HEADER = '''/**
@@ -154,6 +178,11 @@ HEADER = '''/**
  *   - cat : 归属分类（图标选择器按它折叠分组）
  *   - kw  : 搜索关键词，中英双语、空格分隔（英文图标名本身不用写，搜索时自动带上）
  *   - path: 绘图内容
+ *
+ * ⚠️ 两套官方图标的坐标系不同，这里已统一到 24 网格：
+ *    - 旧版 material-design-icons src/<cat>/<name>/materialicons/24px.svg 本身就是 0 0 24 24
+ *    - 新版 Material Symbols symbols/web/<name>/materialsymbolsoutlined/<name>_24px.svg
+ *      是 0 -960 960 960，由 tools/fetch-symbols.py 包一层 <g transform> 换算过来
  *
  * ⚠️「常用」（favorite）是**虚拟分类**：成员从各分类里挑，所以会和归属分类重叠；
  *    除此之外任何两个分类都不共享图标（一个图标只有一个 cat）。
@@ -170,8 +199,9 @@ HEADER = '''/**
         { id: 'food', label: 'icon.category.food' },
         { id: 'health', label: 'icon.category.health' },
         { id: 'transport', label: 'icon.category.transport' },
+        { id: 'study', label: 'icon.category.study' },
         { id: 'work', label: 'icon.category.work' },
-        { id: 'life', label: 'icon.category.life' },
+        { id: 'daily', label: 'icon.category.daily' },
         { id: 'play', label: 'icon.category.play' },
         { id: 'other', label: 'icon.category.other' }
     ];
@@ -256,7 +286,35 @@ TAIL = '''    var FALLBACK = 'star';
 '''
 
 
+def check():
+    """写文件前先自查：重名、favorite 指向不存在的图标、分类之间重叠。"""
+    seen = {}
+    problems = []
+
+    for cat, items in GROUPS:
+        for name, _kw in items:
+            if name in seen:
+                problems.append("图标 %s 同时出现在 %s 和 %s" % (name, seen[name], cat))
+            seen[name] = cat
+            if name not in PATHS:
+                problems.append("图标 %s 缺少绘制数据（先跑 fetch 脚本）" % name)
+
+    for name in FAVORITES:
+        if name not in seen:
+            problems.append("常用里的 %s 不在任何分类中" % name)
+
+    # favorite 是虚拟分类，允许与归属分类重叠；其余分类两两不许重叠（上面 seen 已保证）
+    if len(FAVORITES) != len(set(FAVORITES)):
+        problems.append("常用列表里有重复项")
+
+    if problems:
+        for p in problems:
+            print("  ! " + p, file=sys.stderr)
+        raise SystemExit("图标自查未通过，已中止")
+
+
 def main():
+    check()
     lines = [HEADER]
     total = 0
     for cat, items in GROUPS:

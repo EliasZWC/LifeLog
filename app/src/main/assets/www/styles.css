@@ -52,6 +52,8 @@
     --nav-inactive: #8C8C8A;
     /* 破坏性操作（删除等）专用：整站黑白，只有这里破例用红 */
     --danger: #B3261E;
+    /* 确认操作专用：与 --danger 同一色系（同明度、同饱和度水平）的绿 */
+    --success: #1F6B3A;
 
     /* 悬浮按钮 / 主按钮：反色，跟随当前主题最强的前景色 */
     --fab-bg: var(--nav-active);
@@ -79,6 +81,7 @@
         --nav-active: #F2F2F0;
         --nav-inactive: #7E7E7C;
         --danger: #F2B8B5;
+        --success: #A9E5BC;
     }
 }
 
@@ -94,6 +97,7 @@
     --nav-active: #F2F2F0;
     --nav-inactive: #7E7E7C;
     --danger: #F2B8B5;
+    --success: #A9E5BC;
 }
 
 /* 让原生表单控件（如下拉框）的配色也跟随手动主题 */
@@ -829,8 +833,9 @@ body {
     opacity: 0.55;
 }
 
+/* 确认按钮：用与「删除」红色同色系的绿（用户 2026-09-22 要求） */
 .btn-primary {
-    color: var(--nav-active);
+    color: var(--success);
 }
 
 .btn:disabled {
@@ -1212,6 +1217,9 @@ body {
     align-items: center;
     gap: 2px;
     font-variant-numeric: tabular-nums;
+    /* 用户要求：填时间的值靠右；左侧的提示文字（开始 / 结束 / Happen）仍然靠左。
+       这里把整行推到自己那一侧的右端（.datetime-group 是 flex 行）。 */
+    margin-left: auto;
 }
 
 .datetime-sep {
@@ -1606,25 +1614,21 @@ body {
 
 /*
    多序列折线图：所有线同色，靠 `stroke-dasharray` 区分。
-   ⚠️ 线型不在这里定义 —— 它由 chart.js 的 SERIES_DASHES 用**行内属性**给出，
+   ⚠️ 线型不在这里定义 —— 它由 page-metric-detail.js 的 SERIES_DASHES 用**行内属性**给出，
       图例的样例线也读同一份数据，两边永远一致（CSS 里再抄一份会不同步）。
    主题是黑白的，用颜色区分会破坏约定，所以只用线型。
 */
 
-/* 图例：线型样例 + 项目名（多项目跟踪时显示） */
-.stats-legend-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-}
-
-.stats-legend {
+/* 图例：画在图表块里、图的下方（用户要求图例不要单独占工具栏一行） */
+.chart-legend {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 6px 14px;
+    padding-top: 2px;
 }
 
-.stats-legend-entry {
+.chart-legend-entry {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -1632,20 +1636,20 @@ body {
     color: var(--on-surface-variant);
 }
 
-.stats-legend-swatch {
+.chart-legend-swatch {
     flex: 0 0 auto;
     width: 26px;
     height: 8px;
     overflow: visible;
 }
 
-.stats-legend-swatch line {
+.chart-legend-swatch line {
     stroke: var(--on-surface);
     stroke-width: 2;
     stroke-linecap: round;
 }
 
-.stats-legend-name {
+.chart-legend-name {
     white-space: nowrap;
 }
 

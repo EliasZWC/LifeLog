@@ -35,18 +35,59 @@
      * @param {object} config
      *   getChartType: () => 'bar' | 'line'
      *   getRange:     () => {start: number, end: number}
-     *   onChange:     (key: 'chartType'|'start'|'end'|'field', value) => void
-     *   getFields?:   () => [{id, name}] | null   多项目时多一行「图例」（单项目传 null）
-     *   getFieldId?:  () => string
-     *   lockChartType?: boolean   true 则不显示「图类型」那一行（只有折线图这一种）
-     *   getDashes?:   () => string[]  与 fields 一一对应的线型（dasharray）
+     *   onChange:     (key: 'chartType'|'start'|'end'|'series', value) => void
+     *   getSeries?:   () => [{id, name}] | null
+     *                 多项目跟踪时用来选「看哪几个项目」；单选时传 null
+     *   getSelectedSeries?: () => string[]   当前选中的项目 id（空数组 = 全部）
+     *   lockChartType?: boolean  true 则不显示「图类型」行（只有折线图这一种）
      * @returns {{root: HTMLElement, refresh: () => void}}
      */
     function build(config) {
         var list = global.LivologUI.el('ul', 'setting-list stats-options');
         var chartValue = global.LivologUI.el('span', 'setting-value');
 
-        // 图类型：只有确实支持多种时才给这一行
+        /*
+           多项目跟踪：第一行是「选哪几个项目」，默认全部。
+           可多选 —— 点一下只在/取消该项目；全部取消就回到「全部」。
+           （用户 2026-09-22 明确要求：项目放第一个，range 放第二个。）
+        */
+        var series = config.getSeries ? config.getSeries() : null;
+        var seriesValue = global.LivologUI.el('span', 'setting-value');
+        if (series && series.length > 1) {
+            list.appendChild(row(t('stats.series'), seriesValue,
+                function (anchor) {
+                    anchor.setAttribute('aria-expanded', 'true');
+                    var selected = config.getSelectedSeries ? config.getSelectedSeries() : [];
+                    var all = !selected.length;
+                    var items = [{ value: '__all__', label: t('stats.series.all'), selected: all }];
+                    series.forEach(function (entry) {
+                        items.push({
+                            value: entry.id,
+                            label: entry.name,
+                            selected: !all && selected.indexOf(entry.id) >= 0
+                        });
+                    });
+                    global.LivologUI.openMenu(anchor, items, function (value) {
+                        anchor.setAttribute('aria-expanded', 'false');
+                        var next;
+                        if (value === '__all__') {
+                            next = [];
+                        } else if (all) {
+                            // 从「全部」点某一项 → 只看这一项
+                            next = [value];
+                        } else if (selected.indexOf(value) >= 0) {
+                            next = selected.filter(function (id) {
+                                return id !== value;
+                            });
+                        } else {
+                            next = selected.concat([value]);
+                        }
+                        config.onChange('series', next);
+                    });
+                }));
+        }
+
+        // 图类型：只有确实支持多种时才给这一行（跟踪统计固定折线图，不给）
         if (!config.lockChartType) {
             list.appendChild(row(t('stats.chartType'), chartValue, function (anchor) {
                 anchor.setAttribute('aria-expanded', 'true');
@@ -79,23 +120,6 @@
         rangeItem.appendChild(rangeValues);
         list.appendChild(rangeItem);
 
-        /*
-           多项目跟踪（比如血压）不再让人「选看哪个值」，而是一次把每个项目都画成一条线，
-           靠**线型**区分。这里放一个图例：线型样例 + 项目名。
-           单项目时不需要图例（只有一条实线）。
-        */
-        var fields = config.getFields ? config.getFields() : null;
-        var legendEl = null;
-        if (fields && fields.length) {
-            var legendItem = global.LivologUI.el('li', 'setting-item stats-legend-item');
-            legendItem.appendChild(
-                global.LivologUI.el('span', 'setting-label', t('stats.legend'))
-            );
-            legendEl = global.LivologUI.el('div', 'stats-legend');
-            legendItem.appendChild(legendEl);
-            list.appendChild(legendItem);
-        }
-
         // 两个时间各自可点，点了打开自己的日期选择
         function timeButton(titleKey, key) {
             var button = global.LivologUI.el('button', 'stats-range-time');
@@ -112,36 +136,22 @@
             return button;
         }
 
-        /** 图例：每条线一个「线型样例 + 名称」 */
-        function renderLegend() {
-            if (!legendEl) {
-                return;
+        /** 第一行的值：显示「全部」或选中的项目名（逗号分隔） */
+        function seriesLabel() {
+            if (!series || series.length <= 1) {
+                return '';
             }
-            var dashes = config.getDashes ? config.getDashes() : [];
-            legendEl.innerHTML = '';
-            (fields || []).forEach(function (field, index) {
-                var entry = global.LivologUI.el('span', 'stats-legend-entry');
-                var swatch = document.createElementNS(
-                    'http://www.w3.org/2000/svg', 'svg'
-                );
-                swatch.setAttribute('class', 'stats-legend-swatch chart-series-' + index);
-                swatch.setAttribute('viewBox', '0 0 24 8');
-                swatch.setAttribute('aria-hidden', 'true');
-                var line = document.createElementNS(
-                    'http://www.w3.org/2000/svg', 'line'
-                );
-                line.setAttribute('x1', '0');
-                line.setAttribute('y1', '4');
-                line.setAttribute('x2', '24');
-                line.setAttribute('y2', '4');
-                if (dashes[index]) {
-                    line.setAttribute('stroke-dasharray', dashes[index]);
+            var selected = config.getSelectedSeries ? config.getSelectedSeries() : [];
+            if (!selected.length) {
+                return t('stats.series.all');
+            }
+            var names = [];
+            series.forEach(function (entry) {
+                if (selected.indexOf(entry.id) >= 0) {
+                    names.push(entry.name);
                 }
-                swatch.appendChild(line);
-                entry.appendChild(swatch);
-                entry.appendChild(global.LivologUI.el('span', 'stats-legend-name', field.name));
-                legendEl.appendChild(entry);
             });
+            return names.join(', ');
         }
 
         function refresh() {
@@ -151,7 +161,10 @@
             }
             startValue.textContent = global.LivologDateTime.formatDate(range.start);
             endValue.textContent = global.LivologDateTime.formatDate(range.end);
-            renderLegend();
+            // 「选项目」那一行的值
+            if (series && series.length > 1) {
+                seriesValue.textContent = seriesLabel();
+            }
         }
 
         refresh();

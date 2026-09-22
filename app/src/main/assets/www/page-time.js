@@ -550,7 +550,8 @@
         }
 
         if (typeValue === 'moment') {
-            groups.moment = buildGroup(null, startAt, validate);
+            // 时点没有起止之分，给个提示文字占位（和下面 period 的「开始 / 结束」对齐）
+            groups.moment = buildGroup(t('time.form.happen'), startAt, validate);
             fieldsEl.appendChild(groups.moment.root);
         } else if (typeValue === 'period') {
             groups.start = buildGroup(t('time.form.start'), startAt, validate);

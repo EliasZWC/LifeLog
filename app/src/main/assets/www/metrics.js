@@ -22,6 +22,13 @@
     /** 旧版表头（单值），新版一开始也用它作为默认字段名 */
     var HEADER = ['id', 'metric', 'time', 'value'];
     var DEFAULT_FIELD = 'value';
+    /**
+     * 老数据（跟踪项没有 fields）补出来的那个字段要用的**固定 id**。
+     * ⚠️ 不能用 newId()：normalizeMetric 每次读取都会跑，随机 id 会让同一个跟踪项
+     *    每次的字段 id 都不同，老记录（values 里存的是当时那个 id）就全对不上了。
+     *    固定成这个常量后，读取多少遍都稳定。
+     */
+    var LEGACY_FIELD_ID = 'legacy-value';
 
     var listeners = [];
 
@@ -92,8 +99,15 @@
         return normalizeMetric(found);
     }
 
-    /** 把字段描述统一成 [{id, name}]，旧数据（没有 fields）自动补一个「值」字段 */
-    function normalizeFields(fields) {
+    /**
+     * 把字段描述统一成 [{id, name}]，旧数据（没有 fields）自动补一个「值」字段。
+     *
+     * @param {Array} fields
+     * @param {{legacy?: boolean}} [options]
+     *        legacy = true 表示这是在「补老数据」，补出来的字段用固定 id
+     *        （见 LEGACY_FIELD_ID 的说明），保证多次读取拿到同一个 id。
+     */
+    function normalizeFields(fields, options) {
         var out = [];
         (fields || []).forEach(function (field) {
             var name = String(field && field.name ? field.name : '').trim();
@@ -103,7 +117,9 @@
             out.push({ id: (field && field.id) || newId(), name: name });
         });
         if (!out.length) {
-            out.push({ id: newId(), name: DEFAULT_FIELD });
+            // ⚠️ 老数据补字段：id 必须固定，否则每次读取都换一个，记录全对不上
+            var legacyId = options && options.legacy ? LEGACY_FIELD_ID : newId();
+            out.push({ id: legacyId, name: DEFAULT_FIELD });
         }
         return out;
     }
@@ -113,12 +129,17 @@
      *   - 没有 fields → 一个叫「值」的字段；
      *   - primary 指向不存在的字段 → 指回第一个；
      *   - isDerived（计算出来的）字段名 → 不参与编辑
+     *
+     * ⚠️ 给老数据补字段时**必须用固定 id**（LEGACY_FIELD_ID），不能用 newId()：
+     *    normalizeMetric 每次读取都会跑一遍，用随机 id 会导致同一个跟踪项
+     *    每次拿到的字段 id 都不一样 → 老记录的 values 永远对不上 → 记录「不能用了」。
+     *    （v0.1.13 修的 bug，就是这么来的。）
      */
     function normalizeMetric(metric) {
         if (!metric) {
             return null;
         }
-        metric.fields = normalizeFields(metric.fields);
+        metric.fields = normalizeFields(metric.fields, { legacy: true });
         if (metric.isDerived && metric.name) {
             metric.fields = [{ id: metric.fields[0].id, name: String(metric.name).trim() }];
             metric.primary = metric.fields[0].id;
@@ -255,6 +276,109 @@
         });
     }
 
+    /**
+     * 一次性的老数据迁移（v0.1.13）：
+     * 把「跟踪项没有 fields」与「记录只有 value」这两种老结构补成新结构并落盘。
+     *
+     * 老版本里 normalizeMetric 每次读取都用 newId() 给缺字段的跟踪项造 id，
+     * 于是同一个跟踪项每次的字段 id 都不同，老记录存的 fieldId 永远对不上 ——
+     * 表现就是「旧记录不能用了」。这里补齐后写入 localStorage，之后读到的都是稳定 id。
+     *
+     * @returns {boolean} 是否有改动
+     */
+    function migrateLegacy() {
+        var metrics = read(METRIC_KEY);
+        var records = read(RECORD_KEY);
+        var changed = false;
+
+        // 1. 跟踪项：缺 fields / primary 的补齐（normalizeMetric 已经用固定 id 兜底）
+        var normalized = metrics.map(function (metric) {
+            var before = JSON.stringify(metric.fields) + '|' + metric.primary;
+            var next = normalizeMetric(metric);
+            if (JSON.stringify(next.fields) + '|' + next.primary !== before) {
+                changed = true;
+            }
+            return next;
+        });
+
+        // 2. 记录：{value: n} → {values: [{fieldId, value}]}
+        var byId = {};
+        normalized.forEach(function (metric) {
+            byId[metric.id] = metric;
+        });
+
+        records.forEach(function (record) {
+            if (Array.isArray(record.values) && record.values.length) {
+                return;
+            }
+            var metric = byId[record.metricId];
+            var fieldId = metric && metric.fields.length
+                ? metric.fields[0].id
+                : LEGACY_FIELD_ID;
+            var number = normalizeValue(record.value);
+            record.values = number === null
+                ? []
+                : [{ fieldId: fieldId, value: number }];
+            delete record.value;
+            changed = true;
+        });
+
+        // 3. 把记录的 fieldId 对齐到跟踪项当前字段：
+        //    认不上的（老版本随机生成的 id）按「第一个有值的字段」落到第一个字段上。
+        records.forEach(function (record) {
+            var metric = byId[record.metricId];
+            if (!metric || !Array.isArray(record.values) || !record.values.length) {
+                return;
+            }
+            var keep = {};
+            metric.fields.forEach(function (field) {
+                keep[field.id] = true;
+            });
+            var kept = record.values.filter(function (entry) {
+                return keep[entry.fieldId];
+            });
+
+            // 老记录可能带着对不上的 fieldId（老版本每次读取都随机生成字段 id）→
+            // 落到第一个字段上，值本身不丢。
+            if (!kept.length) {
+                var fallback = metric.fields[0];
+                var first = record.values.filter(function (entry) {
+                    return entry.value !== null;
+                })[0];
+                if (fallback && first) {
+                    kept = [{ fieldId: fallback.id, value: first.value }];
+                }
+            }
+
+            /*
+               ⚠️ 这里必须比**内容**而不是长度：fallback 常常是「一个换一个」，
+                 长度没变，只比长度就会漏掉改写（v0.1.13 踩过的坑）。
+            */
+            var same = kept.length === record.values.length &&
+                kept.every(function (entry, index) {
+                    var other = record.values[index];
+                    return other && other.fieldId === entry.fieldId &&
+                        other.value === entry.value;
+                });
+            if (!same) {
+                record.values = kept;
+                changed = true;
+            }
+        });
+
+        if (changed) {
+            suppressPersist = true;
+            try {
+                global.localStorage.setItem(METRIC_KEY, JSON.stringify(normalized));
+                global.localStorage.setItem(RECORD_KEY, JSON.stringify(records));
+            } catch (e) {
+                /* 忽略 */
+            }
+            suppressPersist = false;
+        }
+        return changed;
+    }
+
     function normalizeValue(value) {
         if (value === null || value === undefined || String(value).trim() === '') {
             return null;
@@ -369,15 +493,36 @@
         }
     }
 
+    /**
+     * 把一条记录的值统一成 [{fieldId, value}]。
+     * 兼容老结构：更早的版本每条记录只存一个 `value`（没有 values 数组），
+     * 这时把它当作「跟踪项第一个字段」的值。
+     */
+    function normalizeRecordValues(record, metricId) {
+        if (!record) {
+            return [];
+        }
+        if (Array.isArray(record.values) && record.values.length) {
+            return record.values;
+        }
+        // 老结构：{ value: <number> }
+        if (record.value !== undefined && record.value !== null) {
+            var fields = fieldsOf(record.metricId || metricId);
+            var field = fields.length ? fields[0] : { id: LEGACY_FIELD_ID };
+            return [{ fieldId: field.id, value: normalizeValue(record.value) }];
+        }
+        return [];
+    }
+
     /** 取某条记录某个字段的值（没有就是 null） */
     function valueOf(record, fieldId) {
         var found = null;
-        ((record && record.values) || []).forEach(function (entry) {
+        normalizeRecordValues(record).forEach(function (entry) {
             if (entry.fieldId === fieldId && found === null) {
                 found = entry.value;
             }
         });
-        return found === undefined ? null : found;
+        return found === undefined || found === null ? null : found;
     }
 
     function removeRecords(ids) {
@@ -617,6 +762,7 @@
         updateRecord: updateRecord,
         removeRecords: removeRecords,
         applyStoredCsv: applyStoredCsv,
+        migrateLegacy: migrateLegacy,
         exportCsv: exportCsv,
         onChange: function (listener) {
             listeners.push(listener);

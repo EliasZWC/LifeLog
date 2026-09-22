@@ -92,6 +92,14 @@
     if (window.LivologI18n) {
         window.LivologI18n.init();
     }
+    /*
+       ⚠️ 必须在任何页面渲染之前跑：把老结构（跟踪项没有 fields、记录只有 value）
+          补成新结构并落盘。不补的话 normalizeMetric 每次读取都会给老跟踪项
+          生成新的字段 id，老记录永远对不上，看起来就是「旧记录不能用了」。
+    */
+    if (window.LivologMetrics && window.LivologMetrics.migrateLegacy) {
+        window.LivologMetrics.migrateLegacy();
+    }
     if (window.LivologTheme) {
         window.LivologTheme.init();
     }
