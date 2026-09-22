@@ -2232,7 +2232,12 @@ body {
     }
 }
 
-/* 108 视口里圆环外径只有 44，放大 1.5 倍才像一张启动页 */
+/*
+   108 视口里圆环外径只有 44，放大 1.5 倍才像一张启动页。
+   ⚠️ 用户 2026-09-22 要求「logo 和字体大一些」→ 放大到 **2 倍**（原来是 1.5），
+      文字从 15px 跟到 30px（见 .splash-name），两边比例保持一致。
+      scale 只影响视觉大小，动画与几何坐标（clip-path / transform-origin）不受影响。
+*/
 .splash-logo {
     position: relative;
     width: 108px;
@@ -2243,12 +2248,12 @@ body {
 @keyframes splash-logo-in {
     from {
         opacity: 0;
-        transform: scale(1.32);
+        transform: scale(1.76);
     }
 
     to {
         opacity: 1;
-        transform: scale(1.5);
+        transform: scale(2);
     }
 }
 
@@ -2289,7 +2294,8 @@ body {
 }
 
 .splash-name {
-    font-size: 15px;
+    /* 跟着 logo 一起放大：logo 1 → 2 倍，文字 15px → 30px（保持原有视觉比例） */
+    font-size: 30px;
     font-weight: 700;
     letter-spacing: 0.18em;
     text-transform: uppercase;

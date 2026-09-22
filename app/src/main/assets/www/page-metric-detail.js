@@ -402,18 +402,24 @@
     }
 
     /*
-       多项目时的线型表。顺序要与 metric.fields 一致；不够用就循环取。
-       ⚠️ 用户 2026-09-22 明确要求：**只用实线和一种虚线**，别再堆各种
-          `7 3 2 3` 之类的花式虚线 —— 肉眼根本分不清哪条是哪条。
-          超过两条时改用**点标记形状**区分（圆 / 方 / 三角 / 菱形 / 叉）。
+       多项目时的线型表。
+       ⚠️ 组合顺序是**「形状外层循环 × 虚实内层循环」**（用户 2026-09-22 明确要求）：
+           第 1 个项目 = 圆点实线
+           第 2 个       = 圆点虚线
+           第 3 个       = 方点实线
+           第 4 个       = 方点虚线
+           第 5 个       = 三角实线
+           …以此类推，形状用尽再换下一个形状。
+          这样相邻两条线的形状一定不同，比「先排完虚实再换形状」好认得多。
+       ⚠️ 虚线只有**一种**（用户要求：花式虚线肉眼分不清），区分靠形状。
     */
-    var SERIES_STYLES = [
-        { dash: null, marker: 'circle' },
-        { dash: '6 4', marker: 'square' },
-        { dash: null, marker: 'triangle' },
-        { dash: '6 4', marker: 'diamond' },
-        { dash: null, marker: 'cross' }
-    ];
+    var MARKER_SHAPES = ['circle', 'square', 'triangle', 'diamond', 'cross'];
+
+    var SERIES_STYLES = [];
+    MARKER_SHAPES.forEach(function (shape) {
+        SERIES_STYLES.push({ dash: null, marker: shape });
+        SERIES_STYLES.push({ dash: '6 4', marker: shape });
+    });
 
     /** 第 i 条线的样式 {dash, marker} */
     function styleOf(index) {
@@ -499,50 +505,37 @@
         }
 
         /*
-           每个项目一条折线：把该项目「有记录」的日子按时间归到每天，再交给
-           LivologChart.buildMulti 一次画出来，用线型区分项目。
-           某个项目某天没值 → 那天的点标记为 has:false，折线跨过去（不断线）。
+           每个项目一条折线，横轴上**一条记录一个点**（用户 2026-09-22 要求）。
+           ⚠️ 以前是「按天聚合、一天一个点」，于是同一天记两次就只剩一个点，
+              两条记录根本连不成线段（用户报「两个记录画不出折线」就是这个）。
+              现在按记录逐条排队，两点就能连成线段。
+           某个项目在某条记录上没有值 → 那个位置标记 has:false，折线跨过去（不断线）。
         */
-        var dayList = [];
-        var daySeen = {};
-        records.forEach(function (record) {
-            var day = global.LivologDateTime.startOfDay(record.time);
-            if (!daySeen[day]) {
-                daySeen[day] = true;
-                dayList.push(day);
-            }
-        });
-        dayList.sort(function (a, b) {
-            return a - b;
+        var ordered = records.slice().sort(function (a, b) {
+            return a.time - b.time;
         });
 
         var series = chosen.map(function (field) {
-            // 每天取该项目当天的最后一个值（同一天记多次就取最后的）
-            var byDay = {};
-            records.forEach(function (record) {
-                var value = global.LivologMetrics.valueOf(record, field.id, metric.id);
-                if (value === null) {
-                    return;
-                }
-                var day = global.LivologDateTime.startOfDay(record.time);
-                byDay[day] = value;
-            });
             // 线型 / 标记按「在跟踪项字段里的位置」定，这样取消/勾选项目时同一条线的样式不变
             var index = metric.fields.indexOf(field);
             return {
                 name: field.name,
                 dash: dashOf(index < 0 ? 0 : index),
                 marker: markerOf(index < 0 ? 0 : index),
-                points: dayList.map(function (day) {
-                    var has = Object.prototype.hasOwnProperty.call(byDay, day);
-                    return { day: day, value: has ? byDay[day] : 0, has: has };
+                points: ordered.map(function (record) {
+                    var value = global.LivologMetrics.valueOf(record, field.id, metric.id);
+                    return {
+                        day: record.time,
+                        value: value === null ? 0 : value,
+                        has: value !== null
+                    };
                 })
             };
         });
 
-        // 横轴要有「天」可画；一条记录都没落在区间里时给一天空白
-        var days = dayList.length ? dayList.map(function (day) {
-            return { day: day };
+        // 横轴上每个点对应一条记录；一条都没落在区间里时给个占位
+        var days = ordered.length ? ordered.map(function (record) {
+            return { day: record.time };
         }) : [{ day: range.start }];
 
         var wrap = global.LivologUI.el('li', 'stats');

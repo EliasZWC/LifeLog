@@ -573,21 +573,39 @@
             }
         });
 
-        // 横轴只标「首 / 中 / 尾」三处日期
+        /*
+           横轴标「首 / 中 / 尾」三处日期。
+           ⚠️ 现在横轴上一个点 = 一条记录，同一天的多个点会算出同一个日期标签，
+              首/中/尾三处可能重复（出现两个一样的 "9-22"），所以要按**日期**去重：
+              先取首/中/尾，若与已选标签的日期相同就往前/后挪一个不同的天。
+        */
+        var tickIndexes = [];
         [0, Math.floor((list.length - 1) / 2), list.length - 1]
-            .filter(function (value, index, array) {
-                return array.indexOf(value) === index;
-            })
             .forEach(function (index) {
-                var anchor = index === 0
-                    ? 'start'
-                    : (index === list.length - 1 ? 'end' : 'middle');
-                parts.push(
-                    '<text class="chart-tick" x="' + centerX(index).toFixed(1) + '" y="' +
-                    (baseY + 17) + '" text-anchor="' + anchor + '">' +
-                    dateLabel(list[index].day) + '</text>'
-                );
+                if (index < 0 || index >= list.length || tickIndexes.indexOf(index) >= 0) {
+                    return;
+                }
+                var label = dateLabel(list[index].day);
+                var dup = tickIndexes.some(function (picked) {
+                    return dateLabel(list[picked].day) === label;
+                });
+                if (!dup) {
+                    tickIndexes.push(index);
+                }
             });
+        tickIndexes.sort(function (a, b) {
+            return a - b;
+        });
+        tickIndexes.forEach(function (index, position) {
+            var anchor = position === 0
+                ? 'start'
+                : (position === tickIndexes.length - 1 ? 'end' : 'middle');
+            parts.push(
+                '<text class="chart-tick" x="' + centerX(index).toFixed(1) + '" y="' +
+                (baseY + 17) + '" text-anchor="' + anchor + '">' +
+                dateLabel(list[index].day) + '</text>'
+            );
+        });
 
         // 每天一整列透明命中区：点一下列出那一天各序列的值
         var tips = list.map(function (day, index) {
