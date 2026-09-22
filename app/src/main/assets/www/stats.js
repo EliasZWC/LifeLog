@@ -129,13 +129,17 @@
             }));
         }
 
-        // 起止时间合成一个选项：左边「Range」垂直居中，右边开始 / 结束上下两行、都贴右
+        /*
+           起止时间合成一个选项：**开始贴左、结束贴右**（用户 2026-09-22 要求）。
+           不要左侧的「Range」标签 —— 这一行本身就是一个日期区间，说明文字是多余的；
+           两端各占一边也正好让「从…到…」的语义一眼看出来。两端各自可点。
+        */
         var rangeItem = global.LivologUI.el('li', 'setting-item stats-range');
-        rangeItem.appendChild(global.LivologUI.el('span', 'setting-label', t('stats.range')));
-
         var rangeValues = global.LivologUI.el('div', 'stats-range-values');
         var startValue = timeButton('stats.pickStart', 'start');
         var endValue = timeButton('stats.pickEnd', 'end');
+        startValue.classList.add('is-start');
+        endValue.classList.add('is-end');
         rangeValues.appendChild(startValue);
         rangeValues.appendChild(endValue);
         rangeItem.appendChild(rangeValues);

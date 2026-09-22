@@ -1882,15 +1882,16 @@ body {
 }
 
 /*
-   起止时间合成一行选项：左边「Range」垂直居中，右边开始 / 结束上下两行、都贴右。
-   两端各自可点，开始时间在上、结束时间在下。
+   起止时间合成一行：**开始贴左、结束贴右**（用户 2026-09-22 要求）。
+   这一行不需要左侧的「Range」标签了 —— 它本身就是一个日期区间，
+   两端各占一边正好体现「从…到…」。整行占满，两端各自可点。
 */
 .stats-range-values {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
 }
 
 .stats-range-time {
@@ -1905,11 +1906,21 @@ body {
     font-weight: 400;
     color: var(--on-surface-variant);
     font-variant-numeric: tabular-nums;
-    text-align: right;
     cursor: pointer;
     outline: none;
     -webkit-tap-highlight-color: transparent;
     transition: opacity 120ms ease;
+}
+
+/* 开始贴左、结束贴右；箭头统一放在各自日期的**外侧**，
+   这样两个日期都紧贴自己那一侧，视觉上更像「范围」 */
+.stats-range-time.is-start {
+    text-align: left;
+}
+
+.stats-range-time.is-end {
+    flex-direction: row-reverse;
+    text-align: right;
 }
 
 /* 时间按钮里的箭头比别处再小一点，避免把日期挤窄 */
