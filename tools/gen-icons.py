@@ -1,8 +1,12 @@
 """生成 app/src/main/assets/www/icons.js（带分类、名称、中英搜索关键词）。
 
 图标路径来源：
-  - 旧 icons.js 里已有的（不重新下载）
-  - tools/_new.txt / tools/_new2.txt（fetch-icons.py 的产物）
+  - 旧 icons.js 里已有的（不重新下载 —— 所以这个脚本可以反复跑）
+  - tools/_new.txt / _new2.txt / _new3.txt（`fetch-icons.py` / `fetch-symbols.py` 的产物）
+
+⚠️ 那三个 `_new*.txt` 是**用完即弃**的中间产物，仓库里没有（加图标时才现拉）。
+   想加新图标：先 `python tools/fetch-icons.py <图标名…>` 生成对应的 txt，
+   再跑本脚本合并。缺文件不影响既有图标，只是拉不到新的。
 
 用法：python tools/gen-icons.py
 """
