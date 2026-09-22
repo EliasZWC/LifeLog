@@ -129,18 +129,14 @@
             }));
         }
 
-        /*
-           起止时间合成一个选项。
-           ⚠️ 用户 2026-09-22 要求：**去掉左边的「Range」标签、日期居中**，
-              因为这一行不再需要左对齐的说明文字了（它本身就长得像日期区间）。
-              开始 —— 结束并排居中，两端各自可点。
-        */
+        // 起止时间合成一个选项：左边「Range」垂直居中，右边开始 / 结束上下两行、都贴右
         var rangeItem = global.LivologUI.el('li', 'setting-item stats-range');
+        rangeItem.appendChild(global.LivologUI.el('span', 'setting-label', t('stats.range')));
+
         var rangeValues = global.LivologUI.el('div', 'stats-range-values');
         var startValue = timeButton('stats.pickStart', 'start');
         var endValue = timeButton('stats.pickEnd', 'end');
         rangeValues.appendChild(startValue);
-        rangeValues.appendChild(global.LivologUI.el('span', 'stats-range-dash', '—'));
         rangeValues.appendChild(endValue);
         rangeItem.appendChild(rangeValues);
         list.appendChild(rangeItem);
