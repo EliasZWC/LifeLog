@@ -209,8 +209,17 @@
     }
 
     /**
-     * 改跟踪项。字段改动时同时把已有记录对齐到新字段：
-     * 按字段**名字**找（所以重命名不会丢数据），找不到的字段值留空。
+     * 改跟踪项。字段改动时同时把已有记录对齐到新字段。
+     *
+     * 字段 id 怎么定（顺序很重要，**先按 id、再按名字、最后按位置**）：
+     *   1. 传进来的字段带 id 且这个 id 原来就存在 → 直接沿用（改名 / 换顺序都不丢数据）；
+     *   2. 没带 id（或 id 已失效）但**名字**和原字段一样 → 沿用原 id；
+     *   3. 都不匹配 → 按**位置**认领还没被用掉的旧字段（用户只是把名字改掉的情况，
+     *      表单里那行还是原来那行，位置没变，这样改名也能保住记录）；
+     *   4. 实在没有旧字段可认领 → 才生成新 id（真的是新增的项目）。
+     *
+     * ⚠️ v0.1.17 及以前只有第 2 步：UI 传的是纯名字列表，改个名就匹配不上，
+     *    于是字段被当成新的、老记录的值全被清空（用户报「改名后值全消失」）。
      */
     function updateMetric(id, name, icon, fields) {
         var list = getMetrics();
@@ -225,18 +234,47 @@
             metric.name = String(name || '').trim();
             metric.icon = icon || metric.icon;
 
-            if (fields) {
-                var next = normalizeFields(fields);
-                var oldByName = {};
+            if (fields && fields.length) {
+                var byId = {};
+                var byName = {};
                 before.forEach(function (field) {
-                    oldByName[field.name] = field.id;
-                });
-                // 名字没变就沿用旧 id，这样已有记录不用动
-                next.forEach(function (field) {
-                    if (oldByName[field.name]) {
-                        field.id = oldByName[field.name];
+                    byId[field.id] = field;
+                    if (!byName[field.name]) {
+                        byName[field.name] = field;
                     }
                 });
+                var claimed = {};
+
+                var next = fields.map(function (input, index) {
+                    var wanted = String(input && input.name ? input.name : '').trim();
+                    var found = null;
+
+                    // 1. 带 id 且原来就有 → 沿用
+                    if (input && input.id && byId[input.id] && !claimed[input.id]) {
+                        found = byId[input.id];
+                    }
+                    // 2. 名字一样 → 沿用
+                    if (!found && byName[wanted] && !claimed[byName[wanted].id]) {
+                        found = byName[wanted];
+                    }
+                    // 3. 按位置认领还没用掉的旧字段（改名场景）
+                    if (!found && before[index] && !claimed[before[index].id]) {
+                        found = before[index];
+                    }
+
+                    var assigned = found
+                        ? found.id
+                        : newId();
+                    claimed[assigned] = true;
+                    return { id: assigned, name: wanted };
+                }).filter(function (field) {
+                    return !!field.name;
+                });
+
+                if (!next.length) {
+                    return; // 一个名字都没填，保持原样（表单侧本来就拦了）
+                }
+
                 metric.fields = next;
                 var primaryOk = next.some(function (field) {
                     return field.id === metric.primary;

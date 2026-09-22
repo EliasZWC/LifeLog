@@ -81,22 +81,29 @@
         nameInput.value = metric ? metric.name : '';
         iconPicker.select(metric ? metric.icon : global.LivologIcons.names()[0]);
         renderFieldRows(metric ? metric.fields.map(function (field) {
-            return field.name;
-        }) : ['']);
+            return { name: field.name, id: field.id };
+        }) : [{ name: '' }]);
         applyTitle();
         validate();
         global.LivologUI.openSheet(sheet);
     }
 
-    /** 字段名输入行：初始一行，底部按钮可以再加 */
-    function renderFieldRows(names) {
+    /**
+     * 字段名输入行：初始一行，底部按钮可以再加。
+     * @param {Array<{name: string, id?: string}>} fields
+     *        编辑已有跟踪项时要带上 field.id —— 否则后端没法区分
+     *        「把第 1 个项目改名」和「删掉第 1 个再加一个新的」，
+     *        改名会被当成新字段，老记录的值就全丢了（v0.1.18 修的 bug）。
+     */
+    function renderFieldRows(fields) {
         fieldsEl.innerHTML = '';
 
         var rows = global.LivologUI.el('div', 'field-rows');
         fieldsEl.appendChild(rows);
 
-        (names.length ? names : ['']).forEach(function (value) {
-            rows.appendChild(fieldRow(value));
+        var list = (fields && fields.length) ? fields : [{ name: '' }];
+        list.forEach(function (field) {
+            rows.appendChild(fieldRow(field.name || '', field.id));
         });
 
         var add = global.LivologUI.el('button', 'field-add');
@@ -115,7 +122,7 @@
     }
 
     /** 一行字段：输入框 + 删除按钮 */
-    function fieldRow(value) {
+    function fieldRow(value, id) {
         var row = global.LivologUI.el('div', 'field-row');
 
         var input = document.createElement('input');
@@ -124,7 +131,11 @@
         input.maxLength = 16;
         input.autocomplete = 'off';
         input.placeholder = t('metric.form.itemNamePlaceholder');
-        input.value = value;
+        input.value = value || '';
+        // 带上原字段 id，改名时才不会丢记录（新增的空行没有 id）
+        if (id) {
+            input.dataset.fieldId = id;
+        }
         input.addEventListener('input', validate);
         input.addEventListener('keydown', function (event) {
             if (event.key === 'Enter') {
@@ -149,13 +160,24 @@
 
     /** 表单里填的字段名（去掉空行） */
     function readFieldNames() {
+        return readFields().map(function (field) {
+            return field.name;
+        });
+    }
+
+    /** 表单里填的字段（带 id，便于后端识别改名） */
+    function readFields() {
         return Array.prototype.map.call(
             fieldsEl.querySelectorAll('.field-input'),
             function (input) {
-                return input.value.trim();
+                var field = { name: input.value.trim() };
+                if (input.dataset.fieldId) {
+                    field.id = input.dataset.fieldId;
+                }
+                return field;
             }
-        ).filter(function (name) {
-            return !!name;
+        ).filter(function (field) {
+            return !!field.name;
         });
     }
 
@@ -176,9 +198,7 @@
             return;
         }
 
-        var fields = readFieldNames().map(function (name) {
-            return { name: name };
-        });
+        var fields = readFields();
 
         if (editingId) {
             global.LivologMetrics.updateMetric(

@@ -1869,15 +1869,22 @@ body {
 }
 
 /*
-   起止时间合成一行选项：左边「Range」垂直居中，右边开始 / 结束上下两行、都贴右。
-   两端各自可点，开始时间在上、结束时间在下。
+   起止时间合成一行：**日期区间居中**（用户 2026-09-22 要求，去掉了左侧的
+   「Range」标签，因为这一行本身就长得像日期区间，不需要说明文字了）。
+   格式：开始 — 结束，两端各自可点。
 */
 .stats-range-values {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.stats-range-dash {
+    font-size: 15px;
+    color: var(--on-surface-variant);
+    opacity: 0.6;
 }
 
 .stats-range-time {

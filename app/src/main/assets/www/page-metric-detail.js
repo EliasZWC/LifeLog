@@ -54,8 +54,47 @@
 
     var DAY_MS = 24 * 60 * 60 * 1000;
 
-    /** 统计视图的选项：时间区间 + 看哪几个项目；每次打开详情页重置（图类型固定折线图） */
+    /**
+     * 统计视图的选项：时间区间 + 看哪几个项目。
+     *
+     * ⚠️ 选中的项目**要记住**（用户 2026-09-22 要求）：以前每次 open() 都重置成
+     *    「全部」，切出去再回来选择就没了。现在按跟踪项存进 localStorage，
+     *    下次进来还是上次那几个。
+     * ⚠️ 时间区间仍然每次重置（见 open()）—— 用户只提了「项目要记忆」。
+     */
     var stats = { range: null, series: [] };
+
+    /** 每个跟踪项上次选的项目：{ <metricId>: [fieldId…] }，空数组 = 全部 */
+    var SERIES_KEY = 'livolog.metricSeries';
+
+    function loadSeries(metricId) {
+        try {
+            var raw = global.localStorage.getItem(SERIES_KEY);
+            var all = raw ? JSON.parse(raw) : {};
+            var picked = all && all[metricId];
+            return Array.isArray(picked) ? picked.slice() : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function saveSeries(metricId, ids) {
+        try {
+            var raw = global.localStorage.getItem(SERIES_KEY);
+            var all = raw ? JSON.parse(raw) : {};
+            if (!all || typeof all !== 'object') {
+                all = {};
+            }
+            if (ids && ids.length) {
+                all[metricId] = ids.slice();
+            } else {
+                delete all[metricId]; // 全选 == 没有筛选，不占空间
+            }
+            global.localStorage.setItem(SERIES_KEY, JSON.stringify(all));
+        } catch (e) {
+            /* 隐私模式等情况下写不进去，忽略即可 */
+        }
+    }
 
     var group = null;
     var editingRecordId = null;
@@ -154,7 +193,8 @@
         currentId = id;
         currentView = DEFAULT_VIEW;
         range = 'all';
-        stats = { range: null, series: [] };
+        // 时间区间每次重置，但**选中的项目要记着**（用户要求）
+        stats = { range: null, series: loadSeries(id) };
 
         // 这一页自己当多选目标（长按卡片 → 顶部操作栏 → 删除）
         global.LivologUI.bindSelection(selection);
@@ -378,15 +418,16 @@
     // 布局：选项栏（图类型 / 时间范围）→ 图 → 统计信息文本。
     // 纵坐标 = 每天的取值合计，横轴刻度永远是日。
 
-    /** 统计区间的默认值：最近 30 天，但不早于第一条记录 */
+    /**
+     * 统计区间的默认值：**有记录的最早时间 → 最晚时间**（用户 2026-09-22 要求）。
+     * 以前是「最近 30 天」（还不早于第一条记录），但这样早期的记录默认看不到，
+     * 用户还得手动把开始时间往前拨。现在默认就把全部记录框进来。
+     */
     function defaultRange(records) {
         var bounds = global.LivologChart.rangeOf(records.map(function (record) {
             return record.time;
         }));
-        var today = global.LivologDateTime.startOfDay(Date.now());
-        var end = Math.max(bounds.end, today);
-        var earliest = Math.min(bounds.start, end);
-        return { start: Math.max(earliest, end - 29 * DAY_MS), end: end };
+        return { start: bounds.start, end: bounds.end };
     }
 
     /** 改了一头之后保证 start ≤ end */
@@ -495,8 +536,20 @@
 
         /*
            只画「选中的项目」；一个都没选（stats.series 为空数组）= 全部。
-           图例直接画在图里（图内左上角），不单独占一行。
+           ⚠️ 记忆下来的 id 可能已经被删掉 / 改名换成新 id 了，所以先过滤成
+              「当前还存在的字段 id」，过滤完为空就当作「全部」，
+              否则会画出个空图或者跟界面上显示的选择对不上。
         */
+        var remembered = stats.series.filter(function (id) {
+            return fields.some(function (field) {
+                return field.id === id;
+            });
+        });
+        if (remembered.length !== stats.series.length) {
+            stats.series = remembered;
+            saveSeries(metric.id, remembered);
+        }
+
         var chosen = fields.filter(function (field) {
             return !stats.series.length || stats.series.indexOf(field.id) >= 0;
         });
@@ -559,6 +612,7 @@
             onChange: function (key, value) {
                 if (key === 'series') {
                     stats.series = value;
+                    saveSeries(metric.id, value);
                 } else if (key !== 'field' && key !== 'chartType') {
                     stats.range = normalizeRange(stats.range, key, value);
                 }
