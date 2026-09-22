@@ -56,6 +56,13 @@
     /* 悬浮按钮 / 主按钮：反色，跟随当前主题最强的前景色 */
     --fab-bg: var(--nav-active);
     --fab-fg: var(--bg);
+
+    /* 图标面板：列数 / 格子大小 / 间距 / 内边距。
+       JS 要读这几个值算面板宽度（末尾格子与触发按钮右沿对齐），改这里就够了 */
+    --icon-cols: 8;
+    --icon-option: 40px;
+    --icon-gap: 4px;
+    --icon-panel-pad: 10px;
 }
 
 /* 夜间主题：跟随系统（用户显式选了日间时不生效） */
@@ -473,8 +480,9 @@ body {
     color: var(--on-surface-variant);
 }
 
-/* --------------------------------------------------------------------------
-   字段编辑（跟踪项表单）：一个字段一行，底部可以再加
+/*
+   字段编辑（跟踪项表单）：一个字段一行。
+   每行直接占满整行（不做「左标签右值」），这样输入框的左沿和上面的名称框对齐。
    -------------------------------------------------------------------------- */
 
 .field-rows {
@@ -490,8 +498,10 @@ body {
 }
 
 .field-row .form-input {
+    /* ⚠️ .form-input 默认是「值」的样式（右对齐）；字段名属干「栏目」，要贴左 */
     flex: 1 1 auto;
     min-width: 0;
+    text-align: left;
 }
 
 .field-remove {
@@ -741,6 +751,24 @@ body {
     opacity: 0.6;
 }
 
+/*
+   上下排的表单行：标签一行、输入框一行（都从容器左沿开始，输入框左对齐）。
+   用于跟踪记录表单里的多字段输入 —— 每个字段名长度不同，
+   如果沿用「左标签 / 右值」会让几行的标签左沿参差不齐。
+*/
+.form-row-stacked {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    min-height: 0;
+    padding: 12px 0;
+}
+
+.form-row-stacked .form-input {
+    text-align: left;
+    padding: 4px 0;
+}
+
 .form-hint {
     margin: 10px 0 0;
     font-size: 13px;
@@ -846,23 +874,28 @@ body {
 /* --------------------------------------------------------------------------
    图标选择器
    行内只显示当前选中的图标，点一下弹出一整块图标面板（图标太多，滑条太长了）。
+   ⚠️ .icon-picker 在 .form-row 里：行内是「左标签 / 右值」，而图标不是文字值，
+      所以要强制贴到容器右边，不能让它把标签挤开。
    -------------------------------------------------------------------------- */
 
 .icon-picker {
+    position: relative;
     flex: 0 0 auto;
+    margin-left: auto;
     display: flex;
     align-items: center;
 }
 
 .icon-trigger {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
     border: 0;
     border-radius: 10px;
     background: transparent;
-    color: var(--on-surface-variant);
+    color: var(--on-surface);
     font: inherit;
     cursor: pointer;
     outline: none;
@@ -890,15 +923,17 @@ body {
 
 /*
    图标面板：相对所在表单绝对定位，像一个就地弹出的小窗口。
-   表单本身在 .sheet 里，所以面板不会超出屏幕。
+   ⚠️ 面板在 .sheet 里（.sheet 会随键盘上移，相对它定位最稳），但 .sheet 有
+      overflow-y: auto 且定位基准是「相对定位祖先」，所以宽度必须显式给足，
+      否则会被可用宽度裁掉右边一列。
+   宽度由 JS 按列数算好（见 components.js），保证末尾格子与触发按钮右沿对齐。
 */
 .icon-panel {
     position: absolute;
-    left: 16px;
-    right: 16px;
+    right: 0;
     z-index: 2;
     margin-top: 6px;
-    padding: 6px 0 10px;
+    padding: var(--icon-panel-pad) 0 calc(var(--icon-panel-pad) + 4px);
     background: var(--surface);
     border: 1px solid var(--outline);
     border-radius: 14px;
@@ -927,18 +962,21 @@ body {
 
 .icon-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
-    gap: 4px;
+    /* 列数写死（--icon-cols），这样面板宽度和格子数才能算得对得齐 */
+    grid-template-columns: repeat(var(--icon-cols), var(--icon-option));
+    /* 最后一行的格子跟着前面的走，不要居中 */
+    justify-content: start;
+    gap: var(--icon-gap);
     max-height: 40vh;
     overflow-y: auto;
-    padding: 4px 10px 0;
+    padding: 4px var(--icon-panel-pad) 0;
 }
 
 .icon-option {
     display: grid;
     place-items: center;
-    width: 100%;
-    aspect-ratio: 1;
+    width: var(--icon-option);
+    height: var(--icon-option);
     padding: 0;
     border: 0;
     border-radius: 50%;

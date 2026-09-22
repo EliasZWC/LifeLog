@@ -363,13 +363,25 @@
         trigger.setAttribute('aria-haspopup', 'dialog');
         trigger.setAttribute('aria-expanded', 'false');
         trigger.appendChild(icon(selected, 'icon-trigger-icon'));
-        var chevron = el('span', 'select-chevron');
-        chevron.setAttribute('aria-hidden', 'true');
-        chevron.innerHTML = '<svg viewBox="0 0 24 24" focusable="false">' + CHEVRON_PATH + '</svg>';
-        trigger.appendChild(chevron);
         mount.appendChild(trigger);
 
         var panel = el('div', 'icon-panel');
+        // 面板按内容自动定宽：图标格子从左往右排，末尾格子必须与触发按钮右沿对齐，
+        // 所以宽度 = 列数 × 格子宽 + 列间距。列数写成 CSS 变量，由样式表统一定义。
+        var columns = parseInt(
+            getComputedStyle(document.documentElement).getPropertyValue('--icon-cols'),
+            10
+        );
+        if (!(columns > 0)) {
+            columns = 8;
+        }
+        var columnVar = getComputedStyle(document.documentElement)
+            .getPropertyValue('--icon-option')
+            .trim();
+        if (columnVar) {
+            panel.style.width = 'calc(' + columns + ' * ' + columnVar +
+                ' + ' + (columns - 1) + ' * var(--icon-gap) + 2 * var(--icon-panel-pad))';
+        }
         panel.setAttribute('role', 'dialog');
         panel.hidden = true;
 

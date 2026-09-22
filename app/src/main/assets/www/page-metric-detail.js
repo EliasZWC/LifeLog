@@ -467,12 +467,14 @@
         group = global.LivologDateTime.buildGroup(null, at, validateRecord);
         recordFields.appendChild(group.root);
 
-        // 每个字段一个输入框；改已有记录时把旧值填回去
+        // 每个字段一块「标签 + 输入框」，上下排：
+        // 一行一个字段名 + 右对齐的输入框会让几行标签左沿参差不齐（名字长短不一），
+        // 上下排则所有输入框都与上面的时间 / 名称对齐。
         recordValues.innerHTML = '';
         recordValueInputs = {};
         metric.fields.forEach(function (field) {
-            var row = global.LivologUI.el('div', 'form-row');
-            row.appendChild(global.LivologUI.el('label', 'form-label', field.name));
+            var block = global.LivologUI.el('div', 'form-row form-row-stacked');
+            block.appendChild(global.LivologUI.el('label', 'form-label', field.name));
             var input = document.createElement('input');
             input.className = 'form-input';
             input.type = 'text';
@@ -484,8 +486,8 @@
                 ? global.LivologMetrics.valueOf(record, field.id)
                 : null;
             input.value = existing === null ? '' : formatValue(existing);
-            row.appendChild(input);
-            recordValues.appendChild(row);
+            block.appendChild(input);
+            recordValues.appendChild(block);
             recordValueInputs[field.id] = input;
         });
 
