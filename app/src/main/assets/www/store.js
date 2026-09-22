@@ -233,7 +233,23 @@
 
     /** 设置页「导入 CSV」：用选中的文件替换全部时间记录 */
     function importCsvText(text) {
-        return replaceFromCsv(text);
+        var parsed = global.LivologCsv.parse(text);
+        if (!parsed.ok) {
+            return { ok: false, error: parsed.error };
+        }
+
+        /*
+           ⚠️ 表头对了不代表有数据：只有表头、或所有行的行为名 / 开始时间都解析
+              不出来时，`parsed.records` 是空的。而 replaceFromCsv 是**覆盖式**的，
+              照做就会把用户已有的记录全抹掉、还提示导入成功。这里先拦一道。
+              （跟踪数据那边同样的问题见 metrics.js 的 importCsvText）
+        */
+        var hadData = read(RECORD_KEY).length > 0;
+        if (!parsed.records.length && hadData) {
+            return { ok: false, error: 'norows' };
+        }
+
+        return replaceFromCsv(text, parsed);
     }
 
     /** 当前数据的 CSV 文本（浏览器预览 / 调试用） */
@@ -241,8 +257,13 @@
         return global.LivologCsv.stringify(getRecords(), getBehaviors());
     }
 
-    function replaceFromCsv(text) {
-        var parsed = global.LivologCsv.parse(text);
+    /**
+     * @param {string} text CSV 文本
+     * @param {object} [preparsed] 已经解析好的结果（`importCsvText` 校验时算过一遍，
+     *        传进来就别重复解析了）
+     */
+    function replaceFromCsv(text, preparsed) {
+        var parsed = preparsed || global.LivologCsv.parse(text);
         if (!parsed.ok) {
             return { ok: false, error: parsed.error };
         }

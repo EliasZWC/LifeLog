@@ -127,7 +127,8 @@
                             </button>
                         </li>
                         <li class="setting-item">
-                            <button class="setting-action" type="button" id="setting-import">
+                            <button class="setting-action" type="button" id="setting-import"
+                                aria-haspopup="menu" aria-expanded="false">
                                 <span class="setting-label" data-i18n="setting.import">Import data</span>
                                 <span class="icon" aria-hidden="true">
                                     <!-- Google Material Icons: file_upload -->
@@ -138,7 +139,8 @@
                             </button>
                         </li>
                         <li class="setting-item">
-                            <button class="setting-action" type="button" id="setting-export">
+                            <button class="setting-action" type="button" id="setting-export"
+                                aria-haspopup="menu" aria-expanded="false">
                                 <span class="setting-label" data-i18n="setting.export">Export data</span>
                                 <span class="icon" aria-hidden="true">
                                     <!-- Google Material Icons: file_download -->
@@ -149,7 +151,8 @@
                             </button>
                         </li>
                     </ul>
-                    <!-- 由原生 WebChromeClient 接管，弹出系统文件选择器 -->
+                    <!-- 由原生 WebChromeClient 接管，弹出系统文件选择器。
+                         时间记录与跟踪数据共用一个 input，靠 importTarget 区分。 -->
                     <input class="file-input" type="file" id="setting-import-file"
                         accept=".csv,text/csv,text/comma-separated-values" />
                 </section>

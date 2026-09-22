@@ -13,7 +13,7 @@ class WebAppBridge(
     private val onThemeMode: (String) -> Unit,
     private val onSaveCsv: (String) -> Unit,
     private val onSaveMetricsCsv: (String) -> Unit,
-    private val onExportCsv: (String) -> Unit,
+    private val onExportCsv: (String, String) -> Unit,
     private val onPickStorageFolder: () -> Unit,
     private val onResetStorageFolder: () -> Unit,
     private val onOpenExternal: (String) -> Unit,
@@ -58,10 +58,13 @@ class WebAppBridge(
         onOpenExternal(url)
     }
 
-    /** 设置页「导出数据」：拉起系统「另存为」，把 CSV 写到用户选的位置 */
+    /**
+     * 设置页「导出数据」：拉起系统「另存为」，把 CSV 写到用户选的位置。
+     * @param kind `"records"` 时间记录 / `"metrics"` 跟踪数据，决定默认文件名
+     */
     @JavascriptInterface
-    fun exportRecordsCsv(csv: String) {
-        onExportCsv(csv)
+    fun exportRecordsCsv(csv: String, kind: String) {
+        onExportCsv(csv, kind)
     }
 
     /** 更新弹窗点「更新」：开始下载新版 APK */

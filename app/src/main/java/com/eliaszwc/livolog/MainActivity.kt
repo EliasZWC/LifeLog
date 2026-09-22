@@ -92,6 +92,8 @@ class MainActivity : AppCompatActivity() {
 
     /** 设置页「导出数据」：等系统「另存为」返回时要把这份 CSV 写进用户选的位置 */
     private var pendingExportCsv: String? = null
+    /** 待导出的数据种类：`"metrics"` 跟踪数据，其余当时间记录 */
+    private var pendingExportKind: String = EXPORT_KIND_RECORDS
 
     /**
      * 网页最近一次交过来的 CSV。
@@ -127,6 +129,7 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             val csv = pendingExportCsv
             pendingExportCsv = null
+            pendingExportKind = EXPORT_KIND_RECORDS
             val uri = if (result.resultCode == RESULT_OK) result.data?.data else null
 
             if (csv == null) {
@@ -350,7 +353,7 @@ class MainActivity : AppCompatActivity() {
                 onThemeMode = { mode -> runOnUiThread { setThemeMode(mode) } },
                 onSaveCsv = { csv -> handleSaveCsv(csv) },
                 onSaveMetricsCsv = { csv -> handleSaveMetricsCsv(csv) },
-                onExportCsv = { csv -> runOnUiThread { handleExportCsv(csv) } },
+                onExportCsv = { csv, kind -> runOnUiThread { handleExportCsv(csv, kind) } },
                 onPickStorageFolder = { runOnUiThread { openStoragePicker() } },
                 onResetStorageFolder = { runOnUiThread { resetStorageLocation() } },
                 onOpenExternal = { url -> runOnUiThread { openExternally(url) } },
@@ -673,9 +676,13 @@ class MainActivity : AppCompatActivity() {
     // 导出数据
     // -----------------------------------------------------------------------
 
-    /** 设置页「导出数据」：弹系统「另存为」让用户选位置，文件名自动编号避免重名 */
-    private fun handleExportCsv(csv: String) {
+    /**
+     * 设置页「导出数据」：弹系统「另存为」让用户选位置，文件名自动编号避免重名。
+     * @param kind `"metrics"` 跟踪数据，否则时间记录；只影响文件名的前缀
+     */
+    private fun handleExportCsv(csv: String, kind: String) {
         pendingExportCsv = csv
+        pendingExportKind = kind
 
         val next = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
             .getInt(KEY_EXPORT_INDEX, 0) + 1
@@ -683,7 +690,7 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = CsvStore.MIME
-            putExtra(Intent.EXTRA_TITLE, nextExportName(next))
+            putExtra(Intent.EXTRA_TITLE, nextExportName(kind, next))
         }
 
         try {
@@ -695,9 +702,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** 导出文件名：livolog-001.csv ；序号只在真的写成功之后才前进 */
-    private fun nextExportName(index: Int): String =
-        "livolog-" + String.format(Locale.US, "%03d", index) + ".csv"
+    /** 导出文件名：livolog-001.csv / livolog-metrics-001.csv ；序号只在真的写成功之后才前进 */
+    private fun nextExportName(kind: String, index: Int): String {
+        val prefix = if (kind == EXPORT_KIND_METRICS) "livolog-metrics" else "livolog"
+        return prefix + "-" + String.format(Locale.US, "%03d", index) + ".csv"
+    }
 
     /** 把 CSV 写进「另存为」选中的文档 */
     private fun writeExport(uri: Uri, csv: String) {
@@ -992,6 +1001,11 @@ class MainActivity : AppCompatActivity() {
         const val KEY_PENDING_UPDATE_FROM = "pending_update_from"
         /** 「导出数据」的文件名序号（livolog-001.csv …） */
         const val KEY_EXPORT_INDEX = "export_index"
+
+        /** 导出时间记录（默认）：livolog-001.csv */
+        const val EXPORT_KIND_RECORDS = "records"
+        /** 导出跟踪数据：livolog-metrics-001.csv */
+        const val EXPORT_KIND_METRICS = "metrics"
 
         const val THEME_LIGHT = "light"
         const val THEME_DARK = "dark"

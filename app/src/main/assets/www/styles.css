@@ -50,10 +50,12 @@
     --outline: #E1E1DE;
     --nav-active: #1B1B1B;
     --nav-inactive: #8C8C8A;
-    /* 破坏性操作（删除等）专用：整站黑白，只有这里破例用红 */
-    --danger: #B3261E;
-    /* 确认操作专用：与 --danger 同一色系（同明度、同饱和度水平）的绿 */
-    --success: #1F6B3A;
+    /* 破坏性操作（删除等）专用：整站黑白，只有这里破例用红
+       ⚠️ v0.1.19 用户反馈「颜色有点淡」→ 提高饱和度、加深一点（原 #B3261E） */
+    --danger: #C6211A;
+    /* 确认操作专用：与 --danger 同一色系（同明度、同饱和度水平）的绿
+       ⚠️ v0.1.19 同步调鲜（原 #1F6B3A） */
+    --success: #15803D;
 
     /* 悬浮按钮 / 主按钮：反色，跟随当前主题最强的前景色 */
     --fab-bg: var(--nav-active);
@@ -80,8 +82,8 @@
         --outline: #333333;
         --nav-active: #F2F2F0;
         --nav-inactive: #7E7E7C;
-        --danger: #F2B8B5;
-        --success: #A9E5BC;
+        --danger: #FF8A80;
+        --success: #7EE2A8;
     }
 }
 
@@ -96,8 +98,8 @@
     --outline: #333333;
     --nav-active: #F2F2F0;
     --nav-inactive: #7E7E7C;
-    --danger: #F2B8B5;
-    --success: #A9E5BC;
+    --danger: #FF8A80;
+    --success: #7EE2A8;
 }
 
 /* 让原生表单控件（如下拉框）的配色也跟随手动主题 */

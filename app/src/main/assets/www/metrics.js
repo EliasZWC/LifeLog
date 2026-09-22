@@ -823,9 +823,88 @@
     }
 
     /**
+     * 用户挑的文件到底像不像一份跟踪数据 CSV。
+     *
+     * 只看表头，不碰数据：必须同时有 `metric` 和 `time` 两列（我们自己导出的文件
+     * 一定带，用户手写的表格只要照格式写也有）。这是我们唯一能低成本判定
+     * 「这份文件属于跟踪数据」的依据 —— `applyStoredCsv` 认不出表头时会退化成
+     * 「按固定列序当纯数据」，那对用户主动选的文件太危险了。
+     * @returns {boolean}
+     */
+    function looksLikeMetricsCsv(csv) {
+        var rows = global.LivologCsv.parseRows(csv);
+        for (var i = 0; i < rows.length; i++) {
+            var first = rows[i].find(function (cell) {
+                return String(cell).trim() !== '';
+            });
+            if (first === undefined) {
+                continue; // 跳过前面空行
+            }
+            var head = {};
+            rows[i].forEach(function (cell) {
+                head[String(cell).trim().toLowerCase()] = true;
+            });
+            return head.metric === true && head.time === true;
+        }
+        return false;
+    }
+
+    /**
+     * 设置页「导入数据」：用选中的文件替换全部跟踪数据。
+     *
+     * ⚠️ 和 `applyStoredCsv` 的区别不只是**调用时机**，还有**宽容度**：
+     *    那个是启动时读原生推过来的 metrics.csv，文件是我们自己写的、
+     *    格式基本可信，所以「认不出表头就按固定列序当纯数据」这种宽容是合理的；
+     *    这个是用户主动挑文件、且动作是**覆盖式**的 —— 宽容等于「随手选错一个
+     *    文件就把全部数据清空，还提示导入成功」。所以这里先做一道格式校验，
+     *    不合法就直接拒绝，一个字节都不动。
+     * @returns {{ok: boolean, error?: string, metrics?: number, records?: number, removed?: number}}
+     */
+    function importCsvText(text) {
+        var raw = String(text || '').trim();
+        if (!raw) {
+            return { ok: false, error: 'empty' };
+        }
+        if (!looksLikeMetricsCsv(raw)) {
+            return { ok: false, error: 'format' };
+        }
+
+        var beforeMetrics = read(METRIC_KEY).length;
+        var beforeRecords = read(RECORD_KEY).length;
+        // 覆盖前先留一份内存快照：下面「文件合法但一行都读不出」要能原样退回去
+        var rollbackMetrics = read(METRIC_KEY);
+        var rollbackRecords = read(RECORD_KEY);
+
+        // applyStoredCsv 内部是「先算完再一次性落盘」，中途失败不会留下半截数据
+        if (!applyStoredCsv(raw)) {
+            return { ok: false, error: 'write-failed' };
+        }
+
+        var records = read(RECORD_KEY).length;
+
+        /*
+           文件格式没问题，但一行有效数据都没有 —— 比如只有表头、或者所有行的
+           指标名 / 时间都解析不出来。这时 applyStoredCsv 已经把旧数据清空了，
+           必须回滚，否则用户的数据就白白没了。
+           跟踪项本身还留着（metrics 非空）不算失败，那是「清空了记录」的正常结果。
+        */
+        if (!records && beforeRecords) {
+            persistReplace(rollbackMetrics, rollbackRecords);
+            return { ok: false, error: 'norows' };
+        }
+
+        return {
+            ok: true,
+            metrics: read(METRIC_KEY).length,
+            records: records,
+            removed: Math.max(0, beforeRecords - records)
+        };
+    }
+
+    /**
      * 用 CSV 内容覆盖本地缓存（CSV 是数据库，本地只当缓存）。
      * CSV 里出现但本地没有的跟踪项会自动建出来，图标用通用占位。
-     * @returns {boolean} 文件不存在或内容非法时返回 false，此时保留本地缓存
+     * @returns {boolean} 内容为空时返回 false，此时保留本地缓存
      */
     function applyStoredCsv(csv) {
         if (!csv || !String(csv).trim()) {
@@ -1014,6 +1093,7 @@
         updateRecord: updateRecord,
         removeRecords: removeRecords,
         applyStoredCsv: applyStoredCsv,
+        importCsvText: importCsvText,
         migrateLegacy: migrateLegacy,
         pruneUnusedFields: pruneUnusedFields,
         exportCsv: exportCsv,

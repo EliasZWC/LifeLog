@@ -3,13 +3,18 @@
  *
  * 按分区列出设置项（通用 / 数据管理 / 关于）：
  * - 每项都是统一的「左名称 / 右当前值」行，点整行才弹出选项（LivologUI.createRowPicker）
- * - 导入 CSV 用一个隐藏的 <input type="file">，原生 WebChromeClient 会接管选文件
+ * - 导入 CSV 用一个隐藏的 <input type="file">，原生 WebChromeClient 会接管选文件；
+ *   时间记录与跟踪数据共用一个 input，点「导入」时先选哪一份，选完才拉选择器
+ *   （`importTarget` 就是这一步记下来的）
  */
 (function (global) {
     'use strict';
 
     /** 联系邮箱（设置页「关于 → 联系」） */
     var CONTACT_EMAIL = 'eliaschang@163.com';
+
+    /** 当前导入的目标：'records'（时间记录）或 'metrics'（跟踪数据） */
+    var importTarget = 'records';
 
     var HANDLERS = {
         language: {
@@ -89,14 +94,22 @@
         var fileInput = document.getElementById('setting-import-file');
         if (importButton && fileInput) {
             importButton.addEventListener('click', function () {
-                fileInput.click();
+                // 先选「导入哪份数据」，选完再拉系统文件选择器
+                openDataMenu(importButton, function (kind) {
+                    importTarget = kind;
+                    fileInput.click();
+                });
             });
             fileInput.addEventListener('change', handleFile);
         }
 
         var exportButton = document.getElementById('setting-export');
         if (exportButton) {
-            exportButton.addEventListener('click', handleExport);
+            exportButton.addEventListener('click', function () {
+                openDataMenu(exportButton, function (kind) {
+                    handleExport(kind);
+                });
+            });
         }
 
         var storageRow = document.getElementById('setting-storage');
@@ -156,12 +169,31 @@
         global.LivologUI.toast(t('setting.storage.reset'));
     }
 
-    /** 导出全部数据：交给原生弹系统「另存为」，浏览器预览时退回下载文件 */
-    function handleExport() {
-        var csv = global.LivologStore.exportCsv();
+    /**
+     * 「导入 / 导出数据」先让用户选哪一份数据（时间记录 / 跟踪数据）。
+     * @param {HTMLElement} anchor
+     * @param {(kind: 'records'|'metrics') => void} onPick
+     */
+    function openDataMenu(anchor, onPick) {
+        anchor.setAttribute('aria-expanded', 'true');
+        global.LivologUI.openMenu(anchor, [
+            { value: 'records', label: t('setting.data.records') },
+            { value: 'metrics', label: t('setting.data.metrics') }
+        ], function (kind) {
+            anchor.setAttribute('aria-expanded', 'false');
+            onPick(kind);
+        });
+    }
+
+    /** 导出：时间记录 / 跟踪数据各导各的，交给原生弹系统「另存为」 */
+    function handleExport(kind) {
+        var csv = kind === 'metrics'
+            ? global.LivologMetrics.exportCsv()
+            : global.LivologStore.exportCsv();
 
         if (global.LivologNative && typeof global.LivologNative.exportRecordsCsv === 'function') {
-            global.LivologNative.exportRecordsCsv(csv);
+            // 第二个参数让原生知道默认文件名用什么（metrics 用 metrics-xxx.csv）
+            global.LivologNative.exportRecordsCsv(csv, kind === 'metrics' ? 'metrics' : 'records');
             return;
         }
 
@@ -170,7 +202,7 @@
             var url = global.URL.createObjectURL(blob);
             var link = document.createElement('a');
             link.href = url;
-            link.download = 'livolog.csv';
+            link.download = (kind === 'metrics' ? 'livolog-metrics' : 'livolog') + '.csv';
             link.click();
             global.setTimeout(function () {
                 global.URL.revokeObjectURL(url);
@@ -180,21 +212,53 @@
         }
     }
 
-    /** 选完 CSV 后直接在前端解析，不绕原生（原生只负责拉起选择器） */
+    /**
+     * 把 `importCsvText` 返回的错误码翻成人话。
+     * 未知码原样返回，好歹让用户看到点什么、方便反馈。
+     * @param {string} code
+     */
+    function importReason(code) {
+        var key = 'toast.importReason.' + (code || '');
+        var text = t(key);
+        return text === key ? (code || '') : text;
+    }
+
+    /**
+     * 选完 CSV 后直接在前端解析，不绕原生（原生只负责拉起选择器）。
+     * `importTarget` 决定这份文件被当成时间记录还是跟踪数据。
+     */
     function handleFile(event) {
         var input = event.target;
         var file = input.files && input.files[0];
         input.value = ''; // 同一个文件也能重复选
+        var kind = importTarget;
+        importTarget = 'records';
         if (!file) {
             return;
         }
 
         var reader = new FileReader();
         reader.onload = function () {
-            var result = global.LivologStore.importCsvText(String(reader.result || ''));
+            var text = String(reader.result || '');
+            var result = kind === 'metrics'
+                ? global.LivologMetrics.importCsvText(text)
+                : global.LivologStore.importCsvText(text);
             if (!result.ok) {
                 global.LivologUI.toast(
-                    t('toast.importFailed').replace('{reason}', result.error || '')
+                    t('toast.importFailed').replace('{reason}', importReason(result.error))
+                );
+                return;
+            }
+            if (kind === 'metrics') {
+                // 跟踪数据没有「条数」这个概念（跟踪项 + 记录两样），提示分开写
+                if (!result.records) {
+                    global.LivologUI.toast(t('toast.importEmpty'));
+                    return;
+                }
+                global.LivologUI.toast(
+                    t('toast.importedMetrics')
+                        .replace('{m}', String(result.metrics))
+                        .replace('{n}', String(result.records))
                 );
                 return;
             }
@@ -205,7 +269,7 @@
             global.LivologUI.toast(t('toast.imported').replace('{n}', String(result.count)));
         };
         reader.onerror = function () {
-            global.LivologUI.toast(t('toast.importFailed').replace('{reason}', 'read'));
+            global.LivologUI.toast(t('toast.importFailed').replace('{reason}', importReason('read')));
         };
         reader.readAsText(file);
     }
