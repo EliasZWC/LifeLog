@@ -58,9 +58,9 @@
     --fab-fg: var(--bg);
 
     /* 图标面板：列数 / 格子大小 / 间距 / 内边距。
-       JS 要读这几个值算面板宽度（末尾格子与触发按钮右沿对齐），改这里就够了。
-       面板是浮层，不跟着表单宽度走（越靠左越宽），可用宽度 = 视口 − 表单左内边距。 */
-    --icon-cols: 8;
+       JS 要读这几个值算面板宽度（见 components.js），改这里就够了。
+       面板是居中模态，宽度只受「视窗 − 2 × 离屏幕留白」限制（留白在 JS 里定）。 */
+    --icon-cols: 7;
     --icon-option: 40px;
     --icon-gap: 4px;
     --icon-panel-pad: 10px;
@@ -923,26 +923,57 @@ body {
 }
 
 /*
-   图标面板：就地弹出的小窗口。
-   ⚠️ 面板是**浮层**，不该被表单宽度卡住（表单只占视窗的一部分）：
-      所以它是 .sheet 的直接定位子元素（.sheet 自带 position: relative —— 注意 .sheet
-      本身是 fixed，就是触发按钮的定位祖先），宽度取「视口 − 两侧内边距」，
-      可以比表单宽。left/right 用负内边距抵消 .sheet 的 padding，让它贴到屏幕边缘。
-   宽度由 JS 按列数算好（见 components.js），保证末尾格子与触发按钮右沿对齐。
+   图标面板：**居中的模态对话框**，盖在整个视窗正中间。
+   图标有 60+ 个，早先挤在表单行右侧那块小地方，必然裁列、还把页面顶宽；
+   现在脱离表单、直接 fixed 在视窗中央，选完自动消失。
+   宽度由 JS 按列数算好（见 components.js），只保证「不超过视窗 − 两侧留白」。
 */
+.icon-scrim {
+    position: fixed;
+    inset: 0;
+    /* 要比 .sheet(11) 高，否则弹窗里的表单会浮在遮罩之上 */
+    z-index: 21;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transition: opacity 220ms ease;
+}
+
+.icon-scrim[hidden] {
+    display: none;
+}
+
+.icon-scrim.is-open {
+    opacity: 1;
+}
+
 .icon-panel {
-    position: absolute;
-    z-index: 2;
-    margin-top: 6px;
+    position: fixed;
+    /* 居中：左右各留一个 margin，再由 margin: auto 把固定宽度摆正。
+       ⚠️ 垂直方向不要写 top: 50% + margin: auto（会和 left/right 的 auto 打架、被顶偏），
+          改用 top/left 50% + translate(-50%, -50%)。 */
+    left: 50%;
+    top: 50%;
+    /* 比遮罩再高一层 */
+    z-index: 22;
+    width: max-content;
+    max-width: calc(100vw - 32px);
     padding: var(--icon-panel-pad) 0 calc(var(--icon-panel-pad) + 4px);
     background: var(--surface);
     border: 1px solid var(--outline);
-    border-radius: 14px;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+    border-radius: 16px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+    transform: translate(-50%, -50%) scale(0.94);
+    opacity: 0;
+    transition: transform 200ms cubic-bezier(0.2, 0, 0, 1), opacity 200ms ease;
 }
 
 .icon-panel[hidden] {
     display: none;
+}
+
+.icon-panel.is-open {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
 }
 
 .icon-panel-head {
@@ -1204,6 +1235,8 @@ body {
     .sheet,
     .menu,
     .scrim,
+    .icon-scrim,
+    .icon-panel,
     .selection-bar,
     .detail,
     .toast {

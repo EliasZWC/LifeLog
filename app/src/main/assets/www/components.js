@@ -210,8 +210,8 @@
 
     var CHEVRON_PATH = '<path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>';
 
-    /** 浮层（图标面板等）离屏幕右沿至少留出的空隙 */
-    var SAFE_EDGE = 4;
+    /** 居中对话框（图标选择）离屏幕两侧至少留出的空隙 */
+    var ICON_PANEL_MARGIN = 16;
 
     /**
      * 用自绘控件替代原生 <select>（原生在 WebView 里弹出的是系统样式，无法统一风格）。
@@ -369,48 +369,29 @@
         mount.appendChild(trigger);
 
         var panel = el('div', 'icon-panel');
-        // 面板是**浮层**：宽度按列数算（末尾格子与触发按钮右沿对齐），但不受表单宽度限制 ——
-        // 表单只占视窗的一部分，面板可以铺到更宽。
-        // ⚠️ 可用宽度 = 「视口 − 表单左内边距」，所以能排下的列数比表单内多。
-        //    宽度算出来超过可用宽度就压回去，否则会溢出视口、把整个页面顶宽。
+        // 面板是**居中弹出的对话框**：盖在整个视窗正中间，而不是贴着表单某一角。
+        // 图标有 60+ 个，挤在表单右侧那块小地方必然要么裁列、要么把页面顶宽。
+        // ⚠️ 宽度只在「视窗 − 两侧留白」里取，所以永远不出屏、也不会撑宽页面。
         var rootStyle = getComputedStyle(document.documentElement);
         var optionSize = rootStyle.getPropertyValue('--icon-option').trim();
         var gapSize = rootStyle.getPropertyValue('--icon-gap').trim();
         var padSize = rootStyle.getPropertyValue('--icon-panel-pad').trim();
-        var columns = parseInt(rootStyle.getPropertyValue('--icon-cols'), 10) || 8;
+        var columns = parseInt(rootStyle.getPropertyValue('--icon-cols'), 10) || 7;
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-modal', 'true');
+        panel.hidden = true;
 
         /**
-         * 按当前视口宽度放面板：宽度取「列数算出来的值」与「可用宽度」的较小者，
-         * 右沿贴住触发按钮，左侧若放不下就贴到左内边距（让出屏幕边缘）。
+         * 按当前视口定宽：取「列数算出来的理想宽度」与「视窗宽度 − 两侧留白」的较小者。
+         * 居中交给 CSS（left/top 50% + translate(-50%, -50%)）。
          */
         function place() {
-            if (!mount.parentElement) {
-                return;
-            }
-            // 右沿对齐的是**触发按钮**（.icon-trigger），不是挂载容器
-            var anchor = trigger.getBoundingClientRect();
-            // .sheet 的水平内边距就是表单离屏幕左沿的距离
-            var sheetEl = mount.closest('.sheet');
-            var sheetStyle = sheetEl ? getComputedStyle(sheetEl) : null;
-            var edge = sheetStyle ? parseFloat(sheetStyle.paddingLeft) || 0 : SAFE_EDGE;
-            var maxWidth = window.innerWidth - edge - SAFE_EDGE;
-
             var wanted = columns * (parseFloat(optionSize) || 40) +
                 (columns - 1) * (parseFloat(gapSize) || 4) +
                 2 * (parseFloat(padSize) || 10);
-            var width = Math.min(wanted, maxWidth);
-
-            // 默认右沿对齐触发按钮；左边放不下就整个挪到「左内边距」起算
-            var right = window.innerWidth - anchor.right;
-            if (anchor.right - width < edge) {
-                right = window.innerWidth - (edge + width);
-            }
-            panel.style.width = width + 'px';
-            panel.style.left = 'auto';
-            panel.style.right = Math.max(0, right) + 'px';
+            var available = window.innerWidth - 2 * ICON_PANEL_MARGIN;
+            panel.style.width = Math.min(wanted, available) + 'px';
         }
-        panel.setAttribute('role', 'dialog');
-        panel.hidden = true;
 
         var toolbar = el('div', 'icon-panel-head');
         toolbar.appendChild(el('span', 'icon-panel-title', t('icon.pick')));
@@ -437,10 +418,14 @@
             grid.appendChild(button);
         });
         panel.appendChild(grid);
-        // ⚠️ 面板挂到 .sheet 上而不是 .icon-picker 里：这样它是**浮层**，
-        //    宽度不受表单 / 表单行的限制（表单只占视窗一部分），定位仍是相对 .sheet。
-        //    反正面板只在自己 sheet 打开时可见，挂哪一层对交互无影响。
-        var layer = mount.closest('.sheet') || mount.parentElement || mount;
+
+        // 遮罩：面板是居中对话框，后面压一层暗底才看得出「这是个模态」。
+        // ⚠️ 挂在 #app 上、用 position: fixed —— 面板要盖住整个视窗，
+        //    挂在 .sheet 里会被弹窗的层叠与 overflow 限制住。
+        var scrim = el('div', 'icon-scrim');
+        scrim.hidden = true;
+        var layer = document.getElementById('app') || document.body;
+        layer.appendChild(scrim);
         layer.appendChild(panel);
 
         function reflect() {
@@ -452,7 +437,13 @@
 
         function open() {
             place();
+            scrim.hidden = false;
             panel.hidden = false;
+            // 下一帧再加 is-open，让透明度过渡能跑起来
+            requestAnimationFrame(function () {
+                scrim.classList.add('is-open');
+                panel.classList.add('is-open');
+            });
             trigger.setAttribute('aria-expanded', 'true');
             // 选中的那个滚进可视区
             var active = null;
@@ -465,7 +456,10 @@
         }
 
         function close() {
+            scrim.hidden = true;
+            scrim.classList.remove('is-open');
             panel.hidden = true;
+            panel.classList.remove('is-open');
             trigger.setAttribute('aria-expanded', 'false');
         }
 
@@ -485,6 +479,8 @@
             }
         });
         closeButton.addEventListener('click', close);
+        // 点遮罩关闭
+        scrim.addEventListener('click', close);
 
         // 切语言时「选择图标」与关闭按钮的无障碍文案要跟着变
         if (global.LivologI18n) {
