@@ -182,7 +182,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         try {
-            startApp(savedInstanceState)
+            startApp()
         } catch (t: Throwable) {
             Log.e(TAG, "启动失败", t)
             showDiagnostics(
@@ -192,7 +192,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startApp(savedInstanceState: Bundle?) {
+    private fun startApp() {
         migrateLegacyPrefs()
         themeMode = readThemeMode()
 
@@ -209,9 +209,9 @@ class MainActivity : AppCompatActivity() {
 
         // 后台久置被系统回收后重建 Activity 时，WebView 想把「旧状态」恢复回来，
         // 但渲染进程已经没了，恢复出来就是一片空白（用户看到的白屏）。
-        // 我们的数据全在 CSV / localStorage 里，网页自己会重新载入，所以干脆不让它恢复，
-        // 每次进 onCreate 都老老实实重新加载入口页。
-        webView.saveEnabled = false
+        // 我们的数据全在 CSV / localStorage 里，网页载入后自己会同步，
+        // 所以这里一律重新加载入口页，不依赖 WebView 的状态恢复。
+        loadEntry()
 
         // WebView 铺满整屏（包括状态栏与系统导航条区域），使遮罩、弹窗能盖住整屏
         layoutRoot = findViewById(R.id.root)
@@ -228,10 +228,6 @@ class MainActivity : AppCompatActivity() {
                 isEnabled = false
                 onBackPressedDispatcher.onBackPressed()
             }
-        }
-
-        if (savedInstanceState == null) {
-            loadEntry()
         }
     }
 
