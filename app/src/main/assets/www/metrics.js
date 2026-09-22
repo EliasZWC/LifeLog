@@ -429,6 +429,86 @@
         return changed;
     }
 
+    /**
+     * 修复「跟踪项挂着一大堆不属于自己的项目」（v0.1.15）。
+     *
+     * 老版 applyStoredCsv 会把 CSV 里的**所有**值列都加成每个跟踪项的字段，
+     * 于是血压的跟踪项里会出现 weight / waistline / weight_2 / waistline_2…
+     * 一大堆别的跟踪项的项目（值全是空）。这里按「这个跟踪项自己的记录里
+     * 到底用到过哪些字段」把多余的剪掉：
+     *   - 有值的字段一定保留；
+     *   - 从没被任何记录用过、名字又是「别的跟踪项的字段名」的一律删掉；
+     *   - 至少保留一个字段（primary 指向的），否则跟踪项就没项目了。
+     *
+     * ⚠️ 只删**从来没有任何值**的字段，所以不会丢数据。
+     *
+     * @returns {boolean} 是否有改动
+     */
+    function pruneUnusedFields() {
+        var metrics = read(METRIC_KEY).map(normalizeMetric);
+        var records = read(RECORD_KEY);
+        var changed = false;
+
+        // 统计每个跟踪项各字段「被真正写过值」的次数
+        var usedByMetric = {};
+        records.forEach(function (record) {
+            var bucket = usedByMetric[record.metricId] ||
+                (usedByMetric[record.metricId] = {});
+            normalizeRecordValues(record).forEach(function (entry) {
+                if (entry.value === null || entry.value === undefined) {
+                    return;
+                }
+                bucket[entry.fieldId] = (bucket[entry.fieldId] || 0) + 1;
+            });
+        });
+
+        metrics.forEach(function (metric) {
+            var used = usedByMetric[metric.id] || {};
+            var keep = metric.fields.filter(function (field) {
+                return used[field.id];
+            });
+            if (!keep.length) {
+                // 一条值都没有：只留 primary 指向的那个（或第一个），别把跟踪项清空
+                var primary = primaryField(metric);
+                keep = [primary || metric.fields[0]];
+            }
+            if (keep.length === metric.fields.length) {
+                return;
+            }
+
+            var keptIds = {};
+            keep.forEach(function (field) {
+                keptIds[field.id] = true;
+            });
+            metric.fields = keep;
+            if (!keptIds[metric.primary]) {
+                metric.primary = keep[0].id;
+            }
+            // 记录里的 values 也按新字段集合裁一遍（多余的都是空值）
+            records.forEach(function (record) {
+                if (record.metricId !== metric.id || !Array.isArray(record.values)) {
+                    return;
+                }
+                record.values = record.values.filter(function (entry) {
+                    return keptIds[entry.fieldId];
+                });
+            });
+            changed = true;
+        });
+
+        if (changed) {
+            suppressPersist = true;
+            try {
+                global.localStorage.setItem(METRIC_KEY, JSON.stringify(metrics));
+                global.localStorage.setItem(RECORD_KEY, JSON.stringify(records));
+            } catch (e) {
+                /* 忽略 */
+            }
+            suppressPersist = false;
+        }
+        return changed;
+    }
+
     function normalizeValue(value) {
         if (value === null || value === undefined || String(value).trim() === '') {
             return null;
@@ -608,7 +688,15 @@
     var LEGACY_VALUE_COLUMN = 'value';
     var META_COLUMNS = ['id', 'metric', 'time'];
 
-    /** 字段名 → CSV 列名：去掉不能当列名的字符，重名的话加序号 */
+    /**
+     * 字段名 → CSV 列名：去掉不能当列名的字符，重名的话加序号。
+     *
+     * ⚠️ 重名的后缀要能**反解回原字段名**，否则「列出 → 读回」这一圈会把
+     *    `weight_2` 当成一个真名叫 weight_2 的新字段，越滚越多
+     *    （用户报的 weight_2 / waistline_2 就是这么来的）。
+     *    所以后缀用 `~2` 这种不会出现在字段名里的分隔符，读回来时剥掉即可；
+     *    列名里的 `_2` 如果本来就是字段名的一部分，也不会被误剥。
+     */
     function columnName(fieldName, taken) {
         var base = String(fieldName || '').trim().replace(/[,\r\n"]/g, '');
         if (!base) {
@@ -621,10 +709,15 @@
             lower[item.toLowerCase()] = true;
         });
         while (lower[name.toLowerCase()]) {
-            name = base + '_' + index;
+            name = base + '~' + index;
             index += 1;
         }
         return name;
+    }
+
+    /** CSV 列名 → 字段名（剥掉重名后缀 `~N`） */
+    function fieldNameOfColumn(column) {
+        return String(column || '').replace(/~\d+$/, '');
     }
 
     /**
@@ -664,7 +757,7 @@
                     row.push('');
                     return;
                 }
-                var value = valueOf(record, column.fieldId, metric.id);
+                var value = valueOf(record, column.fieldId, record.metricId);
                 row.push(global.LivologCsv.escapeField(value === null ? '' : value));
             });
 
@@ -748,32 +841,76 @@
             return a.position - b.position;
         });
 
-        var records = [];
+        /*
+           ⚠️ 先把「每行的原始值」读出来，按跟踪项分组，**再**决定字段。
+              不能像以前那样「每行把所有列都当成字段塞给该行的跟踪项」：
+              宽表里 A 的列（如 Systolic）在 B 的行里是空的，以前却照样给 B
+              建了同名字段，于是每个跟踪项都长出一大堆别的项目的字段
+              （用户报的「一个跟踪记录很多很多项目」就是这个）。
+        */
+        var raw = [];
         body.forEach(function (row) {
             var name = String(row[at.metric] || '').trim();
             var time = global.LivologCsv.parseTimestamp(row[at.time]);
             if (!name || time === null) {
                 return;
             }
+            var cells = {};
+            valueColumns.forEach(function (column) {
+                cells[column.key] = normalizeValue(row[column.position]);
+            });
+            raw.push({
+                id: (at.id === undefined ? '' : String(row[at.id] || '').trim()) || newId(),
+                name: name,
+                time: time,
+                cells: cells
+            });
+        });
 
-            if (!byName[name]) {
+        // 每个跟踪项真正用到的列 = 它自己的行里至少有一个非空值的那几列
+        var usedColumns = {};
+        raw.forEach(function (entry) {
+            var set = usedColumns[entry.name] || (usedColumns[entry.name] = {});
+            valueColumns.forEach(function (column) {
+                if (entry.cells[column.key] !== null) {
+                    set[column.key] = true;
+                }
+            });
+        });
+
+        /*
+           确定每个跟踪项最终的字段列表：
+             - 保留跟踪项已有的字段（按名字匹配，改名不丢数据）；
+             - 只补充「本跟踪项自己的行里真的有值」的列；
+             - legacy `value` 列仍映射到第一个字段。
+        */
+        var records = [];
+        raw.forEach(function (entry) {
+            if (!byName[entry.name]) {
                 var created = normalizeMetric({
                     id: newId(),
-                    name: name,
+                    name: entry.name,
                     icon: global.LivologIcons.fallback
                 });
                 metrics.push(created);
-                byName[name] = created;
+                byName[entry.name] = created;
             }
-            var metric = byName[name];
+            var metric = byName[entry.name];
+            var used = usedColumns[entry.name] || {};
 
-            // 文件里这一行的字段集合，可能比跟踪项现有的多（Excel 里手工加了列）
             var rowFields = [];
             valueColumns.forEach(function (column) {
-                var number = normalizeValue(row[column.position]);
+                if (!used[column.key] && column.key !== LEGACY_VALUE_COLUMN) {
+                    return; // 这一列在这个跟踪项里全是空的，不是它的项目
+                }
+                var number = entry.cells[column.key];
+                if (column.key === LEGACY_VALUE_COLUMN && number === null) {
+                    return;
+                }
+                // 列名可能是 `weight~2` 这种重名形式，读回字段名时把后缀剥掉
                 var fieldName = column.key === LEGACY_VALUE_COLUMN
                     ? (metric.fields[0] ? metric.fields[0].name : DEFAULT_FIELD)
-                    : column.key;
+                    : fieldNameOfColumn(column.key);
                 var found = null;
                 metric.fields.forEach(function (field) {
                     if (!found && field.name.toLowerCase() === fieldName.toLowerCase()) {
@@ -784,13 +921,15 @@
                     found = { id: newId(), name: fieldName };
                     metric.fields.push(found);
                 }
-                rowFields.push({ fieldId: found.id, value: number });
+                if (number !== null) {
+                    rowFields.push({ fieldId: found.id, value: number });
+                }
             });
 
-            // 跟踪项里有、文件里没这一列的值，补成空
+            // 跟踪项里有、文件里这一行没值的字段，补成空（保持每行字段集合完整）
             metric.fields.forEach(function (field) {
-                var has = rowFields.some(function (entry) {
-                    return entry.fieldId === field.id;
+                var has = rowFields.some(function (item) {
+                    return item.fieldId === field.id;
                 });
                 if (!has) {
                     rowFields.push({ fieldId: field.id, value: null });
@@ -798,9 +937,9 @@
             });
 
             records.push({
-                id: (at.id === undefined ? '' : String(row[at.id] || '').trim()) || newId(),
+                id: entry.id,
                 metricId: metric.id,
-                time: time,
+                time: entry.time,
                 values: rowFields
             });
         });
@@ -808,6 +947,14 @@
         if (!persistReplace(metrics, records)) {
             return false;
         }
+
+        /*
+           读完文件再剪一遍「从来没有任何值」的多余字段。
+           老文件（或老版本生成的缓存）里，每个跟踪项都被塞进了所有列当字段，
+           上面按「本跟踪项自己用到的列」重建已经修掉大部分；这里再兜一次底，
+           顺便把已经落盘的老数据也清干净。
+        */
+        pruneUnusedFields();
 
         persistCsv();
         notify();
@@ -830,6 +977,7 @@
         removeRecords: removeRecords,
         applyStoredCsv: applyStoredCsv,
         migrateLegacy: migrateLegacy,
+        pruneUnusedFields: pruneUnusedFields,
         exportCsv: exportCsv,
         onChange: function (listener) {
             listeners.push(listener);

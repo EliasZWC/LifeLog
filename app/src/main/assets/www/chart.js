@@ -26,6 +26,14 @@
     var PAD_BOTTOM = 26;
     var DAY_MS = 24 * 60 * 60 * 1000;
 
+    /**
+     * 数据点标记的半径（viewBox 单位）。
+     * ⚠️ 320×170 的 viewBox 在手机上会被缩到 300 多 px 显示，2.6 单位画出来
+     *    只有几个物理像素，几种形状根本分不出来（用户 2026-09-22 反馈「点太小」）。
+     *    4.2 在真机上约 8~9 物理像素，形状能看清，又不至于把折线糊住。
+     */
+    var MARKER_SIZE = 4.2;
+
     /** 取某个时间戳所在自然日的零点 */
     function startOfDay(ms) {
         var date = new Date(ms);
@@ -434,7 +442,7 @@
         var cls = 'chart-dot chart-series-' + index;
         var cx = x.toFixed(1);
         var cy = y.toFixed(1);
-        var r = 2.6;
+        var r = MARKER_SIZE;
         switch (shape) {
         case 'square':
             return '<rect class="' + cls + '" x="' + (x - r).toFixed(1) + '" y="' +
