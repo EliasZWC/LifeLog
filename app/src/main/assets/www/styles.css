@@ -41,6 +41,9 @@
     --safe-left: env(safe-area-inset-left, 0px);
     --keyboard: 0px;
 
+    /* 可滚动页面底部的留白（见 .page），让最后一条内容不贴导航栏 */
+    --page-bottom-space: 24px;
+
     --bg: #EFEFED;
     --nav-bg: #FCFCFB;
     --surface: #FCFCFB;
@@ -323,6 +326,14 @@ body {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    /*
+       底部留白：滚到底时最后一条内容不要贴着导航栏。
+       ⚠️ 只在 .page 上加，别指望某个页面的分组 padding —— 以前就是靠
+          `.setting-group { padding: 4px 0 }` 那 4px，设置页滚到底末行几乎是
+          贴着导航栏的（实测间隙 0px），用户报「预留空间太小」。
+          `--safe-bottom` 只影响外层 #app 的布局，这里不用再叠加。
+    */
+    padding-bottom: var(--page-bottom-space);
 }
 
 .page[hidden] {
@@ -2205,11 +2216,36 @@ body {
     place-items: center;
 }
 
+/*
+   ⚠️ 每个导航项里放着**两个** svg（线型 + 填充），用 CSS 决定显示哪个：
+      未选中 → 线型；选中 → 填充。别改成用 JS 替换 path —— 两份图都在 DOM 里
+      才能纯靠 class 切换，也不会因为切换时机丢图标。
+   两个 svg 是 grid 的同位元素，同时可见时不会撑出高度（都占同一格）。
+*/
 .nav-icon svg {
     display: block;
     width: 24px;
     height: 24px;
     fill: currentColor;
+    grid-area: 1 / 1;
+}
+
+/*
+   ⚠️ 这条必须是 `.nav-icon svg` 的**选择器更强**或者写在它**后面**：
+      两条同优先级（0,1,1），靠书写顺序决胜。放前面会被 `display: block` 盖掉，
+      于是两个图标同时显示（实测踩过）。这里用 `.nav-icon .nav-icon-filled`
+      把优先级提到 (0,2,0)，双向保险。
+*/
+.nav-icon .nav-icon-filled {
+    display: none;
+}
+
+.nav-item.is-active .nav-icon-outlined {
+    display: none;
+}
+
+.nav-item.is-active .nav-icon-filled {
+    display: block;
 }
 
 .nav-label {
