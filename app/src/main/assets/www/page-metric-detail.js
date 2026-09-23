@@ -626,6 +626,8 @@
             'span', 'stats-chart-title', t('metric.detail.chartDaily')
         ));
         chartBlock.appendChild(global.LivologChart.buildMulti(days, series, {
+            // 气泡第一行是哪一天，下面才逐项列值
+            dayFormat: global.LivologChart.fullDateLabel,
             // 气泡里每行一个项目：写「项目名 值」，多项目时才带名字
             format: function (value, name) {
                 return chosen.length > 1 && name

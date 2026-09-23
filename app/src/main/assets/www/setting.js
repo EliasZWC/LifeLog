@@ -49,6 +49,39 @@
             setValue: function (value) {
                 global.LivologTheme.setMode(value);
             }
+        },
+
+        timezone: {
+            mount: 'setting-timezone',
+            value: 'setting-timezone-value',
+            getOptions: function () {
+                return global.LivologClock.zones().map(function (zone) {
+                    return { value: zone.id, label: zoneLabel(zone) };
+                });
+            },
+            getValue: function () {
+                return global.LivologClock.getTimezone();
+            },
+            setValue: function (value) {
+                global.LivologClock.setTimezone(value);
+            }
+        },
+
+        weekStart: {
+            mount: 'setting-week-start',
+            value: 'setting-week-start-value',
+            getOptions: function () {
+                return [
+                    { value: '0', label: t('weekday.0') },
+                    { value: '1', label: t('weekday.1') }
+                ];
+            },
+            getValue: function () {
+                return String(global.LivologClock.getWeekStart());
+            },
+            setValue: function (value) {
+                global.LivologClock.setWeekStart(Number(value));
+            }
         }
     };
 
@@ -56,6 +89,28 @@
 
     function t(key) {
         return global.LivologI18n ? global.LivologI18n.t(key) : key;
+    }
+
+    /**
+     * 时区选项的文字。
+     * 「跟随系统」直接用词条；其余把固定偏移写成 `UTC+08:00` / `UTC-03:30` 这种
+     * 一眼能对上别处见到的写法（半小时时区也能正确显示）。
+     */
+    function zoneLabel(zone) {
+        if (zone.offset === null) {
+            return t('setting.timezone.system');
+        }
+        var sign = zone.offset < 0 ? '-' : '+';
+        var abs = Math.abs(zone.offset);
+        return 'UTC' + sign + pad(Math.floor(abs / 60), 2) + ':' + pad(abs % 60, 2);
+    }
+
+    function pad(value, length) {
+        var text = String(value);
+        while (text.length < length) {
+            text = '0' + text;
+        }
+        return text;
     }
 
     function init() {
@@ -80,6 +135,7 @@
 
         // 被其它入口改动时保持控件同步
         global.LivologTheme.onChange(refresh);
+        global.LivologClock.onChange(refresh);
         if (global.LivologI18n) {
             global.LivologI18n.onChange(function () {
                 refresh();

@@ -126,11 +126,38 @@
     // --- 列表 ---------------------------------------------------------------
     //
     // 记录按「年 → 月 → 周」三级分组，每一级都能展开 / 折叠。
-    // 周按「月内第几周」算（1–7 号为第 1 周…），这样周总是完整地落在某个月里，
-    // 不会出现一个周横跨两个月、挂在哪边都不对的情况。
+    //
+    // ⚠️ 周是**真实的自然周**：周一到周日（固定按 ISO 口径切，见 `weekKey`）。
+    //    以前按「1–7 号算第 1 周」切，好处是周不会横跨两个月，
+    //    但那个「周」跟用户日历上的周对不上（用户报「周的划分不太对」）。
+    //    代价是月初/月末那一周会横跨两个月 —— 归属取该周**周一所在的月**，
+    //    所以会出现「某月下只有半个月的记录」这种正常情况。
+    //    `LivologClock` 的「每周起始日」设置只影响**显示顺序与日期标记**，
+    //    不影响这里的归组口径（归组永远按周一切，保证跨月跨年稳定）。
 
     /** 已折叠的分组 key；只在本次会话里记着 */
     var collapsed = {};
+
+    /** 时间口径（时区 / 每周起始日）都从这里取，不要直接用 new Date() 的本地字段 */
+    var clock = global.LivologClock;
+
+    /**
+     * 周分组的标题：`09/21 ~ 09/27`。
+     * 直接写起止日期而不是「第几周」：跨月的那一周说不清是第几周，
+     * 日期区间则任何情况都准确。
+     * @param {string} weekKey 该周周一的 `YYYY-MM-DD`
+     */
+    function weekLabel(weekKey) {
+        var parts = weekKey.split('-').map(Number);
+        var start = clock.stamp(parts[0], parts[1], parts[2], 0, 0);
+        var end = start + 6 * 86400000;
+        return shortDate(start) + ' ~ ' + shortDate(end);
+    }
+
+    /** 2026-09-21 → 09/21 */
+    function shortDate(timestamp) {
+        return clock.formatDate(timestamp).slice(5).replace('-', '/');
+    }
 
     /**
      * 先建成完整的年/月/周三棵树，再根据当前范围决定从哪一级开始显示。
@@ -142,16 +169,18 @@
         var pad = global.LivologDateTime.pad;
 
         records.forEach(function (record) {
-            var date = new Date(record.start);
-            var year = date.getFullYear();
-            var month = date.getMonth() + 1;
-            var week = Math.floor((date.getDate() - 1) / 7) + 1;
+            var p = clock.parts(record.start);
+            var year = p.year;
+            var weekKey = clock.weekKey(record.start);
+            // 这一周归到「周一所处的月份」，跨月的那一周因此只会出现在一个月下
+            var month = clock.parts(clock.weekStartOf(record.start)).month;
+            var monthYear = clock.parts(clock.weekStartOf(record.start)).year;
 
-            var yearKey = 'y' + year;
+            var yearKey = 'y' + monthYear;
             if (!yearIndex[yearKey]) {
                 yearIndex[yearKey] = {
                     key: yearKey,
-                    label: t('time.group.year').replace('{y}', String(year)),
+                    label: t('time.group.year').replace('{y}', String(monthYear)),
                     count: 0,
                     months: [],
                     monthIndex: {}
@@ -166,7 +195,7 @@
                 yearNode.monthIndex[monthKey] = {
                     key: monthKey,
                     label: t('time.group.month')
-                        .replace('{y}', String(year))
+                        .replace('{y}', String(monthYear))
                         .replace('{m}', pad(month, 2)),
                     count: 0,
                     weeks: [],
@@ -177,14 +206,11 @@
             var monthNode = yearNode.monthIndex[monthKey];
             monthNode.count += 1;
 
-            var weekKey = monthKey + 'w' + week;
             if (!monthNode.weekIndex[weekKey]) {
                 monthNode.weekIndex[weekKey] = {
-                    key: weekKey,
-                    label: t('time.group.week')
-                        .replace('{y}', String(year))
-                        .replace('{m}', pad(month, 2))
-                        .replace('{n}', String(week)),
+                    key: monthKey + 'w' + weekKey,
+                    // 周标签直接写「起止日期」，比「第几周」直观，跨月也说得清
+                    label: weekLabel(weekKey),
                     count: 0,
                     records: []
                 };
@@ -267,8 +293,7 @@
 
     /** 日期标记：YYYY-MM-DD, 周几（如 2026-09-19, Sat） */
     function dayMark(day) {
-        var text = global.LivologDateTime.formatDate(day) + ', ' +
-            t('weekday.' + new Date(day).getDay());
+        var text = clock.formatDate(day) + ', ' + t('weekday.' + clock.parts(day).weekday);
         return global.LivologUI.el('li', 'day-mark', text);
     }
 

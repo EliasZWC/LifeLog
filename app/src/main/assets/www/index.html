@@ -117,6 +117,27 @@
                     </ul>
                 </section>
 
+                <!-- 时间区：时区与每周起始日影响时间页的分组，所以单独一组 -->
+                <section class="setting-group">
+                    <h2 class="setting-group-title" data-i18n="setting.group.time">Time</h2>
+                    <ul class="setting-list">
+                        <li class="setting-item">
+                            <button class="setting-action" type="button" id="setting-timezone"
+                                aria-haspopup="menu" aria-expanded="false">
+                                <span class="setting-label" data-i18n="setting.timezone">Time zone</span>
+                                <span class="setting-value" id="setting-timezone-value">—</span>
+                            </button>
+                        </li>
+                        <li class="setting-item">
+                            <button class="setting-action" type="button" id="setting-week-start"
+                                aria-haspopup="menu" aria-expanded="false">
+                                <span class="setting-label" data-i18n="setting.weekStart">Week starts on</span>
+                                <span class="setting-value" id="setting-week-start-value">—</span>
+                            </button>
+                        </li>
+                    </ul>
+                </section>
+
                 <section class="setting-group">
                     <h2 class="setting-group-title" data-i18n="setting.group.data">Data</h2>
                     <ul class="setting-list">
@@ -586,6 +607,7 @@
 
     <script src="i18n.js"></script>
     <script src="icons.js"></script>
+    <script src="clock.js"></script>
     <script src="csv.js"></script>
     <script src="store.js"></script>
     <script src="metrics.js"></script>

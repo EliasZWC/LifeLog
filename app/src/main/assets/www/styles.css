@@ -1863,6 +1863,16 @@ body {
     font-variant-numeric: tabular-nums;
 }
 
+/*
+   气泡第一行是日期，用下划线跟下面的数值行分开。
+   ⚠️ SVG 里 `text-decoration` 各家实现不一致，用描边画线最稳。
+*/
+.chart-tip .chart-tip-head {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+}
+
 .chart-guide {
     stroke: var(--on-surface);
     stroke-opacity: 0.35;

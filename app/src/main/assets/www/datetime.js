@@ -10,6 +10,11 @@
     var CLOCK_DIGITS = 2;
     var YEAR_DIGITS = 4;
 
+    /** 时间口径模块（延迟取，避免加载顺序问题） */
+    function clock() {
+        return global.LivologClock;
+    }
+
     // --- 格式化 -------------------------------------------------------------
 
     function pad(value, length) {
@@ -20,20 +25,23 @@
         return text;
     }
 
+    /*
+       ⚠️ 这三个函数都**转交**给 `LivologClock`，别在这里直接用 `new Date()` 的本地字段：
+         用户在设置页把时区改成别的以后，「一天」的口径就跟着变了，
+         时间页分组、日期标记、日期选择器都得一致。`LivologClock` 是唯一的口径来源。
+    */
+
     function formatDate(timestamp) {
-        var date = new Date(timestamp);
-        return date.getFullYear() + '-' + pad(date.getMonth() + 1, 2) + '-' + pad(date.getDate(), 2);
+        return global.LivologClock.formatDate(timestamp);
     }
 
     function formatClock(timestamp) {
-        var date = new Date(timestamp);
-        return pad(date.getHours(), 2) + ':' + pad(date.getMinutes(), 2);
+        return global.LivologClock.formatClock(timestamp);
     }
 
     /** 取某个时间戳所在自然日的零点（全 app 统一的“一天”口径） */
     function startOfDay(timestamp) {
-        var date = new Date(timestamp);
-        return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+        return global.LivologClock.startOfDay(timestamp);
     }
 
     // --- 分段输入 -----------------------------------------------------------
@@ -119,12 +127,12 @@
 
         group.appendChild(row);
 
-        var date = new Date(initial);
-        inputs.year.value = pad(date.getFullYear(), YEAR_DIGITS);
-        inputs.month.value = pad(date.getMonth() + 1, CLOCK_DIGITS);
-        inputs.day.value = pad(date.getDate(), CLOCK_DIGITS);
-        inputs.hour.value = pad(date.getHours(), CLOCK_DIGITS);
-        inputs.minute.value = pad(date.getMinutes(), CLOCK_DIGITS);
+        var date = clock().parts(initial);
+        inputs.year.value = pad(date.year, YEAR_DIGITS);
+        inputs.month.value = pad(date.month, CLOCK_DIGITS);
+        inputs.day.value = pad(date.day, CLOCK_DIGITS);
+        inputs.hour.value = pad(date.hour, CLOCK_DIGITS);
+        inputs.minute.value = pad(date.minute, CLOCK_DIGITS);
 
         return { root: group, inputs: inputs };
     }
@@ -164,13 +172,15 @@
             return null;
         }
 
-        var date = new Date(year, month - 1, day, hour, minute, 0, 0);
-        // 2 月 30 日这类不存在的日期会被 Date 自动进位，这里挡掉
-        if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+        // 用墙上时间去校验「2月30日」这类不存在的日期：
+        // 先按日历规则算，再看换算出来的时刻读回墙上时间是不是同一个日期
+        var utc = new Date(Date.UTC(year, month - 1, day, hour, minute, 0, 0));
+        if (utc.getUTCFullYear() !== year || utc.getUTCMonth() !== month - 1 ||
+            utc.getUTCDate() !== day) {
             return null;
         }
 
-        return date.getTime();
+        return clock().stamp(year, month, day, hour, minute);
     }
 
     /**
@@ -193,10 +203,10 @@
         row.appendChild(segmentInput(CLOCK_DIGITS, 'DD', 'day', inputs, onChange));
         group.appendChild(row);
 
-        var date = new Date(initial);
-        inputs.year.value = pad(date.getFullYear(), YEAR_DIGITS);
-        inputs.month.value = pad(date.getMonth() + 1, CLOCK_DIGITS);
-        inputs.day.value = pad(date.getDate(), CLOCK_DIGITS);
+        var date = clock().parts(initial);
+        inputs.year.value = pad(date.year, YEAR_DIGITS);
+        inputs.month.value = pad(date.month, CLOCK_DIGITS);
+        inputs.day.value = pad(date.day, CLOCK_DIGITS);
 
         return { root: group, inputs: inputs };
     }
@@ -219,7 +229,7 @@
             return null;
         }
 
-        return startOfDay(new Date(year, month - 1, day, 0, 0, 0, 0).getTime());
+        return startOfDay(clock().stamp(year, month, day, 0, 0));
     }
 
     global.LivologDateTime = {

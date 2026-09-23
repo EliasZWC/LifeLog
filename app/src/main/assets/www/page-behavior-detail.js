@@ -430,6 +430,8 @@
         ));
         chartBlock.appendChild(global.LivologChart.build(points, {
             type: stats.chartType,
+            // 气泡第一行是哪一天，下面才是可读的时长 / 次数
+            dayFormat: global.LivologChart.fullDateLabel,
             // 点某一天时气泡里显示的是可读的时长 / 次数
             format: useDuration
                 ? function (minutes) {

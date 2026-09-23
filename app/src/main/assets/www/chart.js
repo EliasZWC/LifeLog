@@ -34,16 +34,25 @@
      */
     var MARKER_SIZE = 4.2;
 
-    /** 取某个时间戳所在自然日的零点 */
+    /** 取某个时间戳所在自然日的零点（按设置里的时区口径） */
     function startOfDay(ms) {
-        var date = new Date(ms);
-        return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+        return global.LivologClock.startOfDay(ms);
     }
 
     /** 横轴刻度：月-日（不补零，窄屏更省空间） */
     function dateLabel(ms) {
-        var date = new Date(ms);
-        return (date.getMonth() + 1) + '-' + date.getDate();
+        var p = global.LivologClock.parts(ms);
+        return p.month + '-' + p.day;
+    }
+
+    /** 气泡日期行：月/日 + 周几（横轴刻度太挤，只在气泡里给全） */
+    function fullDateLabel(ms) {
+        var p = global.LivologClock.parts(ms);
+        var weekday = global.LivologI18n && global.LivologI18n.t
+            ? global.LivologI18n.t('weekday.' + p.weekday)
+            : String(p.weekday);
+        return global.LivologClock.pad(p.month, 2) + '/' +
+            global.LivologClock.pad(p.day, 2) + ' ' + weekday;
     }
 
     function tickLabel(value) {
@@ -179,7 +188,8 @@
         attachTips(svg, tips, {
             type: type,
             baseY: baseY,
-            format: options && options.format
+            format: options && options.format,
+            dayFormat: options && options.dayFormat
         });
 
         return svg;
@@ -207,8 +217,17 @@
             var text = config.format
                 ? String(config.format(tip.value))
                 : String(Math.round(tip.value * 100) / 100);
-            var boxW = text.length * 6.2 + 16;
-            var boxH = 19;
+            var dayFormat = config.dayFormat || fullDateLabel;
+            var dayText = dayFormat(tip.day);
+
+            var lines = [{ text: dayText, head: true }, { text: text, head: false }];
+            var lineH = 15;
+            var headGap = 3;
+            var boxW = 0;
+            lines.forEach(function (line) {
+                boxW = Math.max(boxW, line.text.length * 6.2 + 16);
+            });
+            var boxH = lines.length * lineH + 8 + headGap;
             var boxX = Math.min(
                 Math.max(tip.cx - boxW / 2, PAD_X),
                 WIDTH - PAD_X - boxW
@@ -221,10 +240,16 @@
 
             var inner =
                 '<rect x="' + boxX.toFixed(1) + '" y="' + boxY.toFixed(1) +
-                '" width="' + boxW.toFixed(1) + '" height="' + boxH +
-                '" rx="6" />' +
-                '<text x="' + (boxX + boxW / 2).toFixed(1) + '" y="' +
-                (boxY + 13).toFixed(1) + '" text-anchor="middle">' + text + '</text>';
+                '" width="' + boxW.toFixed(1) + '" height="' + boxH.toFixed(1) +
+                '" rx="6" />';
+
+            var y = boxY + 13;
+            lines.forEach(function (line) {
+                inner += '<text' + (line.head ? ' class="chart-tip-head"' : '') +
+                    ' x="' + (boxX + boxW / 2).toFixed(1) + '" y="' + y.toFixed(1) +
+                    '" text-anchor="middle">' + line.text + '</text>';
+                y += lineH + (line.head ? headGap : 0);
+            });
 
             if (config.type === 'line') {
                 inner = '<line class="chart-guide" x1="' + tip.cx.toFixed(1) +
@@ -645,7 +670,12 @@
         return svg;
     }
 
-    /** 多序列的气泡：一天一行「项目名 值」 */
+    /**
+     * 多序列的气泡：第一行是哪一天，下面每行一个「项目名 值」。
+     *
+     * ⚠️ 第一行必须是日期（用户要求）：只列数值的话，点完根本不知道看的是哪一天，
+     *    尤其是横轴刻度只标了首/中/尾三处、或者同一天有多个点的时候。
+     */
     function attachMultiTips(svg, tips, options, baseY) {
         var layer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         layer.setAttribute('class', 'chart-tip');
@@ -667,16 +697,20 @@
             var format = (options && options.format) || function (value) {
                 return String(Math.round(value * 100) / 100);
             };
+            var dayFormat = (options && options.dayFormat) || fullDateLabel;
 
-            var lines = rows.map(function (row) {
-                return format(row.value, row.name);
+            // 第一行日期，其余每行一个项目
+            var lines = [{ text: dayFormat(tip.day), head: true }];
+            rows.forEach(function (row) {
+                lines.push({ text: format(row.value, row.name), head: false });
             });
-            // 多行气泡：每行一个项目的值
+
             var lineH = 15;
-            var boxH = lines.length * lineH + 8;
+            var headGap = 3;
+            var boxH = lines.length * lineH + 8 + headGap;
             var boxW = 0;
-            lines.forEach(function (text) {
-                boxW = Math.max(boxW, text.length * 6.2 + 16);
+            lines.forEach(function (line) {
+                boxW = Math.max(boxW, line.text.length * 6.2 + 16);
             });
             var boxX = Math.min(
                 Math.max(tip.cx - boxW / 2, PAD_X),
@@ -689,13 +723,15 @@
                 '" y1="' + PAD_TOP + '" x2="' + tip.cx.toFixed(1) +
                 '" y2="' + baseY + '" />' +
                 '<rect x="' + boxX.toFixed(1) + '" y="' + boxY.toFixed(1) +
-                '" width="' + boxW.toFixed(1) + '" height="' + boxH +
+                '" width="' + boxW.toFixed(1) + '" height="' + boxH.toFixed(1) +
                 '" rx="6" />';
 
-            lines.forEach(function (text, row) {
-                inner += '<text x="' + (boxX + boxW / 2).toFixed(1) + '" y="' +
-                    (boxY + 14 + row * lineH).toFixed(1) + '" text-anchor="middle">' +
-                    text + '</text>';
+            var y = boxY + 14;
+            lines.forEach(function (line) {
+                inner += '<text' + (line.head ? ' class="chart-tip-head"' : '') +
+                    ' x="' + (boxX + boxW / 2).toFixed(1) + '" y="' + y.toFixed(1) +
+                    '" text-anchor="middle">' + line.text + '</text>';
+                y += lineH + (line.head ? headGap : 0);
             });
 
             layer.innerHTML = inner;
@@ -730,6 +766,7 @@
         bucketSpans: bucketSpans,
         rangeOf: rangeOf,
         startOfDay: startOfDay,
-        dateLabel: dateLabel
+        dateLabel: dateLabel,
+        fullDateLabel: fullDateLabel
     };
 })(window);
