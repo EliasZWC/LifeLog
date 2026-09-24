@@ -26,6 +26,13 @@
     var PAD_BOTTOM = 26;
     var DAY_MS = 24 * 60 * 60 * 1000;
 
+    /** 词条查找（气泡里的周几要跟着语言变），没加载 i18n 时退回 key 本身 */
+    function t(key) {
+        return global.LivologI18n && global.LivologI18n.t
+            ? global.LivologI18n.t(key)
+            : key;
+    }
+
     /**
      * 数据点标记的半径（viewBox 单位）。
      * ⚠️ 320×170 的 viewBox 在手机上会被缩到 300 多 px 显示，2.6 单位画出来
@@ -45,14 +52,15 @@
         return p.month + '-' + p.day;
     }
 
-    /** 气泡日期行：月/日 + 周几（横轴刻度太挤，只在气泡里给全） */
+    /**
+     * 气泡日期行：`2026-09-20 周日`。
+     * ⚠️ 全 app 的日期一律 `YYYY-MM-DD`（`LivologClock.formatDate`），
+     *    这里也必须照这个写 —— 我 v0.1.20 新加时随手写成了 `09/20`，被用户指出。
+     *    横轴刻度（`dateLabel`）另有约定：只写 `9-20`，因为窄屏放不下三个完整日期。
+     */
     function fullDateLabel(ms) {
-        var p = global.LivologClock.parts(ms);
-        var weekday = global.LivologI18n && global.LivologI18n.t
-            ? global.LivologI18n.t('weekday.' + p.weekday)
-            : String(p.weekday);
-        return global.LivologClock.pad(p.month, 2) + '/' +
-            global.LivologClock.pad(p.day, 2) + ' ' + weekday;
+        var weekday = global.LivologClock.parts(ms).weekday;
+        return global.LivologClock.formatDate(ms) + ' ' + t('weekday.' + weekday);
     }
 
     function tickLabel(value) {
