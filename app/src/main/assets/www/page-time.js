@@ -128,36 +128,23 @@
     // 记录按「年 → 月 → 周」三级分组，每一级都能展开 / 折叠。
     //
     // ⚠️ 周是**真实的自然周**：周一到周日（固定按 ISO 口径切，见 `weekKey`）。
-    //    以前按「1–7 号算第 1 周」切，好处是周不会横跨两个月，
-    //    但那个「周」跟用户日历上的周对不上（用户报「周的划分不太对」）。
-    //    代价是月初/月末那一周会横跨两个月 —— 归属取该周**周一所在的月**，
-    //    所以会出现「某月下只有半个月的记录」这种正常情况。
+    //    以前按「1–7 号算第 1 周」切，那个「周」跟用户日历上的周对不上
+    //    （用户报「周的划分不太对」），所以换成了自然周。
+    // ⚠️ 划分换成自然周后，月初/月末那一周会**横跨两个月**。这种周在**两个
+    //    月份下各出现一次**，各自按本月的第几个周编号（用户 2026-09-24 明确选定）：
+    //      `2026-09-W5`（9/28~9/30）与 `2026-10-W1`（10/1~10/04）指向同一周。
+    //    这样每个月都是完整、连续的第 1..N 周，不会出现「9 月只有 4 个周、
+    //    月尾那周跑去 10 月」这种断档。
+    // ⚠️ 标签格式 `{y}-{m}-W{n}` 是用户原有约定，**不要擅自改成日期区间**
+    //    （我 2026-09-24 擅改过一次，被指出「旧的地方不要乱改」）。
     //    `LivologClock` 的「每周起始日」设置只影响**显示顺序与日期标记**，
-    //    不影响这里的归组口径（归组永远按周一切，保证跨月跨年稳定）。
+    //    不影响归组口径（归组永远按周一切，保证跨月跨年稳定）。
 
     /** 已折叠的分组 key；只在本次会话里记着 */
     var collapsed = {};
 
     /** 时间口径（时区 / 每周起始日）都从这里取，不要直接用 new Date() 的本地字段 */
     var clock = global.LivologClock;
-
-    /**
-     * 周分组的标题：`09/21 ~ 09/27`。
-     * 直接写起止日期而不是「第几周」：跨月的那一周说不清是第几周，
-     * 日期区间则任何情况都准确。
-     * @param {string} weekKey 该周周一的 `YYYY-MM-DD`
-     */
-    function weekLabel(weekKey) {
-        var parts = weekKey.split('-').map(Number);
-        var start = clock.stamp(parts[0], parts[1], parts[2], 0, 0);
-        var end = start + 6 * 86400000;
-        return shortDate(start) + ' ~ ' + shortDate(end);
-    }
-
-    /** 2026-09-21 → 09/21 */
-    function shortDate(timestamp) {
-        return clock.formatDate(timestamp).slice(5).replace('-', '/');
-    }
 
     /**
      * 先建成完整的年/月/周三棵树，再根据当前范围决定从哪一级开始显示。
@@ -168,57 +155,123 @@
         var yearIndex = {};
         var pad = global.LivologDateTime.pad;
 
+        /*
+           1. 先按自然周归组：一周一条，带上周一日期与本周覆盖到的记录。
+              （用周一的 `YYYY-MM-DD` 当 key —— 跨年时 ISO 周号会跳，日期不会）
+
+              ⚠️ `weeks` 里的顺序 = 记录顺序（时间页是**新→旧**），
+              所以**绝不能拿遍历顺序当月内序号**（第一版就是这么错的：
+              序号倒着发，10 月第 1 周拿到了 10 月中旬那一周）。
+              序号一律按日历算，见下面第 2 步。
+        */
+        var weekIndex = {};
+        var weeks = [];
         records.forEach(function (record) {
-            var p = clock.parts(record.start);
-            var year = p.year;
-            var weekKey = clock.weekKey(record.start);
-            // 这一周归到「周一所处的月份」，跨月的那一周因此只会出现在一个月下
-            var month = clock.parts(clock.weekStartOf(record.start)).month;
-            var monthYear = clock.parts(clock.weekStartOf(record.start)).year;
-
-            var yearKey = 'y' + monthYear;
-            if (!yearIndex[yearKey]) {
-                yearIndex[yearKey] = {
-                    key: yearKey,
-                    label: t('time.group.year').replace('{y}', String(monthYear)),
-                    count: 0,
-                    months: [],
-                    monthIndex: {}
-                };
-                years.push(yearIndex[yearKey]);
+            var key = clock.weekKey(record.start);
+            if (!weekIndex[key]) {
+                weekIndex[key] = { key: key, records: [] };
+                weeks.push(weekIndex[key]);
             }
-            var yearNode = yearIndex[yearKey];
-            yearNode.count += 1;
+            weekIndex[key].records.push(record);
+        });
 
-            var monthKey = yearKey + 'm' + month;
-            if (!yearNode.monthIndex[monthKey]) {
-                yearNode.monthIndex[monthKey] = {
-                    key: monthKey,
-                    label: t('time.group.month')
-                        .replace('{y}', String(monthYear))
-                        .replace('{m}', pad(month, 2)),
-                    count: 0,
-                    weeks: [],
-                    weekIndex: {}
-                };
-                yearNode.months.push(yearNode.monthIndex[monthKey]);
-            }
-            var monthNode = yearNode.monthIndex[monthKey];
-            monthNode.count += 1;
+        /*
+           2. 每周算出它覆盖到的**年月**（最多两个，跨月时才是两个），
+              以及它在该月里是第几个自然周。
 
-            if (!monthNode.weekIndex[weekKey]) {
-                monthNode.weekIndex[weekKey] = {
-                    key: monthKey + 'w' + weekKey,
-                    // 周标签直接写「起止日期」，比「第几周」直观，跨月也说得清
-                    label: weekLabel(weekKey),
-                    count: 0,
-                    records: []
-                };
-                monthNode.weeks.push(monthNode.weekIndex[weekKey]);
+              月内序号 = 「包含该月 1 号的那一周算第 1 周，之后每个自然周 +1」。
+              用**周一的日期**来算，别用「落在该月的第几天」（那个会和 7 天段边界
+              撞车，导致同一个月份下出现两个 W1 —— 第一版就是这么错的）：
+
+                  该月 1 号所在周的周一 = M
+                  本周的周一           = W
+                  序号 = (W - M) / 7 天 + 1
+
+              跨月的那一周在两个月里会得到各自正确的序号
+              （9/28~10/4 = 9 月第 5 周，同时也是 10 月第 1 周 —— 用户选定的口径）。
+        */
+        weeks.forEach(function (week) {
+            week.months = [];
+            week.monthNumbers = {};
+            var start = weekStartTimestamp(week.key);
+
+            for (var day = 0; day < 7; day++) {
+                var p = clock.parts(start + day * 86400000);
+                var monthKey = p.year + '-' + p.month;
+                if (week.months.indexOf(monthKey) >= 0) {
+                    continue;
+                }
+                week.months.push(monthKey);
+
+                // 该月 1 号所在自然周的周一
+                var firstOfMonth = clock.stamp(p.year, p.month, 1, 0, 0);
+                var anchor = clock.weekStartOf(firstOfMonth);
+                // 两个周一之间差几个整周，就说明这是本月第几个自然周
+                week.monthNumbers[monthKey] =
+                    Math.round((start - anchor) / (7 * 86400000)) + 1;
             }
-            var weekNode = monthNode.weekIndex[weekKey];
-            weekNode.count += 1;
-            weekNode.records.push(record);
+        });
+
+        /*
+           3. 真正建树：同一周会分别挂到它覆盖的每个月份下，
+              标签用该月份自己的序号（所以 `2026-09-W5` 与 `2026-10-W1`
+              可能指向同一周，这是用户选定的口径）。
+        */
+        weeks.forEach(function (week) {
+            week.months.forEach(function (monthKey) {
+                var bits = monthKey.split('-');
+                var monthYear = Number(bits[0]);
+                var month = Number(bits[1]);
+
+                var yearKey = 'y' + monthYear;
+                if (!yearIndex[yearKey]) {
+                    yearIndex[yearKey] = {
+                        key: yearKey,
+                        label: t('time.group.year').replace('{y}', String(monthYear)),
+                        count: 0,
+                        months: [],
+                        monthIndex: {}
+                    };
+                    years.push(yearIndex[yearKey]);
+                }
+                var yearNode = yearIndex[yearKey];
+
+                if (!yearNode.monthIndex[monthKey]) {
+                    yearNode.monthIndex[monthKey] = {
+                        key: monthKey.replace('-', 'm'),
+                        label: t('time.group.month')
+                            .replace('{y}', String(monthYear))
+                            .replace('{m}', pad(month, 2)),
+                        count: 0,
+                        weeks: [],
+                        weekIndex: {}
+                    };
+                    yearNode.months.push(yearNode.monthIndex[monthKey]);
+                }
+                var monthNode = yearNode.monthIndex[monthKey];
+
+                var n = week.monthNumbers[monthKey];
+                var childKey = monthKey + 'w' + week.key;
+                if (!monthNode.weekIndex[childKey]) {
+                    monthNode.weekIndex[childKey] = {
+                        key: childKey,
+                        label: t('time.group.week')
+                            .replace('{y}', String(monthYear))
+                            .replace('{m}', pad(month, 2))
+                            .replace('{n}', String(n)),
+                        count: 0,
+                        records: []
+                    };
+                    monthNode.weeks.push(monthNode.weekIndex[childKey]);
+                }
+                var weekNode = monthNode.weekIndex[childKey];
+                weekNode.count += week.records.length;
+                week.records.forEach(function (record) {
+                    weekNode.records.push(record);
+                });
+                monthNode.count += week.records.length;
+                yearNode.count += week.records.length;
+            });
         });
 
         if (levels >= 3) {
@@ -233,15 +286,21 @@
             return months;
         }
 
-        var weeks = [];
+        var flatWeeks = [];
         months.forEach(function (monthNode) {
-            weeks = weeks.concat(monthNode.weeks);
+            flatWeeks = flatWeeks.concat(monthNode.weeks);
         });
         if (levels === 1) {
-            return weeks;
+            return flatWeeks;
         }
 
         return null;
+    }
+
+    /** `YYYY-MM-DD`（某周周一）→ 该日零点的时间戳 */
+    function weekStartTimestamp(weekKey) {
+        var bits = weekKey.split('-').map(Number);
+        return clock.stamp(bits[0], bits[1], bits[2], 0, 0);
     }
 
     function section(node, kind, depth, buildBody) {
