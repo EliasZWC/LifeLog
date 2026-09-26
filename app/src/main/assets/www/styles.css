@@ -401,17 +401,10 @@ body {
     padding: 4px 0 96px;
 }
 
-/*
-   ⚠️ 卡片是**竖向**容器：上面一行 `.card-main`（图标 + 行为名 + 时间），
-      描述单独占下面一整行 `.card-note-row`。
-      以前描述挤在行为名下面、和图标同一行，用户要求挪到下面新行。
-      没有描述的记录只渲染 `.card-main`，高度与以前一致。
-*/
 .card {
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
+    align-items: center;
+    gap: 14px;
     min-height: 60px;
     padding: 12px 20px;
     /* 每张卡片都画上边缘：卡片本身没有底色，没有这条线就和上面的标题分不开。
@@ -419,7 +412,19 @@ body {
     border-top: 1px solid var(--outline);
 }
 
-/* 原来那一行：图标 + 主文字 + 右侧时间 */
+/*
+   ⚠️ 只有**记录卡片**才是竖向两行（上行「图标 + 行为名 + 时间」，下行描述），
+      所以用修饰类 `.card-stacked` 而不是改 `.card` 本身 ——
+      改 `.card` 会连带把行为页 / 跟踪页的列表卡片也变成竖排，
+      图标、文字、箭头会各占一行（v0.1.24 踩过，用户报「卡片布局乱了」）。
+*/
+.card-stacked {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+}
+
+/* 记录卡片原来那一行：图标 + 主文字 + 右侧时间 */
 .card-main {
     display: flex;
     align-items: center;
@@ -740,7 +745,15 @@ body {
     /* 键盘弹起时整体上移，避免被输入法盖住 */
     bottom: var(--keyboard);
     z-index: 11;
-    max-height: calc(100dvh - var(--keyboard) - 24px);
+    /*
+       ⚠️ 表单弹窗最高占屏幕 3/4（用户要求）：
+          再高就顶到状态栏、看着像整页；太矮则多行描述会被挤成一个小窗口。
+          弹出键盘时再减去键盘高度，保证输入框不被盖住。
+          `dvh` 是移动端正确的「可视高度」（随地址栏收放变化），
+          紧跟一行 `vh` 兜住不支持 dvh 的老内核 —— 别删掉任何一行。
+    */
+    max-height: min(75dvh, calc(100dvh - var(--keyboard) - 24px));
+    max-height: min(75vh, calc(100vh - var(--keyboard) - 24px));
     overflow-y: auto;
     overscroll-behavior: contain;
     padding: 8px 20px calc(20px + var(--safe-bottom));
@@ -890,16 +903,25 @@ body {
 
 .form-textarea {
     text-align: left;
-    padding: 8px 10px;
-    /* 和 .form-input 不同：多行输入需要看得见的边框与底色 */
-    border: 1px solid var(--outline);
-    border-radius: 8px;
-    background: var(--surface);
+    /*
+       ⚠️ 描述框**不要画边框 / 底色**（用户要求）：它跟其他 `.form-input` 一样
+          只是「值」那一路的样式，套个框会让表单看起来多了一块输入区域。
+       ⚠️ 高度由 JS 按内容自动撑开（`autoGrow`），别在这里写死固定高度 ——
+          只给上下限，中间交给内容决定，这样多行描述一都能看全。
+    */
+    padding: 4px 0;
+    border: 0;
+    background: transparent;
     line-height: 20px;
-    /* 只允许纵向拉伸；横向拉会把弹窗内容挤歪 */
-    resize: vertical;
-    min-height: 44px;
+    /*
+       ⚠️ 不给 `resize`：高度已经按内容自动撑开（JS `autoGrow`），
+          再留个拖拽手柄既多余、右下角那个斜纹图标也碍眼。
+          太长时由 `max-height` 截住并出现内部滚动。
+    */
+    resize: none;
+    min-height: 40px;
     max-height: 40vh;
+    overflow-y: auto;
 }
 
 .form-hint {

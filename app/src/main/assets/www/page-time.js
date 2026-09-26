@@ -420,7 +420,6 @@
         }
         return fragment;
     }
-
     /**
      * 卡片下方的描述行。
      *
@@ -502,7 +501,7 @@
     function recordCard(record) {
         var behavior = global.LivologStore.getBehavior(record.behaviorId);
 
-        var card = global.LivologUI.el('li', 'card');
+        var card = global.LivologUI.el('li', 'card card-stacked');
         card.dataset.id = record.id;
         card.appendChild(cardContent(
             behavior ? behavior.icon : global.LivologIcons.fallback,
@@ -768,6 +767,18 @@
         buildTimeFields(editingId ? { start: record.start, end: record.end } : null);
 
         global.LivologUI.openSheet(sheet);
+        // 打开时也要按已有内容撑高（改已有记录时描述可能有好几行）
+        autoGrow(noteInput);
+    }
+
+    /**
+     * 让多行输入框按内容自动撑高。
+     * ⚠️ 必须先把 height 归零再读 scrollHeight，否则框只会越撑越大、缩不回去。
+     *   上限交给 CSS 的 `max-height`（还是超高就自己出现滚动条）。
+     */
+    function autoGrow(field) {
+        field.style.height = 'auto';
+        field.style.height = field.scrollHeight + 'px';
     }
 
     function validate() {
@@ -872,6 +883,15 @@
             global.LivologUI.closeSheet();
         });
         confirmBtn.addEventListener('click', submit);
+
+        /*
+           描述框按内容自动撑高（上限由 CSS 的 max-height 管）。
+           不这么做的话，框固定 2 行高，用户写第 3 行开始就看不到自己输的内容了
+           （用户要求「即便换行也能看得很清楚」）。
+        */
+        noteInput.addEventListener('input', function () {
+            autoGrow(noteInput);
+        });
 
         global.LivologStore.onChange(function () {
             render();

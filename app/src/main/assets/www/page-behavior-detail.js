@@ -267,7 +267,7 @@
 
     /** 一条记录的卡片 */
     function buildRecordCard(behavior, record) {
-        var card = global.LivologUI.el('li', 'card');
+        var card = global.LivologUI.el('li', 'card card-stacked');
         card.dataset.id = record.id;
         // 与时间页共用同一套结构：上行「图标 + 行为名 + 时间」，描述单独占下一行
         card.appendChild(global.LivologTimePage.cardContent(
