@@ -434,6 +434,17 @@
     function noteRow(note) {
         var row = global.LivologUI.el('div', 'card-note-row');
         var span = global.LivologUI.el('span', 'card-note', note);
+        /*
+           ⚠️ 文字外面还要再套一层 span，折叠的 `-webkit-line-clamp` 加在它身上。
+              不能加在 `.card-note` 上 —— 那样 `.card-note` 会变成 `-webkit-box`，
+              而 `-webkit-box` **不是 flex item**，不参与父级 flex 伸缩，
+              结果是 `margin-left: auto` 的箭头把空间全吃掉，文字只剩 39px 宽。
+              套一层之后 `.card-note` 仍是普通 flex item（能收缩），
+              截断交给内层。
+        */
+        var text = global.LivologUI.el('span', 'card-note-text', note);
+        span.textContent = '';
+        span.appendChild(text);
         row.appendChild(span);
 
         /*
@@ -458,11 +469,21 @@
                 return;
             }
 
-            var probe = span.cloneNode(true);
+            /*
+               ⚠️ 探测宽度要**再减去箭头那一列**（18px）+ 描述与箭头的间距（6px），
+                  否则量出来的「自然高度」是按更宽的行宽算的，会偏矮，
+                  明明要多行的描述可能被误判成「一行放得下」。
+            */
+            var PROBE_WIDTH = available - 18 - 6;
+            if (PROBE_WIDTH <= 0) {
+                return;
+            }
+
+            var probe = text.cloneNode(true);
             probe.style.position = 'absolute';
             probe.style.left = '-9999px';
             probe.style.top = '0';
-            probe.style.width = available + 'px';
+            probe.style.width = PROBE_WIDTH + 'px';
             probe.style.display = 'block';
             probe.style.webkitLineClamp = 'none';
             probe.style.overflow = 'visible';
@@ -475,6 +496,18 @@
                 return;   // 一行放得下，保持纯文本
             }
             row.classList.add('is-collapsible');
+
+            /*
+               折叠指示箭头（Material `expand_more`）。
+               ⚠️ 只有可折叠的行才加 —— 短描述一行放得下，加个永远不动的箭头是噪音。
+                  箭头本身不接事件，点击交给整行（`pointer-events: none` 一样由 CSS 控制），
+                  这样点箭头和点文字行为一致。
+            */
+            var toggleIcon = global.LivologUI.el('span', 'card-note-toggle');
+            toggleIcon.setAttribute('aria-hidden', 'true');
+            toggleIcon.innerHTML = '<svg viewBox="0 0 24 24" focusable="false">' +
+                '<path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/></svg>';
+            row.appendChild(toggleIcon);
 
             var toggle = function (event) {
                 event.stopPropagation();

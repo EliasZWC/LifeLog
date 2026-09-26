@@ -528,21 +528,99 @@ body {
     min-width: 0;
     /* 让描述与行为名左沿对齐（跳过图标那一列） */
     padding-left: 38px;
+    /*
+       ⚠️ 这里**不能**用 `gap`：不可折叠的描述行只有一个子元素，
+          用 gap 会让「可折叠」和「不可折叠」两种行的文字起点差一个箭头宽度，
+          在列表里看起来就是描述忽左忽右不对齐。
+          对齐交给箭头的 `margin-left: auto`（把箭头推到最右）。
+    */
+    display: flex;
+    align-items: flex-start;
 }
 
 .card-note-row.is-collapsible {
     cursor: pointer;
 }
 
+/*
+   展开/收起指示箭头：Google Material Icons `expand_more`
+   `margin-left: auto` 把箭头推到最右，描述占满剩下的宽度。
+*/
+.card-note-toggle {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    margin-left: auto;
+    color: var(--on-surface-variant);
+    opacity: 0.7;
+    transition: transform 0.18s ease;
+}
+
+.card-note-toggle svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
+
+/* 展开后箭头翻转，指向「收起」 */
+.card-note-row.is-expanded .card-note-toggle {
+    transform: rotate(180deg);
+}
+
+/*
+   ⚠️⚠️ 折叠的截断必须写在 `.card-note` **内部**的 span 上，不能写在 `.card-note` 自己身上。
+
+   原因（踩过的坑）：`display: -webkit-box` 的元素**不是 flex item**，
+   不会参与父级 flex 的伸缩计算。如果把 `-webkit-box` 加在 `.card-note` 上，
+   它就变成了一个「内容多宽就多宽」的块，父行里那个 `margin-left: auto` 的箭头
+   会把全部剩余空间吃掉 —— 实测文字可用宽度只剩 **39px**（两个字 + 省略号），
+   中间白空 519px。所以：`.card-note` 保持普通 flex item（`min-width: 0` 允许收缩），
+   截断交给里面那层 span 去做。
+*/
 .card-note-row.is-collapsible .card-note {
+    min-width: 0;
+    /*
+       ⚠️ 必须显式 `flex: 1 1 auto`（增长 = 1）。
+          默认的 `flex-grow: 0` 下，描述不会去抢剩余空间，而箭头的 `margin-left: auto`
+          会把「全部」剩余空间吃掉 —— 描述被挤成最小内容宽 39px（两个字 + 省略号）。
+          让描述增长、箭头 `flex: 0 0 auto`，才是「描述占满、箭头贴右」。
+    */
+    flex: 1 1 auto;
+    /* 描述与箭头之间的呼吸空间 */
+    margin-right: 6px;
+    cursor: pointer;
+}
+
+/*
+   ⚠️ 内层文字 span 的样式必须**自带**（字号/行高/颜色/换行/选中），
+      不能指望从 `.card-note` 继承 —— JS 量「描述是否溢出」时，
+      会把这一层单独克隆到 `body` 上测量（详见 page-time.js 的 `noteRow`），
+      脱离 `.card-note` 上下文后就继承不到任何东西。
+      踩过：探测高度量成 23px、宽度 0，短描述被误判成溢出，无端多出一个箭头。
+*/
+.card-note-text {
+    display: block;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--on-surface-variant);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+}
+
+/* 折叠：只显示一行 */
+.card-note-row.is-collapsible .card-note-text {
     display: -webkit-box;
     -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    cursor: pointer;
 }
 
-.card-note-row.is-collapsible.is-expanded .card-note {
+/* 展开：显示全部 */
+.card-note-row.is-collapsible.is-expanded .card-note-text {
     display: block;
     -webkit-line-clamp: none;
     overflow: visible;
