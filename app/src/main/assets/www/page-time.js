@@ -382,16 +382,120 @@
     }
 
     /**
-     * 卡片左边那两块：主文字 + 选填的描述。
-     * 描述为空时连元素都不建，所以没有描述的记录卡片和以前一样高。
+     * 卡片左边那块主文字（行为名 / 跟踪项名）。
+     * ⚠️ 描述**不再**塞在这里（用户要求描述单独占下面一整行），
+     *    所以第二个参数留空即可；保留参数是为了兼容旧调用点。
      */
-    function cardBody(title, note) {
+    function cardBody(title) {
         var body = global.LivologUI.el('div', 'card-body');
         body.appendChild(global.LivologUI.el('span', 'card-title', title));
-        if (note) {
-            body.appendChild(global.LivologUI.el('span', 'card-note', note));
-        }
         return body;
+    }
+
+    /**
+     * 组装一张记录卡片的「上面那行」：图标 + 主文字 + 右侧时间。
+     * 时间页与行为详情页共用（两边长得一样）。
+     */
+    function cardMain(iconName, title, record) {
+        var main = global.LivologUI.el('div', 'card-main');
+        main.appendChild(global.LivologUI.icon(iconName, 'card-icon'));
+        main.appendChild(cardBody(title));
+
+        var time = global.LivologUI.el('span', 'card-time');
+        time.appendChild(global.LivologUI.el('span', 'card-time-date', dateLine(record)));
+        time.appendChild(global.LivologUI.el('span', 'card-time-clock', clockLine(record)));
+        main.appendChild(time);
+        return main;
+    }
+
+    /**
+     * 记录卡片的完整内容（不含多选 / 长按等交互，由各页面自己接）。
+     * 上边一行 `.card-main`，描述（若有）单独占下面一整行。
+     */
+    function cardContent(iconName, title, record) {
+        var fragment = document.createDocumentFragment();
+        fragment.appendChild(cardMain(iconName, title, record));
+        if (record.note) {
+            fragment.appendChild(noteRow(record.note));
+        }
+        return fragment;
+    }
+
+    /**
+     * 卡片下方的描述行。
+     *
+     * 折叠规则：默认只显示**一行**（多余部分裁掉），点一下展开全部、再点收起。
+     * 只在「确实放不下」时才让它可点 —— 一行就放得下的短描述不加多余的交互
+     * （否则用户点了没变化，以为坏了）。
+     *
+     * ⚠️ 文字要**可复制**：卡片本身在长按多选时是禁止选中的，
+     *    这里显式放开 `user-select`，并且点击时不要冒泡到卡片
+     *    （否则会点开编辑表单 / 触发多选）。
+     */
+    function noteRow(note) {
+        var row = global.LivologUI.el('div', 'card-note-row');
+        var span = global.LivologUI.el('span', 'card-note', note);
+        row.appendChild(span);
+
+        /*
+           是否溢出要等布局完成才知道，所以先不加按钮，量完再决定。
+
+           ⚠️ 两个坑（都踩过）：
+           1. `.card-note` 是 **inline** 元素，`scrollHeight` 恒为 0，量不出溢出；
+           2. 探测副本不能塞在行里量 —— 它会继承折叠后的宽度（实测只剩 130px），
+              算出来的自然高度比真实值小，含换行的描述会被误判成「一行放得下」。
+              所以副本挂到 `body` 上，宽度取**行的可用宽度**（row 的 padding 去掉）。
+        */
+        global.requestAnimationFrame(function () {
+            var rowWidth = row.getBoundingClientRect().width;
+            if (rowWidth <= 0) {
+                return;   // 还没布局（隐藏页面），等下次渲染
+            }
+            var style = global.getComputedStyle(row);
+            var available = rowWidth -
+                (parseFloat(style.paddingLeft) || 0) -
+                (parseFloat(style.paddingRight) || 0);
+            if (available <= 0) {
+                return;
+            }
+
+            var probe = span.cloneNode(true);
+            probe.style.position = 'absolute';
+            probe.style.left = '-9999px';
+            probe.style.top = '0';
+            probe.style.width = available + 'px';
+            probe.style.display = 'block';
+            probe.style.webkitLineClamp = 'none';
+            probe.style.overflow = 'visible';
+            document.body.appendChild(probe);
+            var natural = probe.getBoundingClientRect().height;
+            document.body.removeChild(probe);
+
+            var single = parseFloat(global.getComputedStyle(span).lineHeight) || 18;
+            if (natural <= single + 1) {
+                return;   // 一行放得下，保持纯文本
+            }
+            row.classList.add('is-collapsible');
+
+            var toggle = function (event) {
+                event.stopPropagation();
+                event.preventDefault();
+                row.classList.toggle('is-expanded');
+                row.setAttribute('aria-expanded',
+                    row.classList.contains('is-expanded') ? 'true' : 'false');
+            };
+            row.addEventListener('click', toggle);
+            row.setAttribute('role', 'button');
+            row.setAttribute('tabindex', '0');
+            row.setAttribute('aria-expanded', 'false');
+            row.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    toggle(event);
+                }
+            });
+        });
+
+        return row;
     }
 
     /** 单条记录卡片（与行为详情页里的列表长一样） */
@@ -400,19 +504,11 @@
 
         var card = global.LivologUI.el('li', 'card');
         card.dataset.id = record.id;
-        card.appendChild(global.LivologUI.icon(
+        card.appendChild(cardContent(
             behavior ? behavior.icon : global.LivologIcons.fallback,
-            'card-icon'
-        ));
-        card.appendChild(cardBody(
             behavior ? behavior.name : '—',
-            record.note
+            record
         ));
-
-        var time = global.LivologUI.el('span', 'card-time');
-        time.appendChild(global.LivologUI.el('span', 'card-time-date', dateLine(record)));
-        time.appendChild(global.LivologUI.el('span', 'card-time-clock', clockLine(record)));
-        card.appendChild(time);
 
         if (global.LivologUI.isSelected(record.id)) {
             card.classList.add('is-selected');
@@ -818,6 +914,8 @@
         dateLine: dateLine,
         clockLine: clockLine,
         cardBody: cardBody,
+        cardContent: cardContent,
+        noteRow: noteRow,
         // 详情页的记录视图也按天分隔（与时间页同一个实现）
         dayMark: dayMark,
         appendRecordCards: appendRecordCards

@@ -401,15 +401,30 @@ body {
     padding: 4px 0 96px;
 }
 
+/*
+   ⚠️ 卡片是**竖向**容器：上面一行 `.card-main`（图标 + 行为名 + 时间），
+      描述单独占下面一整行 `.card-note-row`。
+      以前描述挤在行为名下面、和图标同一行，用户要求挪到下面新行。
+      没有描述的记录只渲染 `.card-main`，高度与以前一致。
+*/
 .card {
     display: flex;
-    align-items: center;
-    gap: 14px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
     min-height: 60px;
     padding: 12px 20px;
     /* 每张卡片都画上边缘：卡片本身没有底色，没有这条线就和上面的标题分不开。
        用上边缘而不是下边缘，这样列表头部（标题）下面也有一条界。 */
     border-top: 1px solid var(--outline);
+}
+
+/* 原来那一行：图标 + 主文字 + 右侧时间 */
+.card-main {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
 }
 
 .card.is-selected {
@@ -482,6 +497,60 @@ body {
     line-height: 18px;
     color: var(--on-surface-variant);
     overflow-wrap: anywhere;
+    /*
+       ⚠️ 必须保留换行：描述是多行输入（textarea），用户在里按的回车要算数。
+          `white-space: normal` 会把 `\n` 折叠成空格 —— 那样不仅是「显示不换行」，
+          连「需不需要折叠」都判断错（自然高度被算成一行）。
+          `pre-wrap` = 保留换行 + 仍然自动折行（长句不会横向溢出）。
+    */
+    white-space: pre-wrap;
+    /*
+       ⚠️ 描述要能**长按复制**，所以这里放开选中。
+          卡片列表在长按拖动/多选时会整体 `user-select: none`，
+          描述必须显式覆盖回来，否则选不中文字。
+    */
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+}
+
+/*
+   描述行：默认**只显示一行**，超出部分裁掉；`.is-expanded` 展开显示全部。
+   ⚠️ 只有 JS 量出「确实溢出」时才加 `.is-collapsible`（可点），
+      短描述保持纯文本、不加多余交互。
+*/
+.card-note-row {
+    min-width: 0;
+    /* 让描述与行为名左沿对齐（跳过图标那一列） */
+    padding-left: 38px;
+}
+
+.card-note-row.is-collapsible {
+    cursor: pointer;
+}
+
+.card-note-row.is-collapsible .card-note {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.card-note-row.is-collapsible.is-expanded .card-note {
+    display: block;
+    -webkit-line-clamp: none;
+    overflow: visible;
+}
+
+/*
+   卡片处于多选/拖动状态时不允许选文字，但**描述行例外** ——
+   用户要靠长按选中描述来复制。
+*/
+.card-list.is-sorting .card-note-row,
+.card.is-selected .card-note-row {
+    user-select: text;
+    -webkit-user-select: text;
 }
 
 /* 多字段跟踪的卡片：一行「字段名 + 值」，每行都跟着主文字的大小 */
@@ -803,6 +872,34 @@ body {
 .form-row-stacked .form-input {
     text-align: left;
     padding: 4px 0;
+}
+
+/*
+   描述输入框：多行，所以标签在上、框在下（和 .form-row-stacked 同一套思路），
+   文字**左对齐** —— 右对齐的多行文本没法读。
+   ⚠️ 不要给它套 `.form-row-stacked`：那个类同时改 flex 方向和间距，
+      这里只要「标签在上」+ 左对齐这几条，单独写更清楚。
+*/
+.form-row-note {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    min-height: 0;
+    padding: 12px 0;
+}
+
+.form-textarea {
+    text-align: left;
+    padding: 8px 10px;
+    /* 和 .form-input 不同：多行输入需要看得见的边框与底色 */
+    border: 1px solid var(--outline);
+    border-radius: 8px;
+    background: var(--surface);
+    line-height: 20px;
+    /* 只允许纵向拉伸；横向拉会把弹窗内容挤歪 */
+    resize: vertical;
+    min-height: 44px;
+    max-height: 40vh;
 }
 
 .form-hint {

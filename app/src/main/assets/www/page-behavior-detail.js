@@ -269,17 +269,12 @@
     function buildRecordCard(behavior, record) {
         var card = global.LivologUI.el('li', 'card');
         card.dataset.id = record.id;
-        card.appendChild(global.LivologUI.icon(behavior.icon, 'card-icon'));
-        card.appendChild(global.LivologTimePage.cardBody(behavior.name, record.note));
-
-        var time = global.LivologUI.el('span', 'card-time');
-        time.appendChild(global.LivologUI.el(
-            'span', 'card-time-date', global.LivologTimePage.dateLine(record)
+        // 与时间页共用同一套结构：上行「图标 + 行为名 + 时间」，描述单独占下一行
+        card.appendChild(global.LivologTimePage.cardContent(
+            behavior.icon,
+            behavior.name,
+            record
         ));
-        time.appendChild(global.LivologUI.el(
-            'span', 'card-time-clock', global.LivologTimePage.clockLine(record)
-        ));
-        card.appendChild(time);
 
         if (global.LivologUI.isSelected(record.id)) {
             card.classList.add('is-selected');

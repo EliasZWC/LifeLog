@@ -573,10 +573,11 @@
         </div>
 
         <!-- 描述：选填，填了才会在卡片上多出一行 -->
-        <div class="form-row">
+        <div class="form-row form-row-note">
             <label class="form-label" for="time-note" data-i18n="time.form.note">Description</label>
-            <input class="form-input" id="time-note" type="text" autocomplete="off"
-                data-i18n-placeholder="time.form.note.placeholder" placeholder="Optional, e.g. slept badly" />
+            <!-- 用 textarea 而不是 input：描述本来就允许写长，单行输入框看不到全部 -->
+            <textarea class="form-input form-textarea" id="time-note" rows="2" autocomplete="off"
+                data-i18n-placeholder="time.form.note.placeholder" placeholder="Optional, e.g. slept badly"></textarea>
         </div>
 
         <div class="form-actions">
